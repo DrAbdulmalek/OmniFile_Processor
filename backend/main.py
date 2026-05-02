@@ -599,6 +599,27 @@ async def get_task_status(task_id: str):
     return _task_store[task_id]
 
 
+# === Mobile OCR Review ===
+
+@app.get("/mobile")
+async def mobile_review():
+    """صفحة مراجعة نتائج OCR على الموبايل."""
+    mobile_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "mobile")
+    html_path = os.path.join(mobile_dir, "ocr-review.html")
+    if os.path.exists(html_path):
+        return FileResponse(html_path, media_type="text/html")
+    raise HTTPException(status_code=404, detail="Mobile review page not found")
+
+@app.get("/mobile/manifest.json")
+async def mobile_manifest():
+    """PWA manifest للمراجعة على الموبايل."""
+    mobile_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "mobile")
+    manifest_path = os.path.join(mobile_dir, "manifest.json")
+    if os.path.exists(manifest_path):
+        return FileResponse(manifest_path, media_type="application/json")
+    raise HTTPException(status_code=404, detail="Mobile manifest not found")
+
+
 # === Configuration ===
 
 @app.get("/api/config")
