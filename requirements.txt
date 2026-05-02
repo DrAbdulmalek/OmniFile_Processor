@@ -1,9 +1,10 @@
 # =============================================================================
-# OmniFile AI Processor v2.1 - Unified Requirements
+# OmniFile AI Processor v3.0 - Unified Requirements
 # =============================================================================
 # نظام ذكاء اصطناعي متكامل لمعالجة الملفات والنصوص والخط اليدوي
 # Merge of: OmniFile_Processor + HandwrittenOCR + handwriting-ocr
-# v2.1: +ONNX, +Quantization, +Summarization, +Sensitive Scan, +Celery
+#           + arabic-ocr-pro + advanced-ocr + OCR-Enhancer
+# v3.0: +PaddleOCR, +Fusion, +RTL, +Pattern Matching, +GPT/Gemini AI, +Exporter
 # =============================================================================
 
 # === Core Framework ===
@@ -16,6 +17,7 @@ numpy>=1.24.0
 filelock>=3.12.0
 tqdm>=4.65.0
 requests>=2.31.0
+python-multipart>=0.0.6
 
 # === Computer Vision & OCR ===
 PyMuPDF>=1.23.0
@@ -24,6 +26,10 @@ easyocr>=1.7.0
 pytesseract>=0.3.10
 opencv-python-headless>=4.8.0
 Pillow>=10.0.0
+paddlepaddle>=2.5.0
+paddleocr>=2.7.0
+scikit-image>=0.21.0
+rapidfuzz>=3.0.0
 
 # === Deep Learning ===
 transformers>=4.36.0
@@ -42,13 +48,23 @@ ar-corrector>=0.6.3
 arabic-reshaper>=3.0.0
 python-bidi>=0.4.2
 jiwer>=3.0.0
+language-tool-python>=2.7.0
+
+# === AI Enhancement ===
+openai>=1.0.0
+google-generativeai>=0.3.0
 
 # === File Management & Export ===
 openpyxl>=3.1.0
+python-docx>=0.8.11
 GitPython>=3.1.0
 beautifulsoup4>=4.12.0
 fpdf2>=2.7.0
 psutil>=5.9.0
+
+# === Data Models ===
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
 
 # === UI & Visualization ===
 matplotlib>=3.8.0
@@ -56,18 +72,21 @@ tensorboard>=2.15.0
 
 # === Cloud & Deployment ===
 pyngrok>=7.0.0
+python-dotenv>=1.0.0
 
-# === Performance (v2.1) ===
+# === Performance ===
 onnxruntime>=1.16.0
 
-# === Security (v2.1) ===
+# === Security ===
 presidio-analyzer>=2.2.0
 presidio-anonymizer>=2.2.0
+detect-secrets>=1.4.0
 
-# === Async Processing (v2.1 - Optional) ===
+# === Async Processing (Optional) ===
 celery>=5.3.0
 redis>=5.0.0
 
 # === Testing ===
 pytest>=7.4.0
 pytest-cov>=4.1.0
+pytest-mock>=3.11.0

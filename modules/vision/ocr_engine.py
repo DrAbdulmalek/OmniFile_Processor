@@ -1,10 +1,11 @@
 """
 محرك التعرف على النصوص (OCR Engine)
 ======================================
-محرك متكامل يجمع بين ثلاث محركات OCR:
+محرك متكامل يجمع بين أربعة محركات OCR:
 - TrOCR (من Microsoft) - الأفضل للمخطوطات اليدوية
 - EasyOCR - سريع ودقيق متعدد اللغات
 - Tesseract (OCR) - محرك كلاسيكي موثوق
+- PaddleOCR - الأفضل للنصوص العربية و80+ لغة
 
 القدرات:
 - تحميل بطيء (Lazy Loading) - النماذج لا تُحمّل إلا عند الحاجة
@@ -25,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 class OCREngine:
     """
-    محرك OCR المتكامل - يجمع بين TrOCR + EasyOCR + Tesseract.
+    محرك OCR المتكامل - يجمع بين TrOCR + EasyOCR + Tesseract + PaddleOCR.
 
     مثال الاستخدام:
         >>> engine = OCREngine(
@@ -64,6 +65,7 @@ class OCREngine:
         enable_trocr: bool = True,
         enable_easyocr: bool = True,
         enable_tesseract: bool = True,
+        enable_paddleocr: bool = False,
         preprocess: bool = True,
         dpi: int = 300,
     ) -> None:
@@ -87,6 +89,7 @@ class OCREngine:
             enable_trocr: تفعيل محرك TrOCR
             enable_easyocr: تفعيل محرك EasyOCR
             enable_tesseract: تفعيل محرك Tesseract
+            enable_paddleocr: تفعيل محرك PaddleOCR (الأفضل للعربية)
             preprocess: تطبيق المعالجة المسبقة قبل OCR
             dpi: دقة تحويل PDF
         """
@@ -111,6 +114,7 @@ class OCREngine:
         self.enable_trocr = enable_trocr
         self.enable_easyocr = enable_easyocr
         self.enable_tesseract = enable_tesseract
+        self.enable_paddleocr = enable_paddleocr
         self.preprocess = preprocess
         self.dpi = dpi
 
@@ -121,6 +125,8 @@ class OCREngine:
         self._easyocr_reader = None
         self._easyocr_loaded = False
         self._tesseract_available = None
+        self._paddleocr_reader = None
+        self._paddleocr_loaded = False
 
         # التحقق من توفر المكتبات
         self._has_torch = self._check_library("torch", "PyTorch")
@@ -128,6 +134,7 @@ class OCREngine:
             "transformers", "transformers"
         )
         self._has_easyocr = self._check_library("easyocr", "EasyOCR")
+        self._has_paddleocr = self._check_library("paddleocr", "PaddleOCR")
         self._has_pil = self._check_library("PIL", "Pillow")
 
         # تحقق مبدئي من Tesseract
@@ -187,6 +194,11 @@ class OCREngine:
             "متاح" if self._tesseract_available else "غير متاح",
             self.enable_tesseract,
         )
+        logger.info(
+            "  PaddleOCR: %s (مفعّل: %s)",
+            "متاح" if self._has_paddleocr else "غير متاح",
+            self.enable_paddleocr,
+        )
 
         active_engines = self._get_active_engines()
         if not active_engines:
@@ -204,6 +216,8 @@ class OCREngine:
             engines.append("trocr")
         if self.enable_tesseract and self._tesseract_available:
             engines.append("tesseract")
+        if self.enable_paddleocr and self._has_paddleocr:
+            engines.append("paddleocr")
         return engines
 
     # ------------------------------------------------------------------
@@ -390,6 +404,12 @@ class OCREngine:
             tesseract_result = self._recognize_tesseract(pil_image)
             if tesseract_result:
                 results.append(tesseract_result)
+
+        # 4. تجربة PaddleOCR (الأفضل للنصوص العربية)
+        if self.enable_paddleocr:
+            paddleocr_result = self._recognize_paddleocr(pil_image)
+            if paddleocr_result:
+                results.append(paddleocr_result)
 
         # اختيار أفضل نتيجة
         best_result = self._select_best_result(results)
@@ -759,6 +779,139 @@ class OCREngine:
             logger.warning("فشل Tesseract: %s", e)
             return None
 
+    def _load_paddleocr(self) -> bool:
+        """تحميل PaddleOCR عند أول استخدام (Lazy Loading).
+
+        PaddleOCR هو الأفضل للنصوص العربية ويدعم 80+ لغة.
+        يُحمّل فقط عند أول استدعاء وليس عند التهيئة.
+
+        Returns:
+            True إذا تم التحميل بنجاح
+        """
+        if self._paddleocr_loaded:
+            return True
+
+        if not self._has_paddleocr:
+            logger.debug("PaddleOCR غير متاح")
+            return False
+
+        try:
+            logger.info("جارٍ تحميل PaddleOCR...")
+            from paddleocr import PaddleOCR
+
+            lang_str = "ar"  # الافتراضي: العربية + الإنجليزية
+
+            self._paddleocr_reader = PaddleOCR(
+                use_angle_cls=True,
+                lang=lang_str,
+                use_gpu=self.use_gpu,
+                show_log=False,
+            )
+            self._paddleocr_loaded = True
+            logger.info("تم تحميل PaddleOCR بنجاح")
+            return True
+
+        except ImportError:
+            logger.warning(
+                "PaddleOCR غير مثبت. قم بتثبيته:\n"
+                "  pip install paddlepaddle paddleocr"
+            )
+            self._paddleocr_loaded = False
+            return False
+        except Exception as e:
+            logger.error("فشل في تحميل PaddleOCR: %s", e)
+            self._paddleocr_loaded = False
+            return False
+
+    def _recognize_paddleocr(self, image: "PIL.Image.Image") -> Optional[dict]:
+        """
+        التعرف على النص باستخدام PaddleOCR.
+
+        محرك ممتاز للنصوص العربية مع دعم اتجاه النص تلقائياً.
+
+        Args:
+            image: صورة PIL
+
+        Returns:
+            قاميس النتيجة أو None عند الفشل
+        """
+        if not self._load_paddleocr():
+            return None
+
+        try:
+            import numpy as np
+
+            # تحويل PIL إلى numpy (RGB → BGR)
+            img_array = np.array(image)
+            if img_array.ndim == 3 and img_array.shape[2] == 3:
+                img_bgr = img_array[:, :, ::-1]  # RGB → BGR
+            else:
+                img_bgr = img_array
+
+            # تشغيل PaddleOCR
+            results = self._paddleocr_reader.ocr(img_bgr, cls=True)
+
+            if not results or not results[0]:
+                return None
+
+            texts = []
+            confidences = []
+            word_boxes = []
+
+            for item in results[0]:
+                # item = [bbox_points, (text, confidence)]
+                bbox_points = item[0]
+                text, confidence = item[1]
+
+                if confidence < self.confidence_threshold:
+                    continue
+
+                texts.append(text)
+                confidences.append(confidence)
+
+                # حساب الموقع
+                xs = [p[0] for p in bbox_points]
+                ys = [p[1] for p in bbox_points]
+                x = int(min(xs))
+                y = int(min(ys))
+                w = int(max(xs)) - x
+                h = int(max(ys)) - y
+
+                word_boxes.append({
+                    "text": text,
+                    "x": x, "y": y,
+                    "w": w, "h": h,
+                    "confidence": confidence,
+                })
+
+            if not texts:
+                return None
+
+            # إعادة تجميع النصوص
+            reconstructor = self._get_reconstructor()
+            if reconstructor and word_boxes:
+                full_text = reconstructor.reconstruct(word_boxes)
+            else:
+                full_text = " ".join(texts)
+
+            avg_confidence = sum(confidences) / len(confidences)
+
+            return {
+                "text": full_text.strip(),
+                "confidence": avg_confidence,
+                "source": "paddleocr",
+                "word_count": len(texts),
+                "words": word_boxes,
+                "details": {
+                    "raw_texts": texts,
+                    "raw_confidences": confidences,
+                },
+            }
+
+        except Exception as e:
+            logger.warning("فشل PaddleOCR: %s", e)
+            return None
+
     # ------------------------------------------------------------------
     # دمج النتائج
     # ------------------------------------------------------------------
@@ -793,7 +946,7 @@ class OCREngine:
             return results[0]
 
         # ترتيب حسب الثقة (تنازلياً) ثم حسب أولوية المحرك
-        engine_priority = {"trocr": 3, "easyocr": 2, "tesseract": 1}
+        engine_priority = {"trocr": 4, "paddleocr": 3, "easyocr": 2, "tesseract": 1}
 
         def sort_key(r: dict) -> tuple:
             priority = engine_priority.get(r["source"], 0)
@@ -866,6 +1019,12 @@ class OCREngine:
                 "available": self._tesseract_available,
                 "enabled": self.enable_tesseract,
                 "loaded": self._tesseract_available is True,
+            },
+            {
+                "name": "PaddleOCR",
+                "available": self._has_paddleocr,
+                "enabled": self.enable_paddleocr,
+                "loaded": self._paddleocr_loaded,
             },
         ]
 

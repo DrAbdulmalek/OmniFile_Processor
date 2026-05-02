@@ -1,22 +1,27 @@
 """
-OmniFile AI Processor v2.1 - الإعدادات المركزية
+OmniFile AI Processor v3.0 - الإعدادات المركزية
 ==================================================
 مدمج من: OmniFile_Processor + HandwrittenOCR + handwriting-ocr
+         + arabic-ocr-pro + advanced-ocr + OCR-Enhancer
 
 يدعم:
 - بيئة Google Colab + Drive
 - التشغيل المحلي (Manjaro/Arch Linux)
 - Docker / HuggingFace Spaces
 
-جديد في v2.1:
-- محركات OCR قابلة للتفعيل/التعطيل (TrOCR, EasyOCR, Tesseract)
-- دعم ONNX Runtime لتسريع الاستدلال
-- Quantization (INT8) لتقليل استهلاك الذاكرة
-- تخزين مؤقت لنتائج OCR (Caching)
-- وحدة التلخيص (Summarization)
-- الأمان المتقدم (Presidio PII Scan)
-- المعالجة غير المتزامنة (Celery)
-- دعم الوضع الداكن والتخصيص
+جديد في v3.0 (دمج 6 مشاريع):
+- 4 محركات OCR: TrOCR, EasyOCR, Tesseract, PaddleOCR
+- دمج نتائج متعدد المحركات (4 استراتيجيات: Fusion)
+- تحليل التخطيط والجداول (Layout & Table Extraction)
+- معالجة RTL عربية شاملة (Arabic RTL Processing)
+- معالجة النصوص المختلطة (Mixed Arabic/English/Numbers)
+- قاموس عربي 186 تصحيح (Arabic Fixes Dictionary)
+- تصدير متعدد الصيغات (DOCX RTL, HTML RTL, Searchable PDF)
+- التعلم الذكي بالأنماط (SSIM Pattern Matching)
+- تحسين بنقرة واحدة (GPT AI Corrector + Gemini Refiner)
+- تقييم دقة OCR (CER/WER Metrics)
+- واجهة React + shadcn/ui (Web Frontend)
+- معالجة آمنة للملفات (Secure File Handler)
 """
 
 import os
@@ -28,7 +33,7 @@ from typing import Optional
 
 @dataclass
 class OmniFileConfig:
-    """إعدادات المشروع المركزية - OmniFile AI Processor v2.1"""
+    """إعدادات المشروع المركزية - OmniFile AI Processor v3.0"""
 
     # === المسارات الأساسية ===
     project_root: str = ""
@@ -49,6 +54,8 @@ class OmniFileConfig:
     enable_trocr: bool = True
     enable_easyocr: bool = True
     enable_tesseract: bool = True
+    enable_paddleocr: bool = False  # محرك PaddleOCR (الأفضل للعربية)
+    paddleocr_lang: str = "ar"  # لغة PaddleOCR (ar, en, ar+en)
 
     # === خيارات الذاكرة والأداء ===
     trocr_model_variant: str = "base"  # base | small | large
@@ -78,6 +85,37 @@ class OmniFileConfig:
     # === الواجهة ===
     dark_mode: bool = True
     theme_color: str = "#1E88E5"
+
+    # === دمج النتائج (Result Fusion) ===
+    fusion_strategy: str = "highest_confidence"  # highest_confidence | weighted_average | voting | longest_text
+
+    # === معالجة RTL ===
+    enable_rtl_processing: bool = True
+    enable_mixed_text: bool = True
+
+    # === التعلم الذكي ===
+    enable_pattern_matching: bool = False  # SSIM Pattern Matching
+    pattern_db_path: str = "patterns.db"
+
+    # === تحسين AI ===
+    enable_gemini_refiner: bool = False  # Gemini AI text refinement
+    enable_gpt_corrector: bool = False  # GPT-based AI correction
+    gemini_api_key: str = ""
+    openai_api_key: str = ""
+
+    # === التصدير ===
+    enable_docx_export: bool = True
+    enable_html_export: bool = True
+    enable_pdf_overlay: bool = True
+    enable_excel_export: bool = True
+
+    # === تقييم ===
+    enable_evaluation: bool = True
+
+    # === واجهة الويب (React Frontend) ===
+    enable_frontend: bool = True
+    frontend_port: int = 3000
+    backend_api_port: int = 5001
 
     # === وحدة المعالجة النصية (NLP) ===
     translation_model: str = "Helsinki-NLP/opus-mt-en-ar"
