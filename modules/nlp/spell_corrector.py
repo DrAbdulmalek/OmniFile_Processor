@@ -631,8 +631,9 @@ class SpellCorrector:
     def is_available(self) -> dict[str, bool]:
         """
         فحص توفر المصححات.
+        Check availability of spell correctors.
 
-        العائد:
+        العائد / Returns:
             قاموس: {english: bool, arabic: bool, german: bool, learned: bool}
         """
         return {
@@ -641,3 +642,38 @@ class SpellCorrector:
             "german": self._de_available,
             "learned": len(self._learned_corrections) > 0,
         }
+
+    def correct_batch(self, texts: list[str], max_workers: int = 4) -> list[dict]:
+        """تصحيح مجموعة نصوص بشكل متوازٍ.
+        Batch-correct multiple texts in parallel using ThreadPoolExecutor.
+
+        Args:
+            texts: قائمة نصوص للتصحيح / List of texts to correct
+            max_workers: عدد العمال المتوازيين / Number of parallel workers
+
+        Returns:
+            قائمة نتائج التصحيح (نفس تنسيق correct_text)
+            List of correction results (same format as correct_text)
+        """
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            results = list(executor.map(self.correct_text, texts))
+        return results
+
+    def correct_word_batch(self, words: list[str], max_workers: int = 4) -> list[str]:
+        """تصحيح مجموعة كلمات بشكل متوازٍ.
+        Batch-correct multiple words in parallel using ThreadPoolExecutor.
+
+        Args:
+            words: قائمة كلمات / List of words to correct
+            max_workers: عدد العمال المتوازيين / Number of parallel workers
+
+        Returns:
+            قائمة الكلمات المصححة / List of corrected words
+        """
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            results = list(executor.map(self.correct_word, words))
+        return results

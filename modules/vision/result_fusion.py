@@ -18,6 +18,7 @@ OmniFile AI Processor - وحدة معالجة الملفات الذكية
 """
 
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from typing import Optional
 
@@ -407,3 +408,72 @@ class ResultFusion:
 
         from difflib import SequenceMatcher
         return SequenceMatcher(None, text1, text2).ratio()
+
+
+# ---------------------------------------------------------------------------
+# دمج متوازي / Parallel Fusion
+# ---------------------------------------------------------------------------
+
+class ParallelFusion:
+    """دمج نتائج محركات OCR بشكل متوازٍ باستخدام ThreadPoolExecutor.
+    Parallel OCR result fusion using ThreadPoolExecutor.
+
+    يتيح تحويل نتائج بسيطة (dict) من محركات OCR متعددة إلى تنسيق
+    LineResult ثم دمجها باستخدام ResultFusion بشكل متوازٍ.
+    """
+
+    def __init__(self, fusion_strategy: str = "highest_confidence", max_workers: int = 4):
+        """تهيئة الدمج المتوازي.
+
+        Args:
+            fusion_strategy: استراتيجية الدمج (highest_confidence, voting, weighted_average, longest_text)
+            max_workers: أقصى عدد من العمال المتوازيين / Maximum number of parallel workers
+        """
+        self.fusion = ResultFusion(strategy=FusionStrategy(fusion_strategy))
+        self.max_workers = max_workers
+
+    def fuse_parallel(self, results: list) -> dict:
+        """دمج نتائج متعددة من محركات مختلفة بشكل متوازي.
+        Merge multiple OCR results from different engines in parallel.
+
+        Args:
+            results: قائمة نتائج OCR من محركات مختلفة
+                     List of OCR results (dicts with 'text', 'confidence', 'source' keys)
+
+        Returns:
+            أفضل نتيجة بعد الدمج / Best result after fusion as a dict with
+            keys: text, confidence, source
+        """
+        if not results:
+            return {"text": "", "confidence": 0.0, "source": "none"}
+
+        if len(results) <= 1:
+            return results[0] if results else {"text": "", "confidence": 0.0, "source": "none"}
+
+        def _convert_result(r):
+            """تحويل نتيجة OCR إلى LineResult.
+            Convert an OCR result dict to LineResult object."""
+            return LineResult(
+                text=r.get("text", ""),
+                confidence=r.get("confidence", 0.0),
+                bbox=BoundingBox(x=0, y=0, width=100, height=30),
+                words=[],
+                block_type=TextBlockType.PARAGRAPH,
+            )
+
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            line_results = list(executor.map(_convert_result, results))
+
+        # تطبيق استراتيجية الدمج عبر ResultFusion
+        page_result = PageResult(lines=line_results)
+        merged = self.fusion.merge_pages([page_result])
+
+        # تحويل النتيجة المدمجة إلى تنسيق dict
+        if merged.lines:
+            best_line = max(merged.lines, key=lambda l: l.confidence)
+            return {
+                "text": best_line.text,
+                "confidence": best_line.confidence,
+                "source": "parallel_fusion",
+            }
+        return {"text": "", "confidence": 0.0, "source": "none"}

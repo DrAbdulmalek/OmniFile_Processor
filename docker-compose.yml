@@ -1,0 +1,98 @@
+# =============================================================================
+# OmniFile AI Processor v3.0 - Docker Compose
+# =============================================================================
+# Services: API + React Frontend + Redis + Celery Worker
+# =============================================================================
+
+version: "3.8"
+
+services:
+  # === Redis (Message Broker + Cache) ===
+  redis:
+    image: redis:7-alpine
+    container_name: omnifile-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # === FastAPI Backend ===
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: omnifile-backend
+    ports:
+      - "5001:5001"
+      - "7860:7860"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - TRANSFORMERS_CACHE=/app/models_cache
+      - TORCH_HOME=/app/models_cache
+    volumes:
+      - models_cache:/app/models_cache
+      - uploads:/app/uploads
+      - ./data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  # === Celery Worker (Async OCR Processing) ===
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: omnifile-celery
+    command: celery -A tasks worker --loglevel=info --concurrency=2
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - TRANSFORMERS_CACHE=/app/models_cache
+    volumes:
+      - models_cache:/app/models_cache
+      - uploads:/app/uploads
+      - ./data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # === React Frontend (Development) ===
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: omnifile-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://localhost:5001
+    volumes:
+      - ./frontend/src:/app/src
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+    driver: local
+  models_cache:
+    driver: local
+  uploads:
+    driver: local

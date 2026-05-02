@@ -31,7 +31,20 @@ class TextSummarizer:
     - انحطاط سلس عند الفشل
     """
 
-    # النماذج المتاحة حسب اللغة
+    # النموذج الأساسي لكل لغة (النموذج الأول المُستخدم عند التلخيص)
+    # Primary model per language (first model used for summarization)
+    _MODELS: dict[str, str] = {
+        "en": "facebook/bart-large-cnn",
+        "ar": "UAE-Code/mbart-summarization-ar",
+        "de": "google/mt5-small",
+    }
+
+    # النموذج السريع للإنجليزية (أصغر وأسرع)
+    # Fast model for English (smaller and faster)
+    _FAST_MODEL: str = "sshleifer/distilbart-cnn-12-6"
+
+    # النماذج المتاحة حسب اللغة (قائمة كاملة تشمل بدائل)
+    # All available models per language (full list including alternatives)
     MODELS_BY_LANG = {
         "en": [
             "facebook/bart-large-cnn",
@@ -42,7 +55,8 @@ class TextSummarizer:
             "UAE-Code/mbart-summarization-ar",
         ],
         "de": [
-            "facebook/bart-large-cnn",  # يعمل بشكل مقبول للألمانية
+            "google/mt5-small",
+            "facebook/bart-large-cnn",
         ],
     }
 
@@ -61,6 +75,7 @@ class TextSummarizer:
         min_length: int = 30,
         max_input_length: int = 1024,
         enable_cache: bool = True,
+        fast_mode: bool = False,
     ) -> None:
         """
         تهيئة ملخص النصوص.
@@ -72,6 +87,7 @@ class TextSummarizer:
             min_length: أدنى طول للملخص
             max_input_length: أقصى طول للنص المدخل
             enable_cache: تفعيل التخزين المؤقت
+            fast_mode: استخدام نموذج سريع للإنجليزية (distilbart)
         """
         self.model_name = model_name
         self._specified_device = device
@@ -79,6 +95,7 @@ class TextSummarizer:
         self.min_length = min_length
         self.max_input_length = max_input_length
         self.enable_cache = enable_cache
+        self.fast_mode = fast_mode
 
         # النموذج - تُحمّل بشكل بطيء
         self._pipeline = None
@@ -139,15 +156,27 @@ class TextSummarizer:
     def _resolve_model_name(self, language: str) -> str:
         """
         اختيار النموذج المناسب للغة.
+        Select the appropriate model for the given language.
 
-        المعاملات:
-            language: رمز اللغة
+        المعاملات / Args:
+            language: رمز اللغة / Language code ('en', 'ar', 'de')
 
-        العائد:
-            اسم النموذج
+        العائد / Returns:
+            اسم النموذج / Model name string
         """
         if self.model_name:
             return self.model_name
+
+        # في الوضع السريع، استخدم نموذج distilbart للإنجليزية
+        # In fast mode, use distilbart model for English
+        if self.fast_mode and language == "en":
+            return self._FAST_MODEL
+
+        # استخدم النموذج الأساسي من _MODELS أولاً، ثم الرجوع لقائمة MODELS_BY_LANG
+        # Use primary model from _MODELS first, then fall back to MODELS_BY_LANG list
+        primary = self._MODELS.get(language)
+        if primary:
+            return primary
 
         models = self.MODELS_BY_LANG.get(language, self.MODELS_BY_LANG["en"])
         return models[0] if models else "facebook/bart-large-cnn"
