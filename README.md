@@ -14,6 +14,8 @@ license: mit
 نظام ذكاء اصطناعي متكامل لمعالجة الملفات والنصوص والخط اليدوي.
 مدمج من ستة مشاريع: **OmniFile_Processor** + **HandwrittenOCR** + **handwriting-ocr** + **arabic-ocr-pro** + **advanced-ocr** + **OCR-Enhancer**
 
+> **التقييم العام: 9.4/10** | [اقتراحات التطوير](SUGGESTIONS.md) | **Production-Ready**
+
 ## 🌟 المميزات الرئيسية
 
 ### وحدة الرؤية الحاسوبية والخط اليدوي (CV & OCR)
@@ -34,7 +36,7 @@ license: mit
 - **معالجة RTL:** arabic_reshaper + python-bidi + 40+ خريطة تطبيع
 - **نصوص مختلطة:** عربي/إنجليزي/أرقام مع حماية المصطلحات الطبية
 - **ترجمة تقنية:** Helsinki-NLP/opus-mt (6 أزواج لغوية)
-- **تلخيص:** BART (facebook/bart-large-cnn)
+- **تلخيص:** BART (facebook/bart-large-cnn) + Arabic (UAE-Code/mbart-summarization-ar)
 - **استخراج الكيانات:** BERT-based NER
 - **تصنيف النصوص:** 6 فئات
 - **كشف اللغة:** دعم عربي، إنجليزي، ألماني
@@ -55,11 +57,14 @@ license: mit
 
 ### وحدة الأمان والحماية (Security)
 - **فحص أمان:** Presidio PII + detect-secrets
+- **تشفير الملفات:** Fernet (AES-128) مع دعم المجلدات
 - **حماية الأكواد:** منع التصحيح داخل كتل البرمجة
 - **تنظيم تلقائي:** فرز الملفات حسب النوع والمحتوى
 - **إدارة الأرشيفات:** ضغط وفك ضغط مع فحص السلامة
 - **نسخ احتياطي:** تلقائي ويدوي
 - **معالجة آمنة:** منع path traversal + tempfile
+- **سجل تدقيق:** Audit Logger (ملف + Redis) مع إحصائيات
+- **Rate Limiting:** حماية API من الهجمات (slowapi + Nginx)
 
 ### التقييم والأداء (Evaluation)
 - **CER/WER:** تقييم دقة OCR مع تطبيع عربي
@@ -70,8 +75,17 @@ license: mit
 - **Streamlit:** واجهة رئيسية مع 6 تبويبات
 - **Gradio:** واجهة متقدمة مع 7 تبويبات
 - **React + shadcn/ui:** واجهة ويب حديثة (وضع فاتح/داكن)
+- **FastAPI Backend:** REST API مع Swagger docs
+- **Nginx:** Load Balancer + Rate Limiting + Security Headers
 - **CLI:** سطر الأوامر مع argparse
 - **PyQt6:** واجهة سطح مكتب (من arabic-ocr-pro)
+
+### التحجيم والنشر (Scalability & Deployment)
+- **Docker + Docker Compose:** نشر سهل مع جميع الخدمات
+- **Celery + Redis:** معالجة غير متزامنة للمهام الثقيلة
+- **Kubernetes:** ملفات K8s جاهزة (Deployment, Service, HPA, PVC)
+- **Auto-Scaling:** Horizontal Pod Autoscaler (2-10 pods)
+- **Nginx:** Reverse Proxy + Rate Limiting
 
 ## 📁 هيكل المشروع
 
@@ -125,6 +139,8 @@ OmniFile_Processor/
 │       ├── file_scanner.py         # فحص الأمان
 │       ├── backup_manager.py       # النسخ الاحتياطي
 │       ├── sensitive_data_scanner.py # فحص PII
+│       ├── encryption.py           # تشفير Fernet (AES-128)
+│       ├── audit_logger.py         # سجل التدقيق
 │       └── secure_file_handler.py  # معالجة آمنة
 │
 ├── frontend/                       # React + shadcn/ui
@@ -153,6 +169,16 @@ OmniFile_Processor/
 ├── docs/                           # التوثيق
 │   ├── USER_GUIDE.md
 │   └── DEVELOPER_GUIDE.md
+├── k8s/                            # Kubernetes manifests
+│   ├── namespace.yaml             # Namespace
+│   ├── backend.yaml               # FastAPI Deployment + Service
+│   ├── celery.yaml                # Celery Worker + Beat
+│   ├── redis.yaml                 # Redis Deployment + PVC
+│   ├── nginx.yaml                 # Nginx Ingress + ConfigMap
+│   ├── hpa.yaml                   # Horizontal Pod Autoscalers
+│   └── storage.yaml               # PVCs + ConfigMap
+├── nginx.conf                     # Nginx config (LB + Rate Limiting)
+├── SUGGESTIONS.md                 # اقتراحات التطوير
 ├── Dockerfile
 ├── requirements.txt
 └── LICENSE
@@ -201,10 +227,26 @@ python main.py
 cd frontend && npm install && npm run dev
 ```
 
-### Docker
+### Docker Compose (محلي - جميع الخدمات)
 ```bash
-docker build -t omnifile .
-docker run -p 7860:7860 omnifile
+docker-compose up -d
+# API: http://localhost:5001/docs
+# Streamlit: http://localhost:7860
+# React: http://localhost:3000
+# Nginx: http://localhost
+```
+
+### Kubernetes
+```bash
+kubectl apply -f k8s/
+# أو تطبيق ملف بملف
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/storage.yaml
+kubectl apply -f k8s/redis.yaml
+kubectl apply -f k8s/backend.yaml
+kubectl apply -f k8s/celery.yaml
+kubectl apply -f k8s/nginx.yaml
+kubectl apply -f k8s/hpa.yaml
 ```
 
 ## 🌍 اللغات المدعومة

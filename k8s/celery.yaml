@@ -1,0 +1,95 @@
+# =============================================================================
+# OmniFile AI Processor - Celery Workers Deployment
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery-worker
+  namespace: omnifile
+  labels:
+    app: omnifile
+    tier: celery-worker
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: omnifile
+      tier: celery-worker
+  template:
+    metadata:
+      labels:
+        app: omnifile
+        tier: celery-worker
+    spec:
+      containers:
+      - name: celery-worker
+        image: drabdulmalek/omnifile:3.0
+        command: ["celery", "-A", "tasks", "worker", "--loglevel=info", "--concurrency=2", "--max-tasks-per-child=50"]
+        env:
+        - name: REDIS_URL
+          value: "redis://redis:6379/0"
+        - name: CELERY_BROKER_URL
+          value: "redis://redis:6379/0"
+        - name: CELERY_RESULT_BACKEND
+          value: "redis://redis:6379/0"
+        - name: TRANSFORMERS_CACHE
+          value: "/app/models_cache"
+        resources:
+          requests:
+            cpu: "1"
+            memory: "4Gi"
+          limits:
+            cpu: "2"
+            memory: "6Gi"
+        volumeMounts:
+        - name: models-cache
+          mountPath: /app/models_cache
+        - name: uploads
+          mountPath: /app/uploads
+      volumes:
+      - name: models-cache
+        persistentVolumeClaim:
+          claimName: models-cache-pvc
+      - name: uploads
+        persistentVolumeClaim:
+          claimName: uploads-pvc
+---
+# =============================================================================
+# Celery Beat (Scheduled Tasks)
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery-beat
+  namespace: omnifile
+  labels:
+    app: omnifile
+    tier: celery-beat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: omnifile
+      tier: celery-beat
+  template:
+    metadata:
+      labels:
+        app: omnifile
+        tier: celery-beat
+    spec:
+      containers:
+      - name: celery-beat
+        image: drabdulmalek/omnifile:3.0
+        command: ["celery", "-A", "tasks", "beat", "--loglevel=info"]
+        env:
+        - name: CELERY_BROKER_URL
+          value: "redis://redis:6379/0"
+        - name: CELERY_RESULT_BACKEND
+          value: "redis://redis:6379/0"
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "250m"
+            memory: "512Mi"

@@ -1,0 +1,10 @@
+# =============================================================================
+# OmniFile AI Processor - Kubernetes Namespace
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: omnifile
+  labels:
+    app: omnifile
+    environment: production

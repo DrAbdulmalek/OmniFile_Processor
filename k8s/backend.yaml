@@ -1,0 +1,101 @@
+# =============================================================================
+# OmniFile AI Processor - Backend Deployment (FastAPI)
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: omnifile
+  labels:
+    app: omnifile
+    tier: backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: omnifile
+      tier: backend
+  template:
+    metadata:
+      labels:
+        app: omnifile
+        tier: backend
+    spec:
+      containers:
+      - name: backend
+        image: drabdulmalek/omnifile:3.0
+        command: ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "5001", "--workers", "2"]
+        ports:
+        - containerPort: 5001
+        env:
+        - name: REDIS_URL
+          value: "redis://redis:6379/0"
+        - name: CELERY_BROKER_URL
+          value: "redis://redis:6379/0"
+        - name: CELERY_RESULT_BACKEND
+          value: "redis://redis:6379/0"
+        - name: TRANSFORMERS_CACHE
+          value: "/app/models_cache"
+        - name: TORCH_HOME
+          value: "/app/models_cache"
+        - name: LOG_LEVEL
+          value: "INFO"
+        resources:
+          requests:
+            cpu: "1"
+            memory: "4Gi"
+          limits:
+            cpu: "2"
+            memory: "8Gi"
+        volumeMounts:
+        - name: models-cache
+          mountPath: /app/models_cache
+        - name: uploads
+          mountPath: /app/uploads
+        - name: data
+          mountPath: /app/data
+          readOnly: true
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5001
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 5001
+          failureThreshold: 30
+          periodSeconds: 10
+      volumes:
+      - name: models-cache
+        persistentVolumeClaim:
+          claimName: models-cache-pvc
+      - name: uploads
+        persistentVolumeClaim:
+          claimName: uploads-pvc
+      - name: data
+        configMap:
+          name: omnifile-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: omnifile
+spec:
+  selector:
+    app: omnifile
+    tier: backend
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 5001
+  type: ClusterIP
