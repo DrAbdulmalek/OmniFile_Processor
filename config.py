@@ -1,10 +1,12 @@
 """
-OmniFile AI Processor - الإعدادات المركزية
-=============================================
-ملف الإعدادات الموحد يدعم:
+OmniFile AI Processor v2.0 - الإعدادات المركزية
+==================================================
+مدمج من: OmniFile_Processor + HandwrittenOCR + handwriting-ocr
+
+يدعم:
 - بيئة Google Colab + Drive
 - التشغيل المحلي (Manjaro/Arch Linux)
-- Docker
+- Docker / HuggingFace Spaces
 """
 
 import os
@@ -16,7 +18,7 @@ from typing import Optional
 
 @dataclass
 class OmniFileConfig:
-    """إعدادات المشروع المركزية - OmniFile AI Processor v1.0"""
+    """إعدادات المشروع المركزية - OmniFile AI Processor v2.0"""
 
     # === المسارات الأساسية ===
     project_root: str = ""

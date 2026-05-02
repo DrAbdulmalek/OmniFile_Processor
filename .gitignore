@@ -1,8 +1,8 @@
 # =============================================================================
-# OmniFile AI Processor - .gitignore
+# OmniFile AI Processor v2.0 - .gitignore
 # =============================================================================
 # Comprehensive .gitignore for Python + ML project
-# Author: Dr. Abdulmalek
+# Merged from: OmniFile_Processor + HandwrittenOCR + handwriting-ocr
 # =============================================================================
 
 # === Python ===
