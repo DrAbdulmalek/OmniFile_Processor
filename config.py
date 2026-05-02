@@ -1,5 +1,5 @@
 """
-OmniFile AI Processor v2.0 - الإعدادات المركزية
+OmniFile AI Processor v2.1 - الإعدادات المركزية
 ==================================================
 مدمج من: OmniFile_Processor + HandwrittenOCR + handwriting-ocr
 
@@ -7,6 +7,16 @@ OmniFile AI Processor v2.0 - الإعدادات المركزية
 - بيئة Google Colab + Drive
 - التشغيل المحلي (Manjaro/Arch Linux)
 - Docker / HuggingFace Spaces
+
+جديد في v2.1:
+- محركات OCR قابلة للتفعيل/التعطيل (TrOCR, EasyOCR, Tesseract)
+- دعم ONNX Runtime لتسريع الاستدلال
+- Quantization (INT8) لتقليل استهلاك الذاكرة
+- تخزين مؤقت لنتائج OCR (Caching)
+- وحدة التلخيص (Summarization)
+- الأمان المتقدم (Presidio PII Scan)
+- المعالجة غير المتزامنة (Celery)
+- دعم الوضع الداكن والتخصيص
 """
 
 import os
@@ -18,7 +28,7 @@ from typing import Optional
 
 @dataclass
 class OmniFileConfig:
-    """إعدادات المشروع المركزية - OmniFile AI Processor v2.0"""
+    """إعدادات المشروع المركزية - OmniFile AI Processor v2.1"""
 
     # === المسارات الأساسية ===
     project_root: str = ""
@@ -34,6 +44,40 @@ class OmniFileConfig:
     use_gpu: bool = True
     easy_conf_threshold: float = 0.80
     low_memory: bool = False
+
+    # === محركات OCR - تفعيل/تعطيل ===
+    enable_trocr: bool = True
+    enable_easyocr: bool = True
+    enable_tesseract: bool = True
+
+    # === خيارات الذاكرة والأداء ===
+    trocr_model_variant: str = "base"  # base | small | large
+    use_onnx: bool = False  # استخدام ONNX Runtime لتسريع الاستدلال
+    use_quantization: bool = False  # تخفيف دقة النماذج لتقليل الذاكرة
+    ocr_cache_enabled: bool = True  # تخزين مؤقت لنتائج OCR
+    ocr_cache_ttl: int = 3600  # مدة صلاحية الكاش بالثواني
+
+    # === دعم اللغات المقلص ===
+    supported_languages: list = field(default_factory=lambda: ["en", "ar", "de"])
+
+    # === Summarization ===
+    enable_summarization: bool = True
+    summarization_model: str = "facebook/bart-large-cnn"
+    summarization_max_length: int = 130
+    summarization_min_length: int = 30
+
+    # === الأمان المتقدم ===
+    enable_sensitive_scan: bool = True
+    use_presidio: bool = True
+
+    # === المعالجة غير المتزامنة ===
+    enable_celery: bool = False
+    celery_broker_url: str = "redis://localhost:6379/0"
+    celery_result_backend: str = "redis://localhost:6379/0"
+
+    # === الواجهة ===
+    dark_mode: bool = True
+    theme_color: str = "#1E88E5"
 
     # === وحدة المعالجة النصية (NLP) ===
     translation_model: str = "Helsinki-NLP/opus-mt-en-ar"
@@ -88,6 +132,15 @@ class OmniFileConfig:
     lora_alpha: int = 16
 
     # === Properties ===
+
+    @property
+    def trocr_model_name_resolved(self) -> str:
+        variants = {
+            "small": "microsoft/trocr-small-handwritten",
+            "base": "microsoft/trocr-base-handwritten",
+            "large": "microsoft/trocr-large-handwritten",
+        }
+        return variants.get(self.trocr_model_variant, "microsoft/trocr-base-handwritten")
 
     @property
     def root(self) -> Path:

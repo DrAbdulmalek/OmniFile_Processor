@@ -1,8 +1,13 @@
 """
-المصحح الإملائي الذكي (Smart Spell Corrector)
-=================================================
-تصحيح إملائي ثنائي اللغة (عربي + إنجليزي) مع حماية المصطلحات التقنية.
+المصحح الإملائي الذكي (Smart Spell Corrector) v2.1
+==========================================================
+تصحيح إملائي متعدد اللغات (عربي + إنجليزي + ألماني) مع حماية المصطلحات التقنية.
 يتعلم من تصحيحات المستخدم ويحفظها محلياً.
+
+اللغات المدعومة:
+- الإنجليزية (en) - pyspellchecker
+- العربية (ar) - ar-corrector
+- الألمانية (de) - pyspellchecker (German)
 """
 
 import json
@@ -99,14 +104,20 @@ class SpellCorrector:
         self._learned_corrections: dict[str, dict[str, int]] = {}
         self._load_corrections()
 
+        # اللغات المدعومة
+        self.supported_languages = ["en", "ar", "de"]
+
         # محاولة تحميل مكتبات التصحيح
         self._en_corrector = None
         self._en_available = False
         self._ar_corrector = None
         self._ar_available = False
+        self._de_corrector = None
+        self._de_available = False
 
         self._try_load_english_corrector()
         self._try_load_arabic_corrector()
+        self._try_load_german_corrector()
 
     # ------------------------------------------------------------------
     # تحميل المصححات (كسول)
@@ -528,15 +539,105 @@ class SpellCorrector:
         self._save_corrections()
         logger.info("تم مسح جميع التصحيحات المُتعلمة")
 
+    def _try_load_german_corrector(self) -> None:
+        """محاولة تحميل مصحح الألمانية (pyspellchecker - German)."""
+        try:
+            from spellchecker import SpellChecker  # type: ignore
+
+            self._de_corrector = SpellChecker(language="de")
+            self._de_available = True
+            logger.info("تم تحميل مصحح الألمانية (pyspellchecker) بنجاح")
+        except ImportError:
+            logger.warning(
+                "مكتبة pyspellchecker غير مثبتة. التصحيح الألماني غير متاح. "
+                "pip install pyspellchecker"
+            )
+        except Exception as e:
+            logger.warning("فشل تحميل مصحح الألمانية: %s", e)
+
+    def _correct_german_word(self, word: str) -> Optional[str]:
+        """
+        تصحيح كلمة ألمانية.
+
+        المعاملات:
+            word: الكلمة المراد تصحيحها.
+
+        العائد:
+            التصحيح إذا وُجد، وإلا None.
+        """
+        # التحقق من المصطلحات المحمية
+        if word in self._protected_terms or word.lower() in self._protected_terms:
+            return None
+
+        # التحقق من التصحيحات المُتعلمة
+        learned = self._get_learned_correction(word)
+        if learned:
+            return learned
+
+        # التصحيح بـ pyspellchecker
+        if self._de_available and self._de_corrector:
+            try:
+                if len(word) <= 2:
+                    return None
+
+                if word.lower() in self._de_corrector.word_frequency:
+                    return None
+
+                candidates = self._de_corrector.correction(word)
+                if candidates and candidates.lower() != word.lower():
+                    if abs(len(candidates) - len(word)) <= 3:
+                        return candidates
+            except Exception as e:
+                logger.debug("خطأ في تصحيح ألماني '%s': %s", word, e)
+
+        return None
+
+    @staticmethod
+    def _is_german_word(word: str) -> bool:
+        """هل الكلمة ألمانية؟"""
+        # كشف الأحرف الألمانية الخاصة
+        german_chars = sum(1 for c in word if c in "äöüÄÖÜß")
+        if german_chars > 0:
+            return True
+        # كلمات بأحرف لاتينية بدون عربي
+        latin_chars = sum(1 for c in word if c.isalpha() and c.isascii())
+        arabic_chars = sum(1 for c in word if "\u0600" <= c <= "\u06FF")
+        return latin_chars > len(word) * 0.5 and arabic_chars == 0
+
+    def correct_word(self, word: str) -> str:
+        """
+        تصحيح كلمة واحدة.
+
+        المعاملات:
+            word: الكلمة المراد تصحيحها.
+
+        العائد:
+            الكلمة المصححة (أو الأصلية إذا لم يتم العثور على تصحيح).
+        """
+        if self._should_skip_word(word):
+            return word
+
+        if self._is_arabic_word(word):
+            correction = self._correct_arabic_word(word)
+        elif self._is_german_word(word):
+            correction = self._correct_german_word(word)
+        elif self._is_english_word(word):
+            correction = self._correct_english_word(word)
+        else:
+            return word
+
+        return correction if correction else word
+
     def is_available(self) -> dict[str, bool]:
         """
         فحص توفر المصححات.
 
         العائد:
-            قاموس: {english: bool, arabic: bool, learned: bool}
+            قاموس: {english: bool, arabic: bool, german: bool, learned: bool}
         """
         return {
             "english": self._en_available,
             "arabic": self._ar_available,
+            "german": self._de_available,
             "learned": len(self._learned_corrections) > 0,
         }

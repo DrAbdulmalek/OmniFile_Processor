@@ -1,9 +1,12 @@
 """
-المترجم التقني (Technical Translator)
-========================================
-يترجم النصوص التقنية من الإنجليزية إلى العربية.
+المترجم التقني (Technical Translator) v2.1
+=============================================
+يترجم النصوص التقنية بين الإنجليزية والعربية والألمانية.
 يحمي المقاطع البرمجية والمتغيرات وأسماء الدوال من الترجمة.
 يدعم الترجمة الدفعية والتخزين المؤقت.
+
+اللغات المدعومة: EN ↔ AR ↔ DE
+النماذج: Helsinki-NLP/opus-mt-{src}-{tgt}
 """
 
 import hashlib
@@ -20,11 +23,29 @@ class TechnicalTranslator:
     """
     مترجم تقني — يترجم النصوص التقنية مع حماية المصطلحات البرمجية.
 
+    اللغات المدعومة: EN, AR, DE
+
     الخصائص:
         model_name (str): اسم نموذج الترجمة.
         device (str): الجهاز المستخدم.
         cache_file (str): مسار ملف التخزين المؤقت.
     """
+
+    # نماذج الترجمة المتاحة بين اللغات
+    TRANSLATION_MODELS: dict[str, str] = {
+        "en-ar": "Helsinki-NLP/opus-mt-en-ar",
+        "ar-en": "Helsinki-NLP/opus-mt-ar-en",
+        "en-de": "Helsinki-NLP/opus-mt-en-de",
+        "de-en": "Helsinki-NLP/opus-mt-de-en",
+        "de-ar": "Helsinki-NLP/opus-mt-de-ar",
+        "ar-de": "Helsinki-NLP/opus-mt-ar-de",
+    }
+
+    # اللغات المدعومة
+    SUPPORTED_LANGUAGES = ["en", "ar", "de"]
+
+    # اللغات الإنجليزية كوسيط (عند عدم توفر نموذج مباشر)
+    PIVOT_LANGUAGE = "en"
 
     # ------------------------------------------------------------------
     # قاموس المصطلحات التقنية
@@ -135,6 +156,7 @@ class TechnicalTranslator:
         self._tokenizer = None
         self._model = None
         self._model_available = False
+        self._model_name_loaded: Optional[str] = None
 
         # التخزين المؤقت
         if cache_file:
@@ -278,17 +300,19 @@ class TechnicalTranslator:
     # ------------------------------------------------------------------
     # تحميل النموذج (كسول)
     # ------------------------------------------------------------------
-    def _load_model(self) -> bool:
-        """تحميل نموذج الترجمة (يتم مرة واحدة فقط)."""
-        if self._model_available:
+    def _load_model(self, model_name: Optional[str] = None) -> bool:
+        """تحميل نموذج الترجمة (يتم مرة واحدة لكل نموذج)."""
+        target_model = model_name or self.model_name
+
+        if self._model_available and self._model_name_loaded == target_model:
             return True
 
         try:
             from transformers import MarianMTModel, MarianTokenizer  # type: ignore
 
-            logger.info("جاري تحميل نموذج الترجمة: %s ...", self.model_name)
-            self._tokenizer = MarianTokenizer.from_pretrained(self.model_name)
-            self._model = MarianMTModel.from_pretrained(self.model_name)
+            logger.info("جاري تحميل نموذج الترجمة: %s ...", target_model)
+            self._tokenizer = MarianTokenizer.from_pretrained(target_model)
+            self._model = MarianMTModel.from_pretrained(target_model)
 
             # نقل إلى GPU إذا طُلب
             if self.device != "cpu":
@@ -298,6 +322,7 @@ class TechnicalTranslator:
                     logger.warning("فشل نقل النموذج إلى %s: %s", self.device, e)
 
             self._model_available = True
+            self._model_name_loaded = target_model
             self._model.eval()  # type: ignore
             logger.info("تم تحميل نموذج الترجمة بنجاح")
             return True
@@ -384,21 +409,47 @@ class TechnicalTranslator:
                 "cached": True,
             }
 
-        # إذا كان المصدر عربياً والهدف إنجليزياً → نحتاج نموذج مختلف
-        if source == "ar" and target == "en":
+        # التحقق من اللغات المدعومة
+        if source not in self.SUPPORTED_LANGUAGES or target not in self.SUPPORTED_LANGUAGES:
             return {
-                "translated_text": cleaned + " [ترجمة عربي→إنجليزي غير مدعومة حالياً]",
+                "translated_text": cleaned,
                 "source": source,
                 "target": target,
-                "method": "unsupported",
+                "method": "unsupported_language",
                 "cached": False,
+                "error": f"اللغات غير مدعومة: {source}/{target}. المدعومة: {self.SUPPORTED_LANGUAGES}",
             }
+
+        # اختيار النموذج المناسب
+        model_key = f"{source}-{target}"
+        if model_key in self.TRANSLATION_MODELS:
+            translation_model = self.TRANSLATION_MODELS[model_key]
+        else:
+            # استخدام الإنجليزية كوسيط
+            if source != self.PIVOT_LANGUAGE:
+                # الترجمة أولاً للإنجليزية
+                pivot_result = self.translate_text(cleaned, source=source, target=self.PIVOT_LANGUAGE)
+                if pivot_result["method"] == "unsupported_language":
+                    return pivot_result
+                cleaned = pivot_result["translated_text"]
+                source = self.PIVOT_LANGUAGE
+                model_key = f"{source}-{target}"
+                translation_model = self.TRANSLATION_MODELS.get(model_key)
+            else:
+                # لا يوجد نموذج متاح
+                return {
+                    "translated_text": cleaned + f" [ترجمة {source}→{target} غير مدعومة]",
+                    "source": source,
+                    "target": target,
+                    "method": "unsupported",
+                    "cached": False,
+                }
 
         # حماية المقاطع البرمجية
         protected_text, placeholders = self._protect_code(cleaned)
 
-        # تحميل النموذج (كسول)
-        model_loaded = self._load_model()
+        # تحميل النموذج (كسول) - مع النموذج المناسب للغة
+        model_loaded = self._load_model(model_name=translation_model)
 
         translated = ""
 

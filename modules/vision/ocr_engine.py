@@ -16,6 +16,7 @@
 """
 
 import logging
+import os
 import time
 from typing import Optional, Union
 
@@ -867,6 +868,263 @@ class OCREngine:
                 "loaded": self._tesseract_available is True,
             },
         ]
+
+    # ------------------------------------------------------------------
+    # تخزين مؤقت لنتائج OCR (OCR Caching)
+    # ------------------------------------------------------------------
+
+    def _get_cache_key(self, image: "PIL.Image.Image") -> str:
+        """حساب مفتاح كاش للصورة بناءً على محتواها وحجمها."""
+        import hashlib
+        from io import BytesIO
+        buf = BytesIO()
+        image.save(buf, format="PNG")
+        img_hash = hashlib.md5(buf.getvalue()).hexdigest()
+        return f"{img_hash}_{image.size[0]}x{image.size[1]}"
+
+    def recognize_with_cache(
+        self,
+        image: Union["np.ndarray", "PIL.Image.Image"],
+        languages: Optional[list[str]] = None,
+        cache: Optional[dict] = None,
+        ttl: int = 3600,
+    ) -> dict:
+        """
+        التعرف مع تخزين مؤقت للنتائج.
+
+        Args:
+            image: صورة PIL أو numpy
+            languages: لغات مطلوبة
+            cache: قاموس الكاش المشترك (إذا None، يُنشأ محلياً)
+            ttl: مدة صلاحية الكاش بالثواني
+
+        Returns:
+            نتيجة OCR مع توضيح ما إذا كانت من الكاش
+        """
+        import time as _time
+
+        if cache is None:
+            if not hasattr(self, "_result_cache"):
+                self._result_cache = {}
+            cache = self._result_cache
+
+        pil_image = self._ensure_pil(image)
+        cache_key = self._get_cache_key(pil_image)
+
+        # فحص الكاش
+        if cache_key in cache:
+            cached_entry = cache[cache_key]
+            cached_time = cached_entry.get("timestamp", 0)
+            if _time.time() - cached_time < ttl:
+                result = cached_entry["result"].copy()
+                result["from_cache"] = True
+                result["cache_age"] = _time.time() - cached_time
+                logger.info("نتيجة OCR من الكاش (عمر: %.1fs)", result["cache_age"])
+                return result
+
+        # ليس في الكاش - معالجة عادية
+        result = self.recognize(pil_image, languages=languages)
+        result["from_cache"] = False
+
+        # حفظ في الكاش
+        cache[cache_key] = {
+            "result": {k: v for k, v in result.items() if k != "from_cache"},
+            "timestamp": _time.time(),
+        }
+
+        return result
+
+    # ------------------------------------------------------------------
+    # ONNX Runtime (تسريع الاستدلال)
+    # ------------------------------------------------------------------
+
+    def load_trocr_onnx(self, onnx_model_path: Optional[str] = None) -> bool:
+        """
+        تحميل نموذج TrOCR بتنسيق ONNX لتسريع الاستدلال.
+
+        Args:
+            onnx_model_path: مسار ملف ONNX (إذا None، يُصدّر تلقائياً)
+
+        Returns:
+            True إذا تم التحميل بنجاح
+        """
+        try:
+            import onnxruntime as ort
+            import numpy as np
+            import torch
+            from transformers import TrOCRProcessor
+
+            if onnx_model_path and os.path.exists(onnx_model_path):
+                # تحميل ONNX مباشرة
+                providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+                if self.use_gpu:
+                    providers = ["CUDAExecutionProvider"] + providers
+                self._onnx_session = ort.InferenceSession(onnx_model_path, providers=providers)
+            else:
+                # تصدير من PyTorch إلى ONNX
+                logger.info("جارٍ تصدير TrOCR إلى ONNX...")
+                if not self._load_trocr():
+                    return False
+
+                dummy_input = torch.randn(1, 3, 384, 384)
+                onnx_path = onnx_model_path or "trocr_model.onnx"
+                torch.onnx.export(
+                    self._trocr_model,
+                    dummy_input,
+                    onnx_path,
+                    input_names=["pixel_values"],
+                    output_names=["logits"],
+                    dynamic_axes={
+                        "pixel_values": {0: "batch_size"},
+                        "logits": {0: "batch_size"},
+                    },
+                    opset_version=14,
+                )
+                self._onnx_session = ort.InferenceSession(onnx_path)
+
+            self._onnx_processor = TrOCRProcessor.from_pretrained(
+                self.trocr_processor_name
+            )
+            self._onnx_available = True
+            logger.info("تم تحميل TrOCR ONNX بنجاح")
+            return True
+
+        except ImportError:
+            logger.warning("onnxruntime غير مثبت. pip install onnxruntime")
+            self._onnx_available = False
+            return False
+        except Exception as e:
+            logger.error("فشل تحميل ONNX: %s", e)
+            self._onnx_available = False
+            return False
+
+    def _recognize_trocr_onnx(self, image: "PIL.Image.Image") -> Optional[dict]:
+        """تشغيل TrOCR عبر ONNX Runtime."""
+        if not getattr(self, "_onnx_available", False):
+            return None
+
+        try:
+            import numpy as np
+
+            pixel_values = self._onnx_processor(
+                image, return_tensors="np"
+            ).pixel_values
+
+            outputs = self._onnx_session.run(
+                None, {"pixel_values": pixel_values}
+            )
+            logits = outputs[0]
+
+            generated_ids = np.argmax(logits, axis=-1)
+            generated_text = self._onnx_processor.batch_decode(
+                generated_ids, skip_special_tokens=True
+            )[0].strip()
+
+            if not generated_text:
+                return None
+
+            return {
+                "text": generated_text,
+                "confidence": 0.85,
+                "source": "trocr_onnx",
+                "word_count": len(generated_text.split()),
+                "details": {"runtime": "onnx"},
+            }
+        except Exception as e:
+            logger.warning("فشل TrOCR ONNX: %s", e)
+            return None
+
+    # ------------------------------------------------------------------
+    # Quantization (تخفيف دقة النماذج)
+    # ------------------------------------------------------------------
+
+    def quantize_model(self) -> bool:
+        """
+        تحويل نموذج TrOCR إلى دقة INT8 لتقليل استهلاك الذاكرة.
+
+        Returns:
+            True إذا تم التحويل بنجاح
+        """
+        try:
+            import torch
+            from transformers import TrOCRProcessor, VisionEncoderDecoderModel
+
+            if not self._load_trocr():
+                return False
+
+            logger.info("جارٍ تحويل TrOCR إلى INT8...")
+            self._trocr_model = torch.quantization.quantize_dynamic(
+                self._trocr_model,
+                {torch.nn.Linear},
+                dtype=torch.qint8,
+            )
+
+            device = "cuda" if (self.use_gpu and torch.cuda.is_available()) else "cpu"
+            self._trocr_model.to(device)
+            self._trocr_device = device
+            self._quantized = True
+
+            logger.info("تم تحويل TrOCR إلى INT8 بنجاح على %s", device)
+            return True
+
+        except Exception as e:
+            logger.error("فشل تحويل النموذج: %s", e)
+            self._quantized = False
+            return False
+
+    @property
+    def is_quantized(self) -> bool:
+        """هل النموذج محوّل إلى INT8؟"""
+        return getattr(self, "_quantized", False)
+
+    # ------------------------------------------------------------------
+    # Batch Processing مع إبلاغ عن التقدم
+    # ------------------------------------------------------------------
+
+    def recognize_batch_with_progress(
+        self,
+        images: list[Union["np.ndarray", "PIL.Image.Image"]],
+        languages: Optional[list[str]] = None,
+        progress_callback: Optional[callable] = None,
+    ) -> list[dict]:
+        """
+        معالجة دفعة صور مع إبلاغ عن التقدم.
+
+        Args:
+            images: قائمة صور
+            languages: لغات مطلوبة
+            progress_callback: دالة(current, total, status) للإبلاغ عن التقدم
+
+        Returns:
+            قائمة نتائج OCR
+        """
+        results: list[dict] = []
+        total = len(images)
+
+        for idx, image in enumerate(images):
+            status = f"معالجة صورة {idx + 1}/{total}"
+            if progress_callback:
+                progress_callback(idx, total, status)
+
+            try:
+                result = self.recognize(image, languages=languages)
+                result["batch_index"] = idx
+                results.append(result)
+            except Exception as e:
+                logger.error("فشل معالجة صورة %d: %s", idx, e)
+                results.append({
+                    "text": "",
+                    "confidence": 0.0,
+                    "source": "error",
+                    "processing_time": 0.0,
+                    "error": str(e),
+                    "batch_index": idx,
+                })
+
+        if progress_callback:
+            progress_callback(total, total, "اكتملت المعالجة")
+
+        return results
 
     def unload_models(self) -> None:
         """
