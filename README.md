@@ -18,14 +18,14 @@ license: mit
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI Tests](https://img.shields.io/github/actions/workflow/status/DrAbdulmalek/OmniFile_Processor/ci.yml?branch=main&label=CI%20Tests)](https://github.com/DrAbdulmalek/OmniFile_Processor/actions/workflows/ci.yml)
 [![HF Spaces](https://img.shields.io/badge/🤗-HuggingFace%20Spaces-orange)](https://huggingface.co/spaces/DrAbdulmalek/handwriting-ocr)
 [![GitHub](https://img.shields.io/badge/GitHub-DrAbdulmalek-181717?logo=github)](https://github.com/DrAbdulmalek/OmniFile_Processor)
 
 <p>
   <b>Author:</b> Dr. Abdulmalek &nbsp;|&nbsp;
-  <b>Version:</b> v4.0 &nbsp;|&nbsp;
-  <b>Rating:</b> ⭐ 9.4/10 &nbsp;|&nbsp;
-  <b>Status:</b> ✅ Production-Ready
+  <b>Version:</b> v4.1 &nbsp;|&nbsp;
+  <b>Status:</b> ✅ CI-Verified
 </p>
 
 [🌐 Live Demo (HF Spaces)](https://huggingface.co/spaces/DrAbdulmalek/handwriting-ocr) &nbsp;|&nbsp;
@@ -116,7 +116,12 @@ git clone https://github.com/DrAbdulmalek/OmniFile_Processor.git
 cd OmniFile_Processor
 
 # Install dependencies
-pip install -r requirements.txt
+pip install -r requirements-full.txt          # Everything (~6-8 GB, ~15-30 min)
+
+# Or install in layers:
+# pip install -r requirements-core.txt          # Minimum (~1.5 GB, ~3 min)
+# pip install -r requirements-core.txt -r requirements-ocr.txt   # + OCR engines
+# pip install -r requirements-core.txt -r requirements-nlp.txt   # + NLP
 
 # Run with your preferred interface
 streamlit run app.py          # Streamlit UI (6 tabs)
@@ -144,7 +149,12 @@ docker-compose up -d
 ```python
 !git clone https://github.com/DrAbdulmalek/OmniFile_Processor.git
 %cd OmniFile_Processor
-!pip install -r requirements.txt
+!pip install -r requirements-full.txt          # Everything (~6-8 GB, ~15-30 min)
+
+# Or install in layers:
+# pip install -r requirements-core.txt          # Minimum (~1.5 GB, ~3 min)
+# pip install -r requirements-core.txt -r requirements-ocr.txt   # + OCR engines
+# pip install -r requirements-core.txt -r requirements-nlp.txt   # + NLP
 !streamlit run app.py --server.port 7860
 ```
 
@@ -159,7 +169,11 @@ OmniFile_Processor/
 ├── database.py                     # SQLite database layer
 ├── main.py                         # Local / CLI entry point
 ├── tasks.py                        # Celery async tasks
-├── requirements.txt                # Full dependencies
+├── requirements.txt                # Full dependencies (legacy)
+├── requirements-core.txt           # Core only (~1.5 GB)
+├── requirements-ocr.txt            # OCR engines layer
+├── requirements-nlp.txt            # NLP layer
+├── requirements-full.txt           # Everything (~6-8 GB)
 ├── requirements-hf.txt             # HuggingFace Spaces (minimal)
 ├── Dockerfile                      # Docker image
 ├── docker-compose.yml              # Full stack orchestration
@@ -189,6 +203,7 @@ OmniFile_Processor/
 │   │   ├── arabic_rtl.py           #   Full RTL processing
 │   │   ├── mixed_text.py           #   Arabic/English mixed text
 │   │   ├── ai_corrector.py         #   GPT-based correction
+│   │   ├── arabic_nlp_utils.py     #   Semantic similarity for Arabic OCR
 │   │   └── correction_dict.json    #   186+ Arabic corrections
 │   │
 │   ├── ai/                         # AI Enhancement
@@ -208,7 +223,8 @@ OmniFile_Processor/
 │   │   └── secure_file_handler.py  #   Safe file handling
 │   │
 │   ├── export/                     # Multi-Format Export
-│   │   └── exporter.py             #   DOCX/HTML/PDF/JSON/TXT/Excel
+│   │   ├── exporter.py             #   DOCX/HTML/PDF/JSON/TXT/Excel
+│   │   └── layout_preserving.py    #   DOCX export with visual layout preservation
 │   │
 │   └── evaluation/                 # Evaluation & Metrics
 │       └── metrics.py              #   CER/WER + quality grading
@@ -234,8 +250,15 @@ OmniFile_Processor/
 │   └── correction_dict.json        # Learned corrections
 │
 ├── src/                            # HandwrittenOCR Engine
-├── mobile/                         # Mobile PWA
+├── mobile/                         # Static PWA (offline review)
+├── mobile_review/                  # Flask server (remote team review)
+│   ├── server.py                  #   REST API review server
+│   ├── templates/review.html      #   Touch-friendly review UI
+│   └── README.md                  #   mobile/ vs mobile_review/ guide
 ├── tests/                          # pytest test suite (13 files)
+├── .github/workflows/              # CI/CD
+│   ├── ci.yml                     #   Tests on push/PR
+│   └── release.yml                #   Auto-release on tags
 ├── notebooks/                      # Jupyter Notebooks
 ├── docs/                           # Documentation
 │   ├── API_DOCS.md
@@ -401,6 +424,8 @@ http://localhost:5001/api/v1
 | *Multi-engine OCR* | *Full RTL support* | *Structured data* |
 
 > 📝 Screenshots will be added in a future update. For now, try the [live demo](https://huggingface.co/spaces/DrAbdulmalek/handwriting-ocr) to see the application in action.
+>
+> 📋 See [CHANGELOG.md](CHANGELOG.md) for the complete version history.
 
 ---
 
@@ -451,7 +476,12 @@ Contributions are welcome! Please follow these steps:
    ```
 4. **Make your changes** and ensure tests pass
    ```bash
-   pip install -r requirements.txt
+   pip install -r requirements-full.txt          # Everything (~6-8 GB, ~15-30 min)
+
+# Or install in layers:
+# pip install -r requirements-core.txt          # Minimum (~1.5 GB, ~3 min)
+# pip install -r requirements-core.txt -r requirements-ocr.txt   # + OCR engines
+# pip install -r requirements-core.txt -r requirements-nlp.txt   # + NLP
    pytest tests/ -v
    ```
 5. **Commit** with a descriptive message
