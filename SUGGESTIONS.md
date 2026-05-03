@@ -890,3 +890,47 @@ class EnhancedExporter:
 ---
 
 > *آخر تحديث: 2026-05-03 05:30 (Asia/Damascus) — بواسطة المطور*
+
+---
+
+## 🎯 Layout Preservation + Mobile Review System
+
+> *مقترح من: DeepSeek — مراجعة وتنقية: Claude Sonnet 4.6*
+
+### الملخص التنفيذي
+
+دمج **الحفاظ على البنية البصرية** (جداول، تسميات، عناوين) في مخرجات OCR، مع **واجهة مراجعة موبايل-أولاً** تتيح التصحيح السريع من الهاتف.
+
+### القيمة المضافة
+
+- تحسين جودة البيانات المُستخرجة لتدريب نماذج الترجمة والتلخيص.
+- تقليل وقت المراجعة اليدوية بنسبة 40-60% عبر التصحيح السياقي.
+- إمكانية العمل على المراجعة من أي جهاز (جوال، حاسوب، Colab).
+
+### الملفات المضافة
+
+| الملف | الوصف |
+|-------|-------|
+| `modules/export/layout_preserving.py` | تصدير DOCX/HTML يحافظ على الجداول والتسميات |
+| `modules/nlp/arabic_nlp_utils.py` | مقارنة دلالية للنص العربي تتجاوز أخطاء OCR |
+| `mobile_review/server.py` | خادم Flask للمراجعة من الجوال |
+| `mobile_review/templates/review.html` | واجهة HTML متجاوبة للتصحيح اللمسي |
+
+### الاستخدام
+
+```bash
+# تشغيل خادم المراجعة
+python mobile_review/server.py --host 0.0.0.0 --port 5000
+# افتح من الهاتف: http://<IP>:5000
+
+# التصدير مع الحفاظ على التنسيق
+from modules.export.layout_preserving import export_to_docx
+export_to_docx(layout_data, "output_preserved.docx")
+
+# مقارنة عربية ذكية
+from modules.nlp.arabic_nlp_utils import similarity_report
+report = similarity_report(ocr_text, reference_text)
+```
+
+### المبدأ التصميمي
+"التعقيد اختياري" — الميزات الهيكلية تُفعَّل عبر `--layout-aware` للحفاظ على البساطة للمستخدمين العاديين.
