@@ -23,7 +23,7 @@ from PIL import Image
 
 logger = logging.getLogger("HandwrittenOCR")
 
-# استيراد أدوات اللوق المفصّل
+# استيراد أدوات اللوق المفصّل (backward-compat: src.logger → modules)
 try:
     from src.logger import log_step, log_error_full, log_result
 except ImportError:
@@ -48,27 +48,34 @@ _sent_state = {"df": None, "idx": 0}
 
 def _get_db(config):
     """إنشاء/إعادة كائن قاعدة البيانات."""
-    from src.database import HandwritingDB
+    try:
+        from modules.core.handwriting_db import HandwritingDB
+    except ImportError:
+        from src.database import HandwritingDB
     return HandwritingDB(config.db_path)
 
 
 def _get_ocr_engine(config):
     """إنشاء/إعادة محرك التعرف."""
-    from src.recognition import OCREngine
-    return OCREngine(
-        trocr_model_name=config.trocr_model_name,
-        ocr_languages=config.ocr_languages,
-        max_text_length=config.max_text_length,
-        cache_dir=config.model_cache_dir or config.cache_dir,
-        hf_token=config.hf_token,
-        trocr_default_confidence=config.trocr_default_confidence,
-        easy_conf_threshold=config.easy_conf_threshold,
-        num_beams=config.num_beams,
-        trocr_batch_size=config.trocr_batch_size,
-        lora_save_path=config.lora_save_path,
-        skip_trocr=config.skip_trocr,
-        use_fp16=config.use_fp16,
-    )
+    try:
+        from modules.vision.ocr_engine import OCREngine
+        return OCREngine.from_legacy_config(config)
+    except ImportError:
+        from src.recognition import OCREngine
+        return OCREngine(
+            trocr_model_name=config.trocr_model_name,
+            ocr_languages=config.ocr_languages,
+            max_text_length=config.max_text_length,
+            cache_dir=config.model_cache_dir or config.cache_dir,
+            hf_token=config.hf_token,
+            trocr_default_confidence=config.trocr_default_confidence,
+            easy_conf_threshold=config.easy_conf_threshold,
+            num_beams=config.num_beams,
+            trocr_batch_size=config.trocr_batch_size,
+            lora_save_path=config.lora_save_path,
+            skip_trocr=config.skip_trocr,
+            use_fp16=config.use_fp16,
+        )
 
 
 def _normalize_text(x) -> str:
@@ -129,7 +136,10 @@ def word_confirm(config, corrected_text: str):
     db.update_word(rid, predicted_text=corr, status="verified")
     db.log_review(rid, orig, corr, "confirm")
     if orig != corr:
-        from src.correction import append_feedback
+        try:
+            from modules.nlp.feedback import append_feedback
+        except ImportError:
+            from src.correction import append_feedback
         append_feedback(config.feedback_csv, rid, orig, corr, "verified")
         logger.info(f"  تم تسجيل تصحيح في feedback CSV")
     _review_state["df"] = df.drop(df.index[idx]).reset_index(drop=True)
@@ -212,7 +222,10 @@ def _sent_row(config):
 
 def load_sent_review(config):
     """تحميل الجمل للمراجعة."""
-    from src.reconstruction import reconstruct_sentences
+    try:
+        from modules.nlp.reconstruction import reconstruct_sentences
+    except ImportError:
+        from src.reconstruction import reconstruct_sentences
     db = _get_db(config)
     sentences = reconstruct_sentences(db, verified_only=False) or []
     _sent_state["df"] = sentences

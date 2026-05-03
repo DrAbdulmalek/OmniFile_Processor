@@ -156,6 +156,37 @@ class OCREngine:
         # تحذيرات
         self._log_availability()
 
+    @classmethod
+    def from_legacy_config(cls, config) -> "OCREngine":
+        """
+        إنشاء محرك OCR من كائن Config القديم (src.config.Config).
+        يُستخدم لسهولة الترحيل من src/ إلى modules/.
+
+        Args:
+            config: كائن الإعدادات من src.config أو config.py
+
+        Returns:
+            مثيل OCREngine مهيأ بالإعدادات المناسبة
+        """
+        return cls(
+            trocr_model_name=getattr(config, "trocr_model_name", "microsoft/trocr-base-handwritten"),
+            trocr_processor_name=getattr(config, "trocr_model_name", "microsoft/trocr-base-handwritten"),
+            trocr_batch_size=getattr(config, "trocr_batch_size", 8),
+            trocr_num_beams=getattr(config, "num_beams", 4),
+            easyocr_languages=getattr(config, "ocr_languages", None) or getattr(config, "easyocr_languages", None),
+            easyocr_gpu=getattr(config, "use_gpu", None),
+            easyocr_model_storage_directory=getattr(config, "cache_dir", None),
+            tesseract_langs=getattr(config, "tesseract_langs", "eng+ara"),
+            use_gpu=getattr(config, "use_gpu", True),
+            confidence_threshold=getattr(config, "easy_conf_threshold", 0.5),
+            enable_trocr=getattr(config, "skip_trocr", False) is False,
+            enable_easyocr=True,
+            enable_tesseract=True,
+            enable_surya=getattr(config, "enable_surya", False),
+            enable_paddleocr=getattr(config, "enable_paddleocr", False),
+            dpi=getattr(config, "dpi", 300),
+        )
+
     @staticmethod
     def _check_library(import_name: str, package_name: str) -> bool:
         """التحقق من توفر مكتبة."""

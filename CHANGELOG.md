@@ -6,6 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [4.2.0] — 2026-05-03
+
+### Added — src/ → modules/ Migration
+- **modules/core/handwriting_db.py**: ترحيل `HandwritingDB` من `src/database.py` مع توثيق كامل.
+- **modules/nlp/reconstruction.py**: ترحيل `reconstruct_sentences` و `reconstruct_sentences_direct` و `extract_bilingual_vocab` و `derive_word_corrections` من `src/reconstruction.py`.
+- **modules/nlp/feedback.py**: ترحيل `append_feedback` + نظام قاموس التصحيح المتقدم (`CorrectionRule`, `build_correction_dict_v2`, `calculate_rule_indicator`, إلخ) من `src/correction.py`.
+- **OCREngine.from_legacy_config()**: classmethod جديد في `modules/vision/ocr_engine.py` يسمح بإنشاء المحرك من كائن Config القديم بمعامل واحد.
+- **notebooks/README.md**: دليل استخدام يصف كل دفتر (حديث/أرشيف) مع نصائح البدء السريع.
+- **requirements-dev.txt**: ملف متطلبات التطوير المنفصل (pytest, ruff) — تم فصله عن requirements-core.txt.
+- **tests/test_arabic_nlp_utils.py**: 16 اختباراً لوحدة arabic_nlp_utils (تطبيع، تشابه، تقرير).
+
+### Changed
+- **src/gradio_ui.py**: تحديث 5 استيرادات لتفضل modules/ مع fallback إلى src/ (HandwritingDB, OCREngine, append_feedback, reconstruct_sentences, logger).
+- **src/__init__.py**: إعادة كتابته كطبقة backward-compatibility — يستورد من modules/ أولاً ويعود لـ src/ عند الفشل.
+- **Version unification**: توحيد رقم الإصدار إلى v4.1.1 في main.py, app.py, config.py, __init__.py, database.py, README.md.
+- **requirements-core.txt**: إزالة مكتبات الاختبار (pytest, flake8, black, isort) ونقلها إلى requirements-dev.txt.
+- **README.md**: إضافة ملاحظة معمارية توثق قرار src/ (كود عملي) مقابل modules/ (بنية نظرية) والخطة التدريجية للتحويل.
+- **CHANGELOG**: تصحيح تاريخ v4.1.0 من 2025-05-03 إلى 2026-04-28.
+
+### Architecture Notes
+- `src/` أصبحت طبقة توافق عكسي (backward-compatibility layer).
+- جميع المكونات المُرحَّلة تستخدم نمط try/except: `from modules.X import Y` ثم fallback `from src.X import Y`.
+- `src/` ستُحذف بالكامل في v5.0 بعد ترحيل المكونات المتبقية (recognition, preprocessing, study_guide, finetuning, pdf_processor, export).
+
+---
+
 ## [4.1.1] — 2026-05-03
 
 ### Fixed
