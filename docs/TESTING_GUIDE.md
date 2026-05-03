@@ -17,7 +17,12 @@ git clone https://github.com/DrAbdulmalek/OmniFile_Processor
 cd OmniFile_Processor
 python -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+
+# التثبيت المتدرج — اختر المستوى المناسب:
+pip install -r requirements-core.txt                          # الأساسي فقط (~1.5 GB, ~3 min)
+pip install -r requirements-core.txt -r requirements-ocr.txt   # + محركات OCR
+pip install -r requirements-core.txt -r requirements-nlp.txt   # + معالجة لغة
+pip install -r requirements-full.txt          # الكامل (~6-8 GB, ~15-30 min)
 ```
 
 ### 2. التشغيل المحلي:
@@ -40,7 +45,9 @@ pip install -r requirements.txt
 
 ## ثالثاً: ملف Jupyter Notebook (.ipynb) لـ Google Colab مع واجهة Gradio
 
-👉 **الملف الجاهز:** [`notebooks/OmniFile_Gradio_Debugger.ipynb`](../notebooks/OmniFile_Grado_Debugger.ipynb)
+👉 **الملفات الجاهزة:**
+- [`notebooks/OmniFile_Diagnostic.ipynb`](../notebooks/OmniFile_Diagnostic.ipynb) — فحص شامل + واجهة Gradio (25 خلية)
+- [`notebooks/OmniFile_Gradio_Debugger.ipynb`](../notebooks/OmniFile_Gradio_Debugger.ipynb) — معالجة + بحث + إحصائيات
 
 ### الخلية الأولى: تثبيت المتطلبات (Setup)
 
@@ -49,9 +56,11 @@ pip install -r requirements.txt
 !git clone https://github.com/DrAbdulmalek/OmniFile_Processor.git
 %cd OmniFile_Processor
 
-# 2. تثبيت المكتبات اللازمة
-!pip install gradio easyocr transformers torch openpyxl python-docx PyMuPDF rapidfuzz
-!pip install ar-corrector arabic-reshaper python-bidi langdetect jiwer
+# 2. تثبيت المكتبات (متدرج)
+!pip install -r requirements-core.txt          # الأساسيات
+!pip install -r requirements-core.txt -r requirements-ocr.txt   # + OCR
+# للحصول على كل شيء (NLP ثقيل):
+# !pip install -r requirements-full.txt
 ```
 
 ### الخلية الثانية: كود واجهة Gradio للتجربة والتصحيح
