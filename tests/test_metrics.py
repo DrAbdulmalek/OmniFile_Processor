@@ -39,7 +39,7 @@ class EvaluationResult:
             return "A+ (Near Perfect)"
         elif self.cer <= 0.05:
             return "A (Excellent)"
-        elif self.cer <= 0.10:
+        elif self.cer < 0.10:
             return "B (Good)"
         elif self.cer <= 0.20:
             return "C (Acceptable)"
@@ -203,7 +203,7 @@ class TestArabicNormalization:
 
     def test_empty_string(self):
         assert _normalize_arabic("") == ""
-        assert _normalize_arabic(None) == "" if None else ""
+        assert _normalize_arabic(None) == ""
 
     def test_no_change_latin(self):
         """Test Latin text is unchanged."""

@@ -447,7 +447,7 @@ class OCREngine:
         for idx, image in enumerate(images):
             logger.debug("معالجة صورة %d من %d...", idx + 1, len(images))
             try:
-                result = self.recognize(image, languages=languages)
+                result = dict(self.recognize(image, languages=languages))
                 result["batch_index"] = idx
                 results.append(result)
             except Exception as e:

@@ -347,32 +347,47 @@ class TextReconstructor:
 
         # كشف تلقائي
         if hint == "auto" or hint not in ("rtl", "ltr"):
-            arabic_count = 0
-            total_count = 0
+            arabic_chars = 0
+            latin_chars = 0
+
+            arabic_ranges = [
+                (0x0600, 0x06FF),
+                (0x0750, 0x077F),
+                (0x08A0, 0x08FF),
+                (0xFB50, 0xFDFF),
+                (0xFE70, 0xFEFF),
+                (0x0660, 0x0669),
+            ]
 
             for word in words:
                 text = word.get("text", "")
-                if text.strip():
-                    total_count += 1
-                    if self._is_arabic_text(text):
-                        arabic_count += 1
+                if not text.strip():
+                    continue
 
-            if total_count == 0:
+                for char in text:
+                    code = ord(char)
+                    if any(start <= code <= end for start, end in arabic_ranges):
+                        arabic_chars += 1
+                    elif ("A" <= char <= "Z") or ("a" <= char <= "z"):
+                        latin_chars += 1
+
+            if arabic_chars == 0 and latin_chars == 0:
                 return "ltr"
 
-            arabic_ratio = arabic_count / total_count
-            if arabic_ratio > 0.3:
+            if arabic_chars > latin_chars:
                 logger.debug(
-                    "اتجاه RTL مكتشف (نسبة العربية: %.1f%%)",
-                    arabic_ratio * 100,
+                    "اتجاه RTL مكتشف (حروف عربية: %d، لاتينية: %d)",
+                    arabic_chars,
+                    latin_chars,
                 )
                 return "rtl"
-            else:
-                logger.debug(
-                    "اتجاه LTR مكتشف (نسبة الإنجليزية: %.1f%%)",
-                    (1 - arabic_ratio) * 100,
-                )
-                return "ltr"
+
+            logger.debug(
+                "اتجاه LTR مكتشف (حروف عربية: %d، لاتينية: %d)",
+                arabic_chars,
+                latin_chars,
+            )
+            return "ltr"
 
         return "ltr"
 

@@ -1,0 +1,20 @@
+# =============================================================================
+# OmniFile AI Processor — Colab Requirements
+# =============================================================================
+# نسخة محسّنة لتجارب Google Colab والدفاتر التفاعلية.
+# تعتمد على طبقات خفيفة أولاً ثم تضيف ما يلزم لرفع الملفات، PDF، والأنفاق العامة.
+# =============================================================================
+
+-r requirements-core.txt
+-r requirements-hf.txt
+
+# PDF / OCR helpers commonly used in notebooks
+pdf2image>=1.16.0
+pytesseract>=0.3.10
+
+# Colab / notebook ergonomics
+ipywidgets>=8.1.0
+pyngrok>=7.0.0
+
+# Optional env loading used by AI helper modules
+python-dotenv>=1.0.0

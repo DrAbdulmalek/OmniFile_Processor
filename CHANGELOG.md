@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [4.1.1] — 2026-05-03
+
+### Fixed
+- **NLP optional imports**: جعل تحميل `AICorrector` و `python-dotenv` اختيارياً حتى لا يفشل التثبيت الخفيف أو اختبارات CI الأساسية.
+- **Direction detection**: تحسين اكتشاف اتجاه النص المختلط في `modules/vision/text_reconstructor.py` ليعتمد على غلبة الحروف العربية مقابل اللاتينية بدلاً من عتبة منخفضة كانت تسبب تصنيفاً خاطئاً.
+- **Arabic normalization tests**: تصحيح اختبار `_normalize_arabic(None)` ليعكس السلوك المقصود فعلياً.
+- **Evaluation grading boundary**: تعديل حد CER بحيث تمثل نسبة `10%` بداية مستوى `C (Acceptable)`.
+
+### Added
+- **`requirements-colab.txt`**: ملف متطلبات مخصص لدفاتر Google Colab والدفاتر التفاعلية.
+
+---
+
 ## [4.1.0] — 2025-05-03
 
 ### Added

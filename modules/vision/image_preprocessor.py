@@ -153,8 +153,19 @@ class ImagePreprocessor:
         # التحويل إلى numpy
         img_array = self._to_numpy(image)
 
-        # 1. تحويل إلى تدرج رمادي
-        if self.convert_to_grayscale and img_array.ndim == 3:
+        # 1. تحويل إلى تدرج رمادي عند الحاجة فقط
+        needs_grayscale = (
+            self.convert_to_grayscale
+            and img_array.ndim == 3
+            and (
+                self.apply_clahe
+                or self.apply_denoise
+                or self.apply_deskew
+                or self.apply_binarize
+                or self.apply_dilate
+            )
+        )
+        if needs_grayscale:
             img_array = self._to_grayscale(img_array)
 
         # 2. تغيير الحجم

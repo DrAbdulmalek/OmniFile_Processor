@@ -23,12 +23,17 @@ from modules.nlp.mixed_text import (
     optimize_mixed_text,
     separate_text_components,
 )
-from modules.nlp.ai_corrector import AICorrector
+try:
+    from modules.nlp.ai_corrector import AICorrector
+except ImportError:  # تبعيات اختيارية مثل python-dotenv / openai
+    AICorrector = None
 
 __all__ = [
     "TextClassifier", "EntityExtractor", "TechnicalTranslator",
     "SpellCorrector", "LanguageDetector",
     "RTLFixer", "is_rtl_text", "get_text_direction",
     "detect_language", "optimize_mixed_text", "separate_text_components",
-    "AICorrector",
 ]
+
+if AICorrector is not None:
+    __all__.append("AICorrector")

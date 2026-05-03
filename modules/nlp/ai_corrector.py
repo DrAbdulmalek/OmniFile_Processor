@@ -18,7 +18,11 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ImportError:  # python-dotenv تبعية اختيارية في التثبيت الخفيف
+    def load_dotenv(*_args, **_kwargs):
+        return False
 
 # Load environment variables
 load_dotenv()

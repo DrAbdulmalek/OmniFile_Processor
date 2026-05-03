@@ -46,12 +46,16 @@ class EvaluationResult:
 
     @property
     def quality_grade(self) -> str:
-        """تقدير جودة التعرف / Grade the OCR quality."""
+        """تقدير جودة التعرف / Grade the OCR quality.
+
+        حدود التقييم مقصودة بحيث تمثل نسبة 10% CER بداية المستوى
+        "المقبول" بدلاً من المستوى "الجيد".
+        """
         if self.cer <= 0.02:
             return "A+ (Near Perfect)"
         elif self.cer <= 0.05:
             return "A (Excellent)"
-        elif self.cer <= 0.10:
+        elif self.cer < 0.10:
             return "B (Good)"
         elif self.cer <= 0.20:
             return "C (Acceptable)"
@@ -199,13 +203,16 @@ def evaluate_file(reference_path: str, hypothesis_path: str) -> EvaluationResult
     return evaluate(reference, hypothesis)
 
 
-def _normalize_arabic(text: str) -> str:
+def _normalize_arabic(text: Optional[str]) -> str:
     """
     تطبيع النص العربي للمقارنة / Normalize Arabic text for comparison.
 
     يزيل التشكيل (التاءات) ويوحد المتغيرات الشائعة
     لضمان ألا تضخم اختلافات OCR الطفيفة معدلات الخطأ.
     """
+    if text is None:
+        return ""
+
     if not text:
         return ""
 
