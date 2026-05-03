@@ -1,7 +1,8 @@
 """
 محرك التعرف على النصوص (OCR Engine)
 ======================================
-محرك متكامل يجمع بين أربعة محركات OCR:
+محرك متكامل يجمع بين خمسة محركات OCR:
+- Surya - محرك حديث عالي الدقة للغات المتعددة
 - TrOCR (من Microsoft) - الأفضل للمخطوطات اليدوية
 - EasyOCR - سريع ودقيق متعدد اللغات
 - Tesseract (OCR) - محرك كلاسيكي موثوق
@@ -65,6 +66,7 @@ class OCREngine:
         enable_trocr: bool = True,
         enable_easyocr: bool = True,
         enable_tesseract: bool = True,
+        enable_surya: bool = False,
         enable_paddleocr: bool = False,
         preprocess: bool = True,
         dpi: int = 300,
@@ -114,6 +116,7 @@ class OCREngine:
         self.enable_trocr = enable_trocr
         self.enable_easyocr = enable_easyocr
         self.enable_tesseract = enable_tesseract
+        self.enable_surya = enable_surya
         self.enable_paddleocr = enable_paddleocr
         self.preprocess = preprocess
         self.dpi = dpi
@@ -125,6 +128,8 @@ class OCREngine:
         self._easyocr_reader = None
         self._easyocr_loaded = False
         self._tesseract_available = None
+        self._surya_engine = None
+        self._surya_loaded = False
         self._paddleocr_reader = None
         self._paddleocr_loaded = False
 
@@ -135,6 +140,7 @@ class OCREngine:
         )
         self._has_easyocr = self._check_library("easyocr", "EasyOCR")
         self._has_paddleocr = self._check_library("paddleocr", "PaddleOCR")
+        self._has_surya = self._check_library("surya", "surya-ocr")
         self._has_pil = self._check_library("PIL", "Pillow")
 
         # تحقق مبدئي من Tesseract
@@ -195,6 +201,11 @@ class OCREngine:
             self.enable_tesseract,
         )
         logger.info(
+            "  Surya: %s (مفعّل: %s)",
+            "متاح" if self._has_surya else "غير متاح",
+            self.enable_surya,
+        )
+        logger.info(
             "  PaddleOCR: %s (مفعّل: %s)",
             "متاح" if self._has_paddleocr else "غير متاح",
             self.enable_paddleocr,
@@ -216,6 +227,8 @@ class OCREngine:
             engines.append("trocr")
         if self.enable_tesseract and self._tesseract_available:
             engines.append("tesseract")
+        if self.enable_surya and self._has_surya:
+            engines.append("surya")
         if self.enable_paddleocr and self._has_paddleocr:
             engines.append("paddleocr")
         return engines
@@ -405,7 +418,13 @@ class OCREngine:
             if tesseract_result:
                 results.append(tesseract_result)
 
-        # 4. تجربة PaddleOCR (الأفضل للنصوص العربية)
+        # 4. تجربة Surya (محرك حديث عالي الدقة)
+        if self.enable_surya:
+            surya_result = self._recognize_surya(pil_image)
+            if surya_result:
+                results.append(surya_result)
+
+        # 5. تجربة PaddleOCR (الأفضل للنصوص العربية)
         if self.enable_paddleocr:
             paddleocr_result = self._recognize_paddleocr(pil_image)
             if paddleocr_result:
@@ -779,6 +798,111 @@ class OCREngine:
             logger.warning("فشل Tesseract: %s", e)
             return None
 
+    def _load_surya(self) -> bool:
+        """تحميل Surya عند أول استخدام (Lazy Loading).
+
+        Surya محرك OCR حديث عالي الدقة يدعم لغات متعددة.
+        يُحمّل فقط عند أول استدعاء وليس عند التهيئة.
+
+        Returns:
+            True إذا تم التحميل بنجاح
+        """
+        if self._surya_loaded:
+            return True
+
+        if not self._has_surya:
+            logger.debug("Surya غير متاح")
+            return False
+
+        try:
+            logger.info("جارٍ تحميل Surya OCR...")
+            from modules.vision.surya_ocr import SuryaOCREngine
+
+            self._surya_engine = SuryaOCREngine(langs=self.easyocr_languages)
+            self._surya_loaded = True
+            logger.info("تم تحميل Surya OCR بنجاح")
+            return True
+
+        except ImportError:
+            logger.warning(
+                "Surya غير مثبت. قم بتثبيته:\n"
+                "  pip install surya-ocr>=0.4.0"
+            )
+            self._surya_loaded = False
+            return False
+        except Exception as e:
+            logger.error("فشل في تحميل Surya: %s", e)
+            self._surya_loaded = False
+            return False
+
+    def _recognize_surya(self, image: "PIL.Image.Image") -> Optional[dict]:
+        """
+        التعرف على النص باستخدام Surya OCR.
+
+        Args:
+            image: صورة PIL
+
+        Returns:
+            قاميس النتيجة أو None عند الفشل
+        """
+        if not self._load_surya():
+            return None
+
+        try:
+            import tempfile
+            import os
+
+            # Surya يعمل على مسار ملف، لذا نحفظ الصورة مؤقتاً
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+                image.save(tmp.name)
+                tmp_path = tmp.name
+
+            try:
+                text, blocks = self._surya_engine.extract_text(tmp_path)
+
+                if not text.strip():
+                    return None
+
+                # حساب الثقة المتوسطة
+                confidences = [b.get("confidence", 0.0) for b in blocks]
+                avg_confidence = (
+                    sum(confidences) / len(confidences) if confidences else 0.0
+                )
+
+                # تحويل الكتل إلى word_boxes للإعادة
+                word_boxes = []
+                for b in blocks:
+                    bbox = b.get("bbox", [0, 0, 0, 0])
+                    if len(bbox) == 4:
+                        word_boxes.append({
+                            "text": b.get("text", ""),
+                            "x": int(bbox[0] * image.width),
+                            "y": int(bbox[1] * image.height),
+                            "w": int((bbox[2] - bbox[0]) * image.width),
+                            "h": int((bbox[3] - bbox[1]) * image.height),
+                            "confidence": b.get("confidence", 0.0),
+                        })
+
+                return {
+                    "text": text.strip(),
+                    "confidence": avg_confidence,
+                    "source": "surya",
+                    "word_count": len(blocks),
+                    "words": word_boxes,
+                    "details": {
+                        "langs": self._surya_engine.langs,
+                        "block_count": len(blocks),
+                    },
+                }
+            finally:
+                # حذف الملف المؤقت
+                if os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
+
+        except Exception as e:
+            logger.warning("فشل Surya: %s", e)
+            return None
+
     def _load_paddleocr(self) -> bool:
         """تحميل PaddleOCR عند أول استخدام (Lazy Loading).
 
@@ -946,7 +1070,7 @@ class OCREngine:
             return results[0]
 
         # ترتيب حسب الثقة (تنازلياً) ثم حسب أولوية المحرك
-        engine_priority = {"trocr": 4, "paddleocr": 3, "easyocr": 2, "tesseract": 1}
+        engine_priority = {"surya": 5, "trocr": 4, "paddleocr": 3, "easyocr": 2, "tesseract": 1}
 
         def sort_key(r: dict) -> tuple:
             priority = engine_priority.get(r["source"], 0)
@@ -1019,6 +1143,12 @@ class OCREngine:
                 "available": self._tesseract_available,
                 "enabled": self.enable_tesseract,
                 "loaded": self._tesseract_available is True,
+            },
+            {
+                "name": "Surya",
+                "available": self._has_surya,
+                "enabled": self.enable_surya,
+                "loaded": self._surya_loaded,
             },
             {
                 "name": "PaddleOCR",

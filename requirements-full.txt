@@ -35,3 +35,13 @@ redis>=5.0.0
 
 # === Mobile Review Server ===
 flask>=3.0.0
+
+# === Surya OCR (محرك خامس) ===
+surya-ocr>=0.4.0
+
+# === Table Detection (TATR) ===
+timm>=0.9.0
+
+# === Mixed Language Processing ===
+langdetect>=1.0.9
+pyspellchecker>=0.7.0
