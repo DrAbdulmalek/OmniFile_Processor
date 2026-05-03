@@ -15,7 +15,7 @@ Tabs:
   6. Evaluation           — CER / WER metrics (Levenshtein + jiwer)
   7. About                — Project info, links, author
 
-Author:  Dr. Abdulmalek
+Author:  Dr. Abdulmalek Tamer Al-husseini
 GitHub:  https://github.com/DrAbdulmalek/OmniFile_Processor
 License: MIT
 """
@@ -937,7 +937,7 @@ ABOUT_MD = """
 - ⚡ **Lazy Loading** — Fast startup, models load on demand
 
 ### 👨‍💻 Author
-**Dr. Abdulmalek**
+**Dr. Abdulmalek Tamer Al-husseini**
 
 ### 🔗 Links
 - 📂 [GitHub — DrAbdulmalek/OmniFile_Processor](https://github.com/DrAbdulmalek/OmniFile_Processor)
@@ -958,7 +958,7 @@ ABOUT_MD = """
 
 ---
 
-*Built with ❤️ by Dr. Abdulmalek | OmniFile AI Processor v1.0*
+*Built with ❤️ by Dr. Abdulmalek Tamer Al-husseini | OmniFile AI Processor v1.0*
 """
 
 

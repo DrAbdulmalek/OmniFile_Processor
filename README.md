@@ -23,7 +23,7 @@ license: mit
 [![GitHub](https://img.shields.io/badge/GitHub-DrAbdulmalek-181717?logo=github)](https://github.com/DrAbdulmalek/OmniFile_Processor)
 
 <p>
-  <b>Author:</b> Dr. Abdulmalek &nbsp;|&nbsp;
+  <b>Author:</b> Dr. Abdulmalek Tamer Al-husseini &nbsp;|&nbsp;
   <b>Version:</b> v4.1 &nbsp;|&nbsp;
   <b>Status:</b> ✅ CI-Verified
 </p>
@@ -514,7 +514,7 @@ This project is licensed under the **MIT License**.
 ```
 MIT License
 
-Copyright (c) 2026 Dr. Abdulmalek
+Copyright (c) 2026 Dr. Abdulmalek Tamer Al-husseini
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -552,7 +552,7 @@ See [LICENSE](LICENSE) for the full text.
 
 <div align="center">
 
-**Built with ❤️ by Dr. Abdulmalek**
+**Built with ❤️ by Dr. Abdulmalek Tamer Al-husseini**
 
 ⭐ If you find this project useful, please give it a star on [GitHub](https://github.com/DrAbdulmalek/OmniFile_Processor)!
 

@@ -9,7 +9,7 @@
 - نسخ احتياطي وتصدير JSON
 - تنظيف تلقائي للسجلات القديمة
 
-المؤلف: Dr. Abdulmalek
+المؤلف: Dr. Abdulmalek Tamer Al-husseini
 الإصدار: 1.0.0
 """
 

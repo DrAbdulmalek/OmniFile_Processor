@@ -941,6 +941,6 @@ corrector.add_protected_term("TrOCR")
 
 ---
 
-> **المؤلف / Author:** Dr. Abdulmalek
+> **المؤلف / Author:** Dr. Abdulmalek Tamer Al-husseini
 > **الإصدار / Version:** 2.1
 > **الترخيص / License:** راجع ملف `LICENSE`

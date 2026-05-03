@@ -54,7 +54,7 @@ OmniFile AI Processor v4.0
    - HuggingFace Spaces
 
 الترخيص: MIT
-المؤلف: Dr. Abdulmalek
+المؤلف: Dr. Abdulmalek Tamer Al-husseini
 """
 
 __version__ = "4.0.0"
