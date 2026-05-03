@@ -48,15 +48,28 @@ jobs:
 
             ### Installation
             ```bash
+            # Lightweight (core only):
+            pip install -r requirements-core.txt
+
+            # + OCR engines:
+            pip install -r requirements-core.txt -r requirements-ocr.txt
+
+            # Full stack (all features):
             pip install -r requirements-full.txt
             ```
 
             ### Quick Start
             ```bash
-            python main.py
-            # or
-            streamlit run app.py
+            streamlit run app.py          # Streamlit UI (6 tabs)
+            python -m src.gradio_ui       # Gradio UI (7 tabs)
+            python main.py                # CLI interface
             ```
+
+            ---
+
+            **Author:** Dr Abdulmalek Tamer Al-husseini
+            **Location:** Homs, Syria
+            **Email:** Abdulmalek.husseini@gmail.com
           draft: false
           prerelease: ${{ contains(steps.version.outputs.VERSION, 'rc') || contains(steps.version.outputs.VERSION, 'beta') }}
           generate_release_notes: true
