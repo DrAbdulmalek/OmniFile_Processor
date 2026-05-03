@@ -260,7 +260,9 @@ OmniFile_Processor/
 │   ├── ci.yml                     #   Tests on push/PR
 │   └── release.yml                #   Auto-release on tags
 ├── notebooks/                      # Jupyter Notebooks
+│   ├── OmniFile_Gradio_Debugger.ipynb  #   Gradio interactive debugger (Colab-ready)
 ├── docs/                           # Documentation
+│   ├── TESTING_GUIDE.md          #   Testing & development guide
 │   ├── API_DOCS.md
 │   ├── USER_GUIDE.md
 │   └── DEVELOPER_GUIDE.md
@@ -541,6 +543,7 @@ See [LICENSE](LICENSE) for the full text.
 | 🤗 **HuggingFace Spaces** | [https://huggingface.co/spaces/DrAbdulmalek/handwriting-ocr](https://huggingface.co/spaces/DrAbdulmalek/handwriting-ocr) |
 | 📚 **User Guide** | [docs/USER_GUIDE.md](docs/USER_GUIDE.md) |
 | 👨‍💻 **Developer Guide** | [docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) |
+| 🧪 **Testing Guide** | [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md) |
 | 📡 **API Documentation** | [docs/API_DOCS.md](docs/API_DOCS.md) |
 | 💡 **Suggestions** | [SUGGESTIONS.md](SUGGESTIONS.md) |
 | 📋 **License** | [LICENSE](LICENSE) |
