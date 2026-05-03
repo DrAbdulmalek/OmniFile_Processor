@@ -11,7 +11,7 @@ license: mit
 
 <div align="center">
 
-# 🧠 OmniFile AI Processor v4.0
+# 🧠 OmniFile AI Processor v4.1.1
 
 **نظام ذكاء اصطناعي متكامل لمعالجة الملفات والنصوص والخط اليدوي**
 **A Comprehensive AI System for File Processing, Text Analysis & Handwriting Recognition**
@@ -23,7 +23,7 @@ license: mit
 [![GitHub](https://img.shields.io/badge/GitHub-DrAbdulmalek-181717?logo=github)](https://github.com/DrAbdulmalek/OmniFile_Processor)
 
 <p>
-  <b>Version:</b> v4.1 &nbsp;|&nbsp;
+  <b>Version:</b> v4.1.1 &nbsp;|&nbsp;
   <b>Status:</b> ✅ CI-Verified
 </p>
 
@@ -182,10 +182,18 @@ docker-compose up -d
 
 ## 📁 Project Structure | هيكل المشروع
 
+> **ملاحظة معمارية — Architecture Note:**
+> يوجد في المشروع نظامان متوازيان:
+> - **`modules/`** — البنية النظرية الموسّعة: وحدات منظّمة بوضوح (vision, nlp, security, export, ai, evaluation) مع نماذج Pydantic v2. هذه هي البنية المستقبلية المقصودة للمشروع.
+> - **`src/`** — محرك HandwrittenOCR العملي: يحتوي على التطبيق الفعلي المُستخدَم في واجهة Gradio (`src/gradio_ui.py`) وHF Spaces. يشمل TrOCR Batch, LoRA Fine-tuning, Active Learning, وStudy Guide.
+> - **الملفات الجذرية** (`app.py`, `database.py`, `config.py`) — طبقة التكامل التي تربط بين البنية والمحركات.
+>
+> **الخيار المتبنّى حالياً:** `src/` هو الكود العملي الفعّال لواجهة Gradio وHF Spaces، بينما `modules/` يمثل البنية النظرية المنظمة للمشروع الموسّع. التحويل التدريجي (migration) من `src/` إلى `modules/` سيتم على مراحل عبر Pull Requests مستقلة.
+
 ```
 OmniFile_Processor/
 ├── app.py                          # Main Streamlit UI
-├── config.py                       # Central configuration v4.0
+├── config.py                       # Central configuration v4.1.1
 ├── database.py                     # SQLite database layer
 ├── main.py                         # Local / CLI entry point
 ├── tasks.py                        # Celery async tasks

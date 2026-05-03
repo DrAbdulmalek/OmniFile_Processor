@@ -1,6 +1,6 @@
 """
-OmniFile AI Processor v3.0 - الإعدادات المركزية
-==================================================
+OmniFile AI Processor v4.1.1 - الإعدادات المركزية
+===================================================
 مدمج من: OmniFile_Processor + HandwrittenOCR + handwriting-ocr
          + arabic-ocr-pro + advanced-ocr + OCR-Enhancer
 
@@ -33,7 +33,7 @@ from typing import Optional
 
 @dataclass
 class OmniFileConfig:
-    """إعدادات المشروع المركزية - OmniFile AI Processor v3.0"""
+    """إعدادات المشروع المركزية - OmniFile AI Processor v4.1.1"""
 
     # === المسارات الأساسية ===
     project_root: str = ""

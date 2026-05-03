@@ -1,6 +1,6 @@
 """
-OmniFile AI Processor v4.0
-============================
+OmniFile AI Processor v4.1.1
+=============================
 نظام ذكاء اصطناعي متكامل لمعالجة الملفات والنصوص والخط اليدوي.
 
 مدمج من مشاريع متعددة:
@@ -59,5 +59,5 @@ OmniFile AI Processor v4.0
 البريد الإلكتروني: Abdulmalek.husseini@gmail.com
 """
 
-__version__ = "4.0.0"
+__version__ = "4.1.1"
 __project_name__ = "OmniFile AI Processor"

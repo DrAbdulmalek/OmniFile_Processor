@@ -1,6 +1,6 @@
 """
-OmniFile AI Processor v2.0 - Entry Point
-==========================================
+OmniFile AI Processor v4.1.1 - Entry Point
+============================================
 نقطة الدخول الرئيسية للتشغيل المحلي/CLI.
 
 الاستخدام:
@@ -91,7 +91,7 @@ def run_colab_setup():
 
 def main():
     parser = argparse.ArgumentParser(
-        description="OmniFile AI Processor v2.0",
+        description="OmniFile AI Processor v4.1.1",
     )
     parser.add_argument(
         "--gradio", action="store_true",

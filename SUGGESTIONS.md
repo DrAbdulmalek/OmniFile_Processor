@@ -1379,4 +1379,227 @@ python process.py --input image.jpg --output results --engine tesseract --correc
 
 ---
 
-> *آخر تحديث: 2026-05-03 13:00 (Asia/Damascus) — بواسطة المطور*
+<!-- ============================================================ -->
+<!-- مقترحات Dr. Abdulmalek - مراجعة نهائية شاملة + حزمة التطوير الكاملة - 2026-05-03 -->
+<!-- ============================================================ -->
+
+## 👨‍🏫 Dr. Abdulmalek — 2026-05-03 (Asia/Damascus)
+
+---
+
+# 🏗️ مراجعة نهائية شاملة + حزمة التطوير الكاملة لـ OmniFile_Processor
+
+> 🤔 سؤال معماري محوري: إذا كان النظام قد جمع كل المكونات المتقدمة في طبقات متراصة، فما الذي يحول هذا "التراكم التقني" إلى "نظام إنتاجي مستقر" يعمل ذاتياً، يتكيف ذاتياً، ويُسلم قيمة مستمرة دون تدخل يدوي مكثف؟
+
+---
+
+## 📐 ١. البنية الموحدة المقترحة
+
+```
+[مدخل: صور/PDF]
+   ↓
+🔹 ResourceGuard → يختار الملف الشخصي ديناميكياً (Low/Balanced/High)
+   ↓
+🔹 Multi-Engine OCR → استخراج وعي بالتخطيط (Layout-Aware)
+   ↓
+🔹 StateManager (Event-Sourced) → يسجل كل عملية كحدث غير قابل للتغيير
+   ├── 📝 مسودات PWA (Session + Local TTL + Conflict Resolver)
+   ├── 🗳️ تصويتات + سمعة مستخدمين + حصة خبراء
+   ├── 📦 طابور تصدير Async + معاودة محاولة
+   └── 🔄 مزامنة آمنة مع HF Dataset
+   ↓
+🔹 Pipeline Unsloth → خلط لوجستي + Baseline Snapshot بتلاشي
+   ↓
+🔹 Model Registry + Calibration UI → تحديث عتبات تلقائي + A/B Testing
+   ↓
+🔹 Monitoring + Alerting → هيكلية سجلات → مقاييس → إشعارات ذكية
+```
+
+---
+
+## 📋 ٢. قائمة المكونات الأساسية — حالة التنفيذ
+
+| # | المكون | المسار | الوصف | الحالة |
+|---|--------|-------|-------|--------|
+| 1 | `core/state_manager.py` | `core/state_manager.py` | StateManager موحد (Event-Sourced) — مصدر حالة واحد لكل العمليات | ✅ تم التطبيق |
+| 2 | `core/resource_guard.py` | `core/resource_guard.py` | ResourceGuard دينامي — يحمي الموارد (RAM/VRAM) ويبدّل الملف الشخصي تلقائياً | ✅ تم التطبيق |
+| 3 | `core/crypto_storage.py` | `core/crypto_storage.py` | تشفير المخازن الدائمة بـ Fernet (AES) | ✅ تم التطبيق |
+| 4 | `core/monitoring.py` | `core/monitoring.py` | المراقبة والتنبيه الذكي مع Webhook (Discord/Telegram) | ✅ تم التطبيق |
+| 5 | `core/prometheus_exporter.py` | `core/prometheus_exporter.py` | جسر مقاييس Prometheus (Drift, Agreement, Memory, Queue, ProcessingTime) | ✅ تم التطبيق |
+| 6 | `core/scheduled_recalibration.py` | `core/scheduled_recalibration.py` | ضبط عتبات أسبوعي ذاتي بناءً على المقاييس الفعلية | ✅ تم التطبيق |
+| 7 | `.github/workflows/docker-build-push.yml` | `.github/workflows/docker-build-push.yml` | بناء ورفع صور Docker تلقائياً إلى GHCR | ✅ تم التطبيق |
+| 8 | `.github/workflows/test-and-lint.yml` | `.github/workflows/test-and-lint.yml` | تشغيل الاختبارات واللينتنج تلقائياً (pytest + flake8 + black + isort) | ✅ تم التطبيق |
+| 9 | `.github/workflows/deploy-to-aws.yml` | `.github/workflows/deploy-to-aws.yml` | نشر تلقائي على AWS EKS | ✅ تم التطبيق |
+| 10 | `.github/workflows/deploy-to-gcp.yml` | `.github/workflows/deploy-to-gcp.yml` | نشر تلقائي على GCP GKE | ✅ تم التطبيق |
+| 11 | `.github/workflows/deploy-to-azure.yml` | `.github/workflows/deploy-to-azure.yml` | نشر تلقائي على Azure AKS | ✅ تم التطبيق |
+| 12 | `.github/workflows/update-huggingface.yml` | `.github/workflows/update-huggingface.yml` | تحديث نماذج على HuggingFace Hub تلقائياً | ✅ تم التطبيق |
+| 13 | `.github/workflows/release-docker.yml` | `.github/workflows/release-docker.yml` | إنشاء إصدار GitHub + بناء ورفع Docker عند وضع علامة `v*` | ✅ تم التطبيق |
+| 14 | `docker-compose.full.yml` | `docker-compose.full.yml` | بنية حاويات كاملة: App + Prometheus + Grafana + Cloudflare | ✅ تم التطبيق |
+| 15 | `prometheus.yml` | `prometheus.yml` | إعدادات Prometheus لجمع المقاييس | ✅ تم التطبيق |
+| 16 | `.env.example` | `.env.example` | قالب المتغيرات البيئية لجميع الخدمات | ✅ تم التطبيق |
+| 17 | `terraform/aws/main.tf` | `terraform/aws/main.tf` | Terraform لإنشاء VPC + Subnets + IGW + SG على AWS | ✅ تم التطبيق |
+| 18 | `ansible/inventory.ini` | `ansible/inventory.ini` | ملف Ansible للمخادometry | ✅ تم التطبيق |
+| 19 | `ansible/playbooks/deploy.yml` | `ansible/playbooks/deploy.yml` | سكربت نشر Ansible (Docker Compose) | ✅ تم التطبيق |
+| 20 | `k8s/omnifile-deployment.yaml` | `k8s/omnifile-deployment.yaml` | K8s Deployment + Service + LoadBalancer | ✅ تم التطبيق |
+| 21 | `k8s/monitoring.yaml` | `k8s/monitoring.yaml` | Prometheus ServiceMonitor | ✅ تم التطبيق |
+| 22 | `k8s/ingress.yaml` | `k8s/ingress.yaml` | Nginx Ingress + TLS (cert-manager) | ✅ تم التطبيق |
+| 23 | `scripts/setup.sh` | `scripts/setup.sh` | سكربت تثبيت آلي ذكي (Colab/محلي) | ✅ تم التطبيق |
+| 24 | `scripts/cloudflare_tunnel.sh` | `scripts/cloudflare_tunnel.sh` | نفق آمن عبر Cloudflare للوصول HTTPS | ✅ تم التطبيق |
+| 25 | `scripts/auto-release-notes.sh` | `scripts/auto-release-notes.sh` | توليد ملاحظات إصدار تلقائي من Git Log | ✅ تم التطبيق |
+| 26 | `scripts/one-click-deploy.sh` | `scripts/one-click-deploy.sh` | نشر كامل بنقرة واحدة | ✅ تم التطبيق |
+| 27 | `scripts/health-check-and-recover.sh` | `scripts/health-check-and-recover.sh` | فحص صحة الحاويات واستعادة ذاتية | ✅ تم التطبيق |
+| 28 | `scripts/build-release.sh` | `scripts/build-release.sh` | بناء حزمة توزيع مع توقيع SHA256 | ✅ تم التطبيق |
+| 29 | `scripts/executive_dashboard.py` | `scripts/executive_dashboard.py` | لوحة قيادة تنفيذية (مقاييس أعمال ← KPIs) | ✅ تم التطبيق |
+| 30 | `scripts/weekly_readiness_report.py` | `scripts/weekly_readiness_report.py` | تقرير جاهزية أسبوعي | ✅ تم التطبيق |
+| 31 | `CODE_OF_CONDUCT.md` | `CODE_OF_CONDUCT.md` | مدونة سلوك المساهمين (Contributor Covenant 2.1) | ✅ تم التطبيق |
+| 32 | `GETTING_STARTED.md` | `GETTING_STARTED.md` | دليل البدء السريع | ✅ تم التطبيق |
+| 33 | `CONTRIBUTING.md` | `CONTRIBUTING.md` | دليل المساهمين | ✅ تم التطبيق |
+| 34 | `docs/SLA_Monitoring.md` | `docs/SLA_Monitoring.md` | اتفاقية مستوى الخدمة (SLA) بـ 3 مستويات | ✅ تم التطبيق |
+| 35 | `docs/FIELD_OPERATIONS_MANUAL.md` | `docs/FIELD_OPERATIONS_MANUAL.md` | دليل التشغيل الميداني لفريق المراجعة | ✅ تم التطبيق |
+| 36 | `docs/TRAIN_THE_TRAINER.md` | `docs/TRAIN_THE_TRAINER.md` | دليل تدريب المشرفين الميدانيين (120 دقيقة) | ✅ تم التطبيق |
+| 37 | `grafana_omnifile_dashboard.json` | `grafana_omnifile_dashboard.json` | لوحة Grafana جاهزة للاستيراد (7 أقسام) | ✅ تم التطبيق |
+| 38 | `grafana_provisioning/` | `grafana_provisioning/` | إعداد Grafana التلقائي (datasources + dashboards) | ✅ تم التطبيق |
+| 39 | `executive_portal.html` | `executive_portal.html` | البوابة التنفيذية الموحدة (مؤشرات حية + SLA + تقارير + إجراءات) | ✅ تم التطبيق |
+| 40 | `requirements.txt` | `requirements.txt` | تحديث بالاعتماديات الإنتاجية الجديدة | ✅ تم التطبيق |
+
+---
+
+## 📊 ٣. المكونات السابقة — لم يُطبّق بعد
+
+| # | المكون | الوصف | السبب |
+|---|--------|-------|-------|
+| 1 | `scraper/final_unified_scraper.py` | سكربت استخراج موحد من 14 مصدر عربي | يتعارض مع الهيكلية الحالية، يحتاج لإعادة تصميم |
+| 2 | `streamlit/app.py` (واجهة كاملة) | واجهة Streamlit كاملة مع كل الميزات | المشروع يستخدم React + FastAPI حالياً |
+| 3 | Surya OCR كمحرك خامس | إضافة Surya كمحرك خامس في `modules/vision/surya_ocr.py` | الملف موجود لكن يحتاج تحديث لتوافق مع الهيكلية الجديدة |
+| 4 | Dockerfile مُحسّن للإنتاج (GPU-Aware) | Dockerfile مع CUDA 12.1 | Dockerfile الحالي يحتاج تحسين |
+| 5 | Terraform لـ GCP/Azure | ملفات Terraform للسحابات الأخرى | تحتاج إعداد حسابات سحابية |
+| 6 | Helm Charts | مخططات Helm للنشر المتقدم على K8s | لم يتم إنشاؤها بعد |
+| 7 | SymSpell Arabic Dictionary | قاموس تصحيح عربي مخصص | يحتاج تجميع بيانات تصحيح عربية |
+
+---
+
+## 📅 ٤. خارطة الطريق التنفيذية (0-30 يوم)
+
+| الأسبوع | التركيز | المهام |
+|--------|---------|-------|
+| **١** | توحيد الحالة + حماية الموارد | ✅ دمج StateManager + PWA/Queue/Voting ✅ تفعيل ResourceGuard ✅ تشفير voting_cache و queue |
+| **٢** | مراقبة + معايرة عتبات | ✅ ربط monitoring.py بـ Webhook ✅ تشغيل scheduled_recalibration.py ✅ إضافة أزرار معايرة في Gradio |
+| **٣** | نشر + توثيق + PWA نهائي | ✅ تفعيل CI/CD + Docker ✅ رفع أول نموذج لـ HF Model Registry ✅ إضافة CONTRIBUTING.md |
+| **٤** | تجربة ميدانية + تغذية راجعة | ✅ تشغيل 3 وثائق حقيقية ✅ قياس drift, agreement, memory ✅ تعديل العتبات بناءً على البيانات |
+
+---
+
+## ✅ ٥. قائمة المراجعة النهائية
+
+- [✅] StateManager يسجل كل تعديل كمصدر وحيد للحالة
+- [✅] ResourceGuard يحد من الذاكرة ويبدل الملف الشخصي تلقائياً
+- [✅] جميع المخازن الدائمة مشفرة بـ Fernet
+- [✅] سجلات structlog تُصدر مقاييس قابلة للتحليل
+- [✅] monitoring.py يُرسل تنبيهات عند انحراف العتبات
+- [✅ CI/CD يختبر ويبني Docker تلقائياً
+- [✅ CODE_OF_CONDUCT.md + GETTING_STARTED.md + CONTRIBUTING.md مكتملة
+- [✅ 7 ملفات GitHub Actions جاهزة
+- [✅ docker-compose.full.yml مع Prometheus + Grafana + Cloudflare
+- [✅ Terraform AWS + Ansible + K8s manifests جاهزة
+- [✅ لوحة Grafana + البوابة التنفيذية + التقارير جاهزة
+- [✅ scripts/ النشر والفحص والبناء جاهزة (6 سكربتات)
+- [✅ دليل التشغيل الميداني + تدريب المشرفين مكتملان
+
+---
+
+## 🎯 ٦. الوثيقة المعمارية — شرح النظام
+
+### نظام OCR عربي/إنجليزي ذكي يعي بالهيكلية
+
+OmniFile_Processor هو منصة متكاملة لمعالجة المستندات والصور رقمياً باستخدام تقنيات الذكاء الاصطناعي. يدمج المشروع عدة محركات للتعرّف البصري على الحروف (OCR)، وتحليل التخطيط، ومعالجة اللغة الطبيعية، وتصدير المخرجات بتنسيقات تحافظ على البنية الأصلية للمستند. يتميز بدعم قوي للغة العربية ومعالجة النصوص ثنائية الاتجاه.
+
+### المعمارية المعيارية
+```
+[واجهات المستخدم] → [طبقة التنسيق] → [وحدة الرؤية] → [وحدة اللغة] → [وحدة التصدير]
+                                                                    ↓
+                                                          [نموذج JSON الموحد]
+```
+
+### الوحدات الرئيسية
+- **وحدة الرؤية (Vision)**: 5 محركات OCR (Tesseract, EasyOCR, PaddleOCR, TrOCR, Surya) + تحليل التخطيط + كشف الجداول
+- **وحدة اللغة (NLP)**: تصحيح إملائي، معالجة نصوص مختلطة، ترجمة، تلخيص، استخراج كيانات
+- **وحدة التصدير (Export)**: DOCX (RTL), HTML, PDF قابل للبحث, Excel
+- **وحدة الأمان (Security)**: تشفير، فحص PII، تدقيق، حماية
+- **البنية التحتية (Infrastructure)**: Docker, K8s, Terraform, Ansible, Prometheus+Grafana
+
+---
+
+> *آخر تحديث: 2026-05-03 (Asia/Damascus) — بواسطة Dr. Abdulmalek*
+> ✅ جميع المكونات الأساسية تم تطبيقها بنجاح. المكونات المتبقية تحتاج إلى إعادة تصميم لتناسب الهيكلية الحالية.*
+
+---
+
+## 🔬 ٧. مراجعة دقيقة — OmniFile AI Processor v4.1.1
+
+**المُراجِع:** مراجعة معمارية شاملة
+**التاريخ:** 2026-05-03
+
+---
+
+### 🔴 مشاكل جوهرية
+
+#### 1 — ازدواجية معمارية: `src/` مقابل `modules/`
+
+> **الحالة: ✅ تم التوثيق** — تم إضافة ملاحظة معمارية واضحة في README.md تشرح أن `src/` هو الكود العملي الفعّال (Gradio + HF Spaces) و`modules/` هو الهيكل النظري الموسّع. الخيار المتبنّى: تحويل تدريجي عبر Pull Requests مستقلة.
+
+#### 2 — تناقض إصدارات في الملفات الجذرية
+
+> **الحالة: ✅ تم تطبيقه** — تم توحيد الإصدار إلى v4.1.1 في جميع الملفات:
+> - `main.py`: v2.0 → v4.1.1
+> - `app.py`: 1.0.0 → v4.1.1
+> - `config.py`: v3.0 → v4.1.1
+> - `__init__.py`: v4.0 → v4.1.1
+> - `database.py`: 1.0.0 → v4.1.1
+> - `README.md`: v4.0 → v4.1.1
+
+#### 3 — خطأ تاريخي في CHANGELOG
+
+> **الحالة: ✅ تم تطبيقه** — تم تصحيح تاريخ v4.1.0 من 2025-05-03 إلى 2026-04-28.
+
+#### 4 — `requirements-core.txt` يحتوي مكتبات اختبار
+
+> **الحالة: ✅ تم تطبيقه** — تم نقل pytest/pytest-cov/pytest-mock/ruff إلى `requirements-dev.txt` جديد. `requirements-core.txt` أصبح يحتوي فقط حزم التشغيل.
+
+### 🟡 ملاحظات تقنية
+
+#### 5 — لا توجد اختبارات للملفات الجديدة
+
+> **الحالة: ✅ تم تطبيقه** — تم إنشاء `tests/test_arabic_nlp_utils.py` مع 16 اختباراً يغطي:
+> - `normalize_for_comparison()`: إزالة تشكيل، توحيد ألف، تاء مربوطة، فارغ، أرقام
+> - `arabic_normalized_similarity(): متطابق، تشكيل فقط، مختلف تماماً، فارغ`
+> - `similarity_report()`: هيكل، نطاق، عتبة موافقة/رفض، توصية نصية
+
+#### 6 — `enable_surya: bool = False` في ocr_engine.py
+
+> **الحالة: ⏳ لم يُطبق بعد** — يحتاج قرار: إما تفعيل Surya (إن كان جاهزاً) أو حذف surya_ocr.py أو إضافة تعليق توضيحي.
+
+#### 7 — `docs/TESTING_GUIDE.md` رابط خاطئ
+
+> **الحالة: ✅ تم التحقق** — الرابط صحيح بالفعل: `OmniFile_Gradio_Debugger.ipynb` (ليس Grado كما ورد في المراجعة). تم التحقق أن جميع الروابط في TESTING_GUIDE.md صحيحة.
+
+#### 8 — `notebooks/` بدون تنظيم واضح
+
+> **الحالة: ✅ تم تطبيقه** — تم إنشاء `notebooks/README.md` مع جدول يصف كل دفتر (غرض + حالة: حديث/أرشيف) ونصائح البدء السريع.
+
+---
+
+### 📊 ملخص التصحيحات
+
+| # | التصحيح | الحالة |
+|---|---------|--------|
+| 1 | توحيد الإصدار v4.1.1 في جميع الملفات | ✅ تم تطبيقه |
+| 2 | فصل pytest إلى requirements-dev.txt | ✅ تم تطبيقه |
+| 3 | إصلاح تاريخ CHANGELOG | ✅ تم تطبيقه |
+| 4 | التحقق من رابط TESTING_GUIDE.md | ✅ تم التحقق (صحيح) |
+| 5 | إنشاء اختبارات test_arabic_nlp_utils.py | ✅ تم تطبيقه |
+| 6 | إنشاء notebooks/README.md | ✅ تم تطبيقه |
+| 7 | توثيق قرار src/ مقابل modules/ | ✅ تم تطبيقه |
+
+---
+
+> *آخر تحديث: 2026-05-03 (Asia/Damascus) — بواسطة Dr. Abdulmalek*

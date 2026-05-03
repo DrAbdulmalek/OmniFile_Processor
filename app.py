@@ -12,7 +12,7 @@
 المؤلف: Dr Abdulmalek Tamer Al-husseini
 الموقع: Homs, Syria
 البريد الإلكتروني: Abdulmalek.husseini@gmail.com
-الإصدار: 1.0.0
+الإصدار: 4.1.1
 """
 
 import io
@@ -1449,7 +1449,7 @@ def render_sidebar(cfg: OmniFileConfig, db: OmniFileDB):
 
         # معلومات المشروع
         st.markdown("### ℹ️ المشروع")
-        st.markdown(f"**الإصدار:** v1.0.0")
+        st.markdown(f"**الإصدار:** v4.1.1")
         st.markdown(f"**المؤلف:** Dr Abdulmalek Tamer Al-husseini")
         st.markdown(f"**الموقع:** Homs, Syria")
         st.markdown(f"**البريد الإلكتروني:** [Abdulmalek.husseini@gmail.com](mailto:Abdulmalek.husseini@gmail.com)")

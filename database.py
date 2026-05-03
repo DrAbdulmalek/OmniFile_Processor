@@ -12,7 +12,7 @@
 المؤلف: Dr Abdulmalek Tamer Al-husseini
 الموقع: Homs, Syria
 البريد الإلكتروني: Abdulmalek.husseini@gmail.com
-الإصدار: 1.0.0
+الإصدار: 4.1.1
 """
 
 import json
@@ -1067,7 +1067,7 @@ class OmniFileDB:
         """
         export_data: dict[str, Any] = {
             "export_info": {
-                "version": "1.0.0",
+                "version": "4.1.1",
                 "exported_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "source": self.db_path,
             },

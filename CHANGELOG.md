@@ -19,7 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
-## [4.1.0] — 2025-05-03
+## [4.1.0] — 2026-04-28
 
 ### Added
 - **Layout Preservation System**: تصدير DOCX مع الحفاظ على البنية البصرية (جداول، عناوين، تسميات، صور)
