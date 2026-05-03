@@ -9,7 +9,9 @@
 - نسخ احتياطي وتصدير JSON
 - تنظيف تلقائي للسجلات القديمة
 
-المؤلف: Dr. Abdulmalek Tamer Al-husseini
+المؤلف: Dr Abdulmalek Tamer Al-husseini
+الموقع: Homs, Syria
+البريد الإلكتروني: Abdulmalek.husseini@gmail.com
 الإصدار: 1.0.0
 """
 

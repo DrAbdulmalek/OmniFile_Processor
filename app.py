@@ -9,7 +9,9 @@
 5. لوحة القيادة والإحصائيات
 6. الإعدادات والتهيئة
 
-المؤلف: Dr. Abdulmalek Tamer Al-husseini
+المؤلف: Dr Abdulmalek Tamer Al-husseini
+الموقع: Homs, Syria
+البريد الإلكتروني: Abdulmalek.husseini@gmail.com
 الإصدار: 1.0.0
 """
 
@@ -1448,7 +1450,9 @@ def render_sidebar(cfg: OmniFileConfig, db: OmniFileDB):
         # معلومات المشروع
         st.markdown("### ℹ️ المشروع")
         st.markdown(f"**الإصدار:** v1.0.0")
-        st.markdown(f"**المؤلف:** Dr. Abdulmalek Tamer Al-husseini")
+        st.markdown(f"**المؤلف:** Dr Abdulmalek Tamer Al-husseini")
+        st.markdown(f"**الموقع:** Homs, Syria")
+        st.markdown(f"**البريد الإلكتروني:** [Abdulmalek.husseini@gmail.com](mailto:Abdulmalek.husseini@gmail.com)")
         st.markdown(f"**الرخصة:** MIT")
 
         # محركات OCR
@@ -1533,7 +1537,7 @@ def main():
     st.markdown("---")
     st.markdown(
         "<div style='text-align: center; color: gray;'>"
-        "🧠 OmniFile AI Processor v1.0 | Dr. Abdulmalek Tamer Al-husseini | MIT License"
+        "🧠 OmniFile AI Processor v1.0 | Dr Abdulmalek Tamer Al-husseini | Homs, Syria | MIT License"
         "</div>",
         unsafe_allow_html=True,
     )

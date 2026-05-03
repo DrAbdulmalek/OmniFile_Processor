@@ -1507,7 +1507,9 @@ jobs:
 
 ---
 
-> **المؤلف / Author:** Dr. Abdulmalek Tamer Al-husseini
+> **المؤلف / Author:** Dr Abdulmalek Tamer Al-husseini
+> **📍 الموقع / Location:** Homs, Syria
+> **📧 البريد / Email:** Abdulmalek.husseini@gmail.com
 > **الإصدار / Version:** 2.1
 > **الترخيص / License:** راجع ملف `LICENSE`
 > **المساهمة / Contributing:** Pull Requests مرحب بها على branch `develop`

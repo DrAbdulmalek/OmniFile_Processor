@@ -23,7 +23,6 @@ license: mit
 [![GitHub](https://img.shields.io/badge/GitHub-DrAbdulmalek-181717?logo=github)](https://github.com/DrAbdulmalek/OmniFile_Processor)
 
 <p>
-  <b>Author:</b> Dr. Abdulmalek Tamer Al-husseini &nbsp;|&nbsp;
   <b>Version:</b> v4.1 &nbsp;|&nbsp;
   <b>Status:</b> ✅ CI-Verified
 </p>
@@ -34,6 +33,27 @@ license: mit
 [💡 Suggestions](SUGGESTIONS.md)
 
 </div>
+
+---
+
+## 👨‍💻 About the Author | عن المؤلف
+
+<table>
+  <tr>
+    <td align="center" width="150">
+      <img src="docs/author.png" alt="Dr Abdulmalek Tamer Al-husseini" width="130" height="130" style="border-radius: 50%; object-fit: cover;" />
+    </td>
+    <td>
+      <h3>Dr Abdulmalek Tamer Al-husseini</h3>
+      <p>
+        <b>📍 Location:</b> Homs, Syria<br>
+        <b>📧 Email:</b> <a href="mailto:Abdulmalek.husseini@gmail.com">Abdulmalek.husseini@gmail.com</a><br>
+        <b>🐙 GitHub:</b> <a href="https://github.com/DrAbdulmalek">DrAbdulmalek</a><br>
+        <b>🤗 HuggingFace:</b> <a href="https://huggingface.co/DrAbdulmalek">DrAbdulmalek</a>
+      </p>
+    </td>
+  </tr>
+</table>
 
 ---
 
@@ -514,7 +534,7 @@ This project is licensed under the **MIT License**.
 ```
 MIT License
 
-Copyright (c) 2026 Dr. Abdulmalek Tamer Al-husseini
+Copyright (c) 2026 Dr Abdulmalek Tamer Al-husseini — Homs, Syria
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -552,7 +572,8 @@ See [LICENSE](LICENSE) for the full text.
 
 <div align="center">
 
-**Built with ❤️ by Dr. Abdulmalek Tamer Al-husseini**
+**Built with ❤️ by Dr Abdulmalek Tamer Al-husseini**
+*📍 Homs, Syria &nbsp;|&nbsp; 📧 Abdulmalek.husseini@gmail.com*
 
 ⭐ If you find this project useful, please give it a star on [GitHub](https://github.com/DrAbdulmalek/OmniFile_Processor)!
 

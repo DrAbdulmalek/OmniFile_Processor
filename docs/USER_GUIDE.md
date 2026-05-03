@@ -941,6 +941,8 @@ corrector.add_protected_term("TrOCR")
 
 ---
 
-> **المؤلف / Author:** Dr. Abdulmalek Tamer Al-husseini
+> **المؤلف / Author:** Dr Abdulmalek Tamer Al-husseini
+> **📍 الموقع / Location:** Homs, Syria
+> **📧 البريد / Email:** Abdulmalek.husseini@gmail.com
 > **الإصدار / Version:** 2.1
 > **الترخيص / License:** راجع ملف `LICENSE`

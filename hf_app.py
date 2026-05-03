@@ -15,7 +15,9 @@ Tabs:
   6. Evaluation           — CER / WER metrics (Levenshtein + jiwer)
   7. About                — Project info, links, author
 
-Author:  Dr. Abdulmalek Tamer Al-husseini
+Author:  Dr Abdulmalek Tamer Al-husseini
+Email:   Abdulmalek.husseini@gmail.com
+Location: Homs, Syria
 GitHub:  https://github.com/DrAbdulmalek/OmniFile_Processor
 License: MIT
 """
@@ -937,7 +939,11 @@ ABOUT_MD = """
 - ⚡ **Lazy Loading** — Fast startup, models load on demand
 
 ### 👨‍💻 Author
-**Dr. Abdulmalek Tamer Al-husseini**
+**Dr Abdulmalek Tamer Al-husseini**
+
+📍 **Location:** Homs, Syria
+📧 **Email:** [Abdulmalek.husseini@gmail.com](mailto:Abdulmalek.husseini@gmail.com)
+🐙 **GitHub:** [DrAbdulmalek](https://github.com/DrAbdulmalek)
 
 ### 🔗 Links
 - 📂 [GitHub — DrAbdulmalek/OmniFile_Processor](https://github.com/DrAbdulmalek/OmniFile_Processor)
@@ -958,7 +964,8 @@ ABOUT_MD = """
 
 ---
 
-*Built with ❤️ by Dr. Abdulmalek Tamer Al-husseini | OmniFile AI Processor v1.0*
+*Built with ❤️ by Dr Abdulmalek Tamer Al-husseini | OmniFile AI Processor v1.0*
+*📍 Homs, Syria | 📧 Abdulmalek.husseini@gmail.com*
 """
 
 
