@@ -146,6 +146,14 @@ node_modules/
 npm-debug.log
 yarn-error.log
 
+# === Non-project files (excluded from HF Spaces) ===
+skills/
+download/
+formatted_output/
+collect_and_format.py
+format_repos.py
+worklog.md
+
 # === Misc ===
 *.bak
 *.swp
