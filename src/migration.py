@@ -19,7 +19,13 @@ from datetime import datetime
 from collections import Counter, defaultdict
 from typing import Optional
 
-from src.logger import log_step, log_error_full
+try:
+    from src.logger import log_step, log_error_full
+except ImportError:
+    def log_step(lg, name, data=None):
+        lg.info(f"STEP [{name}]")
+    def log_error_full(lg, ctx, err, extra=None):
+        lg.error(f"ERROR [{ctx}] {type(err).__name__}: {err}", exc_info=True)
 
 logger = logging.getLogger("HandwrittenOCR.Migration")
 

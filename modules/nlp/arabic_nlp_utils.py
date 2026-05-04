@@ -21,6 +21,7 @@ def normalize_for_comparison(text: str) -> str:
     text = re.sub(r'ة', 'ه', text)
     # 5. حذف الرموز غير الحرفية وتنظيف الفراغات
     text = re.sub(r'[^\w\s]', '', text)
+    text = text.lower()
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 

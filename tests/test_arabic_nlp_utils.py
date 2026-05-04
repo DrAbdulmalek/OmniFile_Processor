@@ -111,8 +111,8 @@ class TestSimilarityReport:
         r_high = similarity_report("مرحبا", "مرحبا بك", threshold=0.99)
         # العتبة المنخفضة أسهل في الموافقة
         assert r_low["approved"] is True or r_low["normalized_similarity"] >= 0.5
-        # العتبة العالية أصعب
-        assert r_high["approved"] is r_high["normalized_similarity"] >= 0.99
+        # العتبة العالية أصعب — approved يجب أن يساوي نتيجة المقارنة
+        assert r_high["approved"] == (r_high["normalized_similarity"] >= 0.99)
 
     def test_report_has_recommendation_text(self):
         """التحقق من أن التوصية تحتوي على نص مفيد"""
