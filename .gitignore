@@ -1,0 +1,160 @@
+# =============================================================================
+# OmniFile AI Processor v2.0 - .gitignore
+# =============================================================================
+# Comprehensive .gitignore for Python + ML project
+# Merged from: OmniFile_Processor + HandwrittenOCR + handwriting-ocr
+# =============================================================================
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+eggs/
+sdist/
+develop-eggs/
+.installed.cfg
+lib/
+lib64/
+
+# === Virtual Environments ===
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.python-version
+
+# === Distribution ===
+*.whl
+*.tar.gz
+*.zip
+
+# === IDE & Editors ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+*.sublime-project
+.project
+.classpath
+.settings/
+*.code-workspace
+
+# === Jupyter Notebooks ===
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# === Testing ===
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# === mypy / type checking ===
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# === Data & Databases ===
+*.db
+*.sqlite
+*.sqlite3
+database/*.db
+database/*.db-wal
+database/*.db-shm
+
+# === ML Models & Cache ===
+models_cache/
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.onnx
+*.h5
+*.pb
+*.tflite
+checkpoints/
+logs/
+runs/
+wandb/
+
+# === Processed Data ===
+data/raw/
+data/processed/
+data/exports/
+*.csv
+*.xlsx
+*.parquet
+
+# === Uploaded Files ===
+uploads/
+temp/
+tmp/
+
+# === OS Files ===
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# === Secrets & Credentials ===
+*.pem
+*.key
+*.cert
+secrets/
+credentials.json
+service-account.json
+.token
+
+# === Backups ===
+backups/
+*.bak
+*.backup
+
+# === Tesseract ===
+tessdata/
+
+# === Logs ===
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# === Docker ===
+.docker/
+
+# === Node (if using any JS tools) ===
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# === Misc ===
+*.bak
+*.swp
+*.tmp
+*.temp
+*.orig
+.mako
+__pycache__/
+*.db
+*.pyc
+suggestions/projects_formatted/
+docs/author.png

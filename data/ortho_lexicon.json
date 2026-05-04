@@ -1,0 +1,188 @@
+{
+  "description": "المعجم الجراحي المتخصص — مصطلحات جراحة العظام والمفاصل",
+  "version": "1.0",
+  "specialty": "orthopedic_surgery",
+  "author": "Dr. Abdulmalek Tamer Al-husseini",
+  "categories": {
+    "anatomy": {
+      "arabic": [
+        "عظم الفخذ", "عظم العضد", "الظنبوب", "الشظية", "عظم الساعد",
+        "الكعبرة", "الزند", "عظم القص", "الترقوة", "عظم الورك",
+        "الجمجمة", "الفك", "عمود فقري", "فقرات عنقية", "فقرات صدرية",
+        "فقرات قطنية", "فقرات عجزية", "العجز", "العصعص",
+        "الكتف", "العضد", "المرفق", "الساعد", "الرسغ",
+        "اليد", "الأصابع", "الورك", "الفخذ", "الركبة",
+        "الساق", "الكاحل", "القدم", "إصبع القدم",
+        "الغضروف المفصلي", "المنیسک", "الرباط الصليبي الأمامي",
+        "الرباط الصليبي الخلفي", "الرباط الجانبي الإنسي",
+        "الرباط الجانبي الوحشي", "الوتر", "وتر أخيل",
+        "الشريط الإيليوي الظنبوبي", "الحافة الحرقفية",
+        "الكبسولة المفصلية", "السائل الزلالي", "الغشاء الزلالي"
+      ],
+      "english": [
+        "femur", "humerus", "tibia", "fibula", "radius", "ulna",
+        "clavicle", "scapula", "sternum", "pelvis", "spine",
+        "vertebrae", "cervical", "thoracic", "lumbar", "sacrum",
+        "coccyx", "mandible", "skull", "rib", "humerus",
+        "shoulder", "elbow", "wrist", "hand", "finger",
+        "hip", "knee", "ankle", "foot", "toe",
+        "meniscus", "ACL", "PCL", "MCL", "LCL",
+        "tendon", "Achilles tendon", "rotator cuff",
+        "labrum", "bursa", "synovium", "synovial fluid",
+        "cartilage", "articular cartilage", "joint capsule",
+        "iliotibial band", "fascia lata"
+      ]
+    },
+    "fractures": {
+      "arabic": [
+        "كسر", "كسر مفتوح", "كسر مغلق", "كسر بسيط", "كسر مركب",
+        "كسر مسحوق", "كسر مائل", "كسر حلزوني", "كسر مستعرض",
+        "كسر انضغاطي", "كسر.Greenstick", "كسر بشع", "كسر ملتوي",
+        "كسر عظم الفخذ", "كسر عنق الفخذ", "كسر بين المدورين",
+        "كسر المدور الأكبر", "كسر المدور الأصغر", "كسر تحت الرأس",
+        "كسر عظم العضد", "كسر فوق الكم", "كسر فوق اللقيمة",
+        "كسر الرأس الكعبري", "كسر سميث", "كسر كوليس",
+        "كسر عظم الساعد", "كسر الظنبوب", "كسر الكاحل",
+        "كسر عظم الكعب", "كسر قاعدة إصبع القدم الخامس",
+        "كسر فقرات", "كسر انضغاطي فقري", "كسر انزلاقي",
+        "كسر الحوض", "كسر الترقوة", "كسر الفك السفلي",
+        "كسر عظم الهلال", "كسر عظم الكلاب", "كسر العظام الرمشية",
+        "كسر في الأطفال", "كسر بطني عظم الفخذ",
+        "كسر إجهادي", "كسر إجهاد", "شظية كسر"
+      ],
+      "english": [
+        "fracture", "open fracture", "closed fracture", "simple fracture",
+        "comminuted fracture", "oblique fracture", "spiral fracture",
+        "transverse fracture", "compression fracture", "greenstick fracture",
+        "compound fracture", "impacted fracture", "femoral fracture",
+        "hip fracture", "femoral neck fracture", "intertrochanteric fracture",
+        "subtrochanteric fracture", "humeral fracture", "supracondylar fracture",
+        "Colles fracture", "Smith fracture", "radial fracture",
+        "tibial fracture", "ankle fracture", "metatarsal fracture",
+        "vertebral fracture", "pelvic fracture", "clavicle fracture",
+        "scaphoid fracture", "hamate fracture", "stress fracture",
+        "avulsion fracture", "pathological fracture", "fatigue fracture",
+        "nonunion", "malunion", "delayed union", "pseudarthrosis"
+      ]
+    },
+    "diseases": {
+      "arabic": [
+        "خشونة المفاصل", "التهاب المفاصل", "التهاب المفاصل الروماتويدي",
+        "النقرس", "التهاب الفقار المقسط", "التهاب المفاصل الصدفي",
+        "التهاب العظم والنقي", "التهاب الأوتار", "التهاب الجراب",
+        "التهاب اللفافة الأخمصية", "ألم الظهر المزمن",
+        "انزلاق غضروفي", "ديسك", "القسطرة", "عرق النسا",
+        "ألم الكتف المجمد", "ألم الورك", "خلع متكرر",
+        "داء باجيت", "ورم العظام", "ورم غضروفي",
+        "سرطان العظام", "انتقالات عظمية", "تدرن العظام",
+        "التهاب الفقار اللاصق", "التهاب الفقار الرثياني",
+        "اعتلال العظم الوعائي", "نخر رأس الفخذ",
+        "قدم السكري", "اعتلال الأعصاب السكري",
+        "تشوهات العمود الفقري", "جنف", "تحدب", "جنف جانبي",
+        "انثناء خلقي للورك", "قدم حنفاء", "قدم مسطحة"
+      ],
+      "english": [
+        "osteoarthritis", "rheumatoid arthritis", "gout", "pseudogout",
+        "ankylosing spondylitis", "psoriatic arthritis", "septic arthritis",
+        "osteomyelitis", "tendonitis", "tendinopathy", "bursitis",
+        "plantar fasciitis", "frozen shoulder", "adhesive capsulitis",
+        "herniated disc", "disc herniation", "sciatica", "scoliosis",
+        "kyphosis", "lordosis", "spondylolisthesis", "spinal stenosis",
+        "avascular necrosis", "AVN", "osteonecrosis", "Paget disease",
+        "bone tumor", "osteosarcoma", "Ewing sarcoma", "chondrosarcoma",
+        "bone metastasis", "bone tuberculosis", "diabetic foot",
+        "charcot foot", "bunions", "hallux valgus", "flat foot",
+        "club foot", "developmental dysplasia of hip", "DDH",
+        "limb length discrepancy", "muscular dystrophy", "cerebral palsy"
+      ]
+    },
+    "procedures": {
+      "arabic": [
+        "تثبيت داخلي", "تثبيت خارجي", "مسمار", "صفيحة",
+        "سلك كيرشنر", "سلك شتاينمان", "مسمار داخل نخاعي",
+        "مسامير", "دعامة", "بدلة مفصل", "مفصل صناعي",
+        "استبدال مفصل الركبة", "استبدال مفصل الورك",
+        "استبدال مفصل الكتف", "استبدال مفصل الكاحل",
+        "تنظير المفصل", "تنظير الركبة", "تنظير الكتف",
+        "خياطة الرباط الصليبي", "ترميم الرباط",
+        "ترميم المنیسک", "استئصال المنیسک",
+        "غرزة عظمية", "زراعة عظم", "نقل عظم",
+        "ربط عمود فقري", "تثبيت فقري", "صفيحة فقرية",
+        "قطع عظم", "تقويم عظام", "تقويم ميل",
+        "استئصال عظم", "استئصال ورم", "خزعة عظم",
+        "بزل مفصل", "حقن مفصل", "حقن الكورتيزون",
+        "علاج طبيعي", "تأهيل", "تمارين تقوية",
+        "تثبيت بالجبس", "حذاء طبي", "دعامة ظهر",
+        "مطاط طبي", "أربطة داعمة"
+      ],
+      "english": [
+        "internal fixation", "external fixation", "ORIF", "plate fixation",
+        "screw fixation", "intramedullary nail", "IM nail", "K-wire",
+        "Steinmann pin", "prosthesis", "implant", "joint replacement",
+        "total knee arthroplasty", "TKA", "total hip arthroplasty", "THA",
+        "hip hemiarthroplasty", "shoulder replacement", "reverse shoulder",
+        "ankle replacement", "arthroscopy", "knee arthroscopy",
+        "shoulder arthroscopy", "ACL reconstruction", "ligament repair",
+        "meniscus repair", "meniscectomy", "bone graft",
+        "spinal fusion", "vertebral fixation", "pedicle screw",
+        "osteotomy", "bone cut", "correction osteotomy",
+        "decompression", "laminectomy", "discectomy",
+        "joint aspiration", "arthrocentesis", "cortisone injection",
+        "PRP injection", "stem cell therapy", "physiotherapy",
+        "rehabilitation", "casting", "splint", "brace", "orthosis"
+      ]
+    },
+    "instruments": {
+      "arabic": [
+        "منشار عظم", "مثقاب عظم", "مقبض", "رافعة",
+        "ملقط", "مشرط", "مقص", "إبرة جراحية",
+        "خيط جراحي", "دبابيس", "قاطع أسلاك",
+        "قاطع صفائح", "ماسك عظم", "جبس جبص",
+        "شريط لاصق طبي", "ضمادة", "قفازات جراحية",
+        "مبضع", "مسبار", "أنبوب تصريف",
+        "جهاز تصوير", "جهاز رنين مغناطيسي", "جهاز أشعة",
+        "جهاز تخدير", "جهاز مراقبة القلب",
+        "منظار", "كاميرا منظار", "مضخة منظار",
+        "أدوات تثبيت", "قوالب مفصلية", "طراز مفصل"
+      ],
+      "english": [
+        "bone saw", "oscillating saw", "bone drill", "reamer",
+        "rongeur", "forceps", "scalpel", "surgical scissors",
+        "needle holder", "surgical needle", "suture", "wire cutter",
+        "plate bender", "bone clamp", "cast saw", "plaster cast",
+        "surgical tape", "bandage", "surgical gloves", "retractor",
+        "elevator", "probe", "drain", "fluoroscopy",
+        "C-arm", "X-ray", "MRI", "CT scan", "ultrasound",
+        "arthroscope", "camera", "shaver", "implant templates",
+        "trial components", "impactor", "extractor"
+      ]
+    }
+  },
+  "common_ocr_errors": {
+    "arabic": {
+      "الك ↔ الد": "الخطأ الشائع بين اللام والكاف في الخطوط العربية",
+      "ا لـ ↔ الـ": "فصل اللام عن الألف",
+      "إستخدام ↔ استخدام": "همزة القطع بعد اللام",
+      "هاذا ↔ هذا": "هاذا خطأ شائع",
+      "هذا ↔ هذا": "صحيح",
+      "و ر ↔ ور": "فصل حرف العطف",
+      "م ئ ← مؤ": "تشويه الهمزة",
+      "ي م ← يم": "فصل حرفين",
+      "ر ض ↔رض": "فصل الحروف",
+      "الته ← الته": "حذف اللام التعريف",
+      "الكس ↔ الكسر": "أخطاء التنوين",
+      "مر يض ↔ مريض": "فصل مقاطع الكلمة"
+    },
+    "latin": {
+      "rn ↔ m": "تشابه الشكل",
+      "cl ↔ d": "تشابه الشكل",
+      "0 ↔ O": "تشابه الصفر والحرف",
+      "1 ↔ l ↔ I": "تشابه الواحد واللام",
+      "5 ↔ S": "تشابه الشكل",
+      "8 ↔ B": "تشابه الشكل",
+      "ti ↔ fi": "خطأ شائع في OCR",
+      "rn ↔ ri": "خطأ شائع",
+      "mm ↔ nn": "تبديل"
+    }
+  }
+}

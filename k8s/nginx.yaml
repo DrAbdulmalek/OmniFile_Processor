@@ -1,0 +1,101 @@
+# =============================================================================
+# OmniFile AI Processor - Nginx Ingress + Service
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: omnifile
+data:
+  nginx.conf: |
+    upstream backend {
+        server backend:80;
+    }
+    server {
+        listen 80;
+        server_name _;
+
+        client_max_body_size 100M;
+
+        location / {
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_read_timeout 300s;
+            proxy_connect_timeout 75s;
+        }
+
+        location /health {
+            proxy_pass http://backend/health;
+            proxy_set_header Host $host;
+        }
+
+        location /docs {
+            proxy_pass http://backend/docs;
+            proxy_set_header Host $host;
+        }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: omnifile
+  labels:
+    app: omnifile
+    tier: ingress
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: omnifile
+      tier: ingress
+  template:
+    metadata:
+      labels:
+        app: omnifile
+        tier: ingress
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.25-alpine
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d/default.conf
+          subPath: nginx.conf
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 10
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: nginx-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  namespace: omnifile
+spec:
+  type: LoadBalancer
+  selector:
+    app: omnifile
+    tier: ingress
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80

@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>OmniFile OCR Review</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-light: #818cf8;
+            --primary-dark: #3730a3;
+            --bg: #0f172a;
+            --bg-card: #1e293b;
+            --bg-input: #334155;
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --border: #334155;
+            --radius: 12px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Tahoma, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            padding: 16px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .header h1 { font-size: 20px; font-weight: 700; color: white; }
+        .header-subtitle { font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 2px; }
+
+        .nav-tabs {
+            display: flex;
+            background: var(--bg-card);
+            padding: 8px;
+            gap: 4px;
+            position: sticky;
+            top: 72px;
+            z-index: 99;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-tab {
+            flex: 1; padding: 10px 8px; border: none; background: transparent;
+            color: var(--text-muted); font-size: 13px; font-weight: 600;
+            border-radius: 8px; cursor: pointer; transition: all 0.2s;
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+        }
+        .nav-tab.active { background: var(--primary); color: white; }
+        .nav-tab .icon { font-size: 20px; }
+
+        .page { display: none; padding: 16px; padding-bottom: 100px; }
+        .page.active { display: block; }
+
+        .card {
+            background: var(--bg-card); border-radius: var(--radius);
+            padding: 16px; margin-bottom: 12px; border: 1px solid var(--border);
+        }
+        .card-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+        .stat-card {
+            background: var(--bg-card); border-radius: var(--radius);
+            padding: 14px; text-align: center; border: 1px solid var(--border);
+        }
+        .stat-value { font-size: 24px; font-weight: 800; color: var(--primary-light); }
+        .stat-label { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+        .image-container {
+            position: relative; border-radius: var(--radius); overflow: hidden;
+            background: #000; margin-bottom: 12px; touch-action: pan-x pan-y;
+        }
+        .image-container img { width: 100%; display: block; }
+
+        .zoom-controls { position: absolute; bottom: 10px; left: 10px; display: flex; gap: 6px; }
+        .zoom-btn {
+            width: 36px; height: 36px; border-radius: 50%; border: none;
+            background: rgba(0,0,0,0.7); color: white; font-size: 18px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+
+        .result-card {
+            background: var(--bg-card); border-radius: var(--radius); padding: 16px;
+            margin-bottom: 10px; border-right: 4px solid var(--primary);
+            cursor: pointer; transition: all 0.2s;
+        }
+        .result-card:active { transform: scale(0.98); background: var(--bg-input); }
+        .result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .result-engine {
+            font-size: 12px; font-weight: 700; padding: 4px 10px;
+            border-radius: 20px; background: var(--primary); color: white;
+        }
+        .result-confidence { font-size: 12px; color: var(--text-muted); }
+        .result-text { font-size: 15px; line-height: 1.8; color: var(--text); white-space: pre-wrap; word-break: break-word; }
+
+        .edit-area {
+            width: 100%; min-height: 120px; background: var(--bg-input);
+            border: 2px solid var(--primary); border-radius: 8px; color: var(--text);
+            font-size: 15px; line-height: 1.8; padding: 12px; resize: vertical;
+            font-family: inherit; direction: rtl;
+        }
+        .edit-area:focus { outline: none; border-color: var(--primary-light); }
+
+        .diff-added { background: rgba(34,197,94,0.15); color: var(--success); padding: 1px 4px; border-radius: 3px; }
+        .diff-removed { background: rgba(239,68,68,0.15); color: var(--error); text-decoration: line-through; padding: 1px 4px; border-radius: 3px; }
+        .diff-view { font-family: monospace; font-size: 14px; line-height: 1.6; direction: rtl; }
+
+        .btn {
+            padding: 12px 20px; border: none; border-radius: 8px; font-size: 14px;
+            font-weight: 600; cursor: pointer; transition: all 0.2s;
+            display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%;
+        }
+        .btn:active { transform: scale(0.97); }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-outline { background: transparent; border: 2px solid var(--border); color: var(--text); }
+        .btn-danger { background: var(--error); color: white; }
+        .btn-sm { padding: 8px 14px; font-size: 12px; width: auto; }
+        .btn-group { display: flex; gap: 8px; margin-top: 12px; }
+
+        .table-container { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .data-table th {
+            background: var(--bg-input); padding: 10px 12px; text-align: right;
+            font-weight: 600; border-bottom: 2px solid var(--border); white-space: nowrap;
+        }
+        .data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+        .data-table tr:last-child td { border-bottom: none; }
+
+        .tag { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .tag-success { background: rgba(34,197,94,0.15); color: var(--success); }
+        .tag-warning { background: rgba(245,158,11,0.15); color: var(--warning); }
+        .tag-error { background: rgba(239,68,68,0.15); color: var(--error); }
+
+        .upload-zone {
+            border: 2px dashed var(--border); border-radius: var(--radius);
+            padding: 30px; text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 16px;
+        }
+        .upload-zone:active { border-color: var(--primary); background: rgba(79, 70, 229, 0.05); }
+        .upload-icon { font-size: 40px; margin-bottom: 10px; }
+
+        .toast {
+            position: fixed; bottom: 80px; left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--bg-card); color: var(--text);
+            padding: 12px 24px; border-radius: 25px; font-size: 14px; font-weight: 600;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.4); z-index: 1000;
+            transition: transform 0.3s ease; border: 1px solid var(--border);
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+
+        .history-item { display: flex; align-items: center; gap: 12px; padding: 12px; border-bottom: 1px solid var(--border); }
+        .history-item:last-child { border-bottom: none; }
+        .history-thumb { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; background: var(--bg-input); }
+        .history-info { flex: 1; }
+        .history-filename { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+        .history-meta { font-size: 11px; color: var(--text-muted); }
+
+        .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border); }
+        .setting-label { font-size: 14px; font-weight: 500; }
+        .setting-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+        .toggle { position: relative; width: 48px; height: 26px; }
+        .toggle input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute; cursor: pointer; inset: 0;
+            background: var(--bg-input); border-radius: 26px; transition: 0.3s;
+        }
+        .toggle-slider:before {
+            content: ''; position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px;
+            background: white; border-radius: 50%; transition: 0.3s;
+        }
+        .toggle input:checked + .toggle-slider { background: var(--primary); }
+        .toggle input:checked + .toggle-slider:before { transform: translateX(22px); }
+
+        .spinner {
+            width: 32px; height: 32px; border: 3px solid var(--border);
+            border-top-color: var(--primary); border-radius: 50%;
+            animation: spin 0.8s linear infinite; margin: 20px auto;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+        .empty-icon { font-size: 50px; margin-bottom: 12px; }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        @supports (padding-bottom: env(safe-area-inset-bottom)) {
+            .nav-tabs { padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>OmniFile OCR Review</h1>
+        <div class="header-subtitle">Mobile Review Interface — v3.0</div>
+    </div>
+
+    <div class="nav-tabs">
+        <button class="nav-tab active" onclick="showPage('review')" id="tab-review">
+            <span class="icon">📝</span><span>المراجعة</span>
+        </button>
+        <button class="nav-tab" onclick="showPage('history')" id="tab-history">
+            <span class="icon">📂</span><span>السجل</span>
+        </button>
+        <button class="nav-tab" onclick="showPage('eval')" id="tab-eval">
+            <span class="icon">📊</span><span>التقييم</span>
+        </button>
+        <button class="nav-tab" onclick="showPage('settings')" id="tab-settings">
+            <span class="icon">⚙️</span><span>الإعدادات</span>
+        </button>
+    </div>
+
+    <!-- Review Page -->
+    <div class="page active" id="page-review">
+        <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
+            <div class="upload-icon">📷</div>
+            <div style="font-size:16px; font-weight:600;">اضغط لرفع صورة أو ملف PDF</div>
+            <div style="font-size:12px; color:var(--text-muted); margin-top:6px;">PNG, JPG, PDF</div>
+        </div>
+        <input type="file" id="fileInput" accept="image/*,.pdf" style="display:none" onchange="handleFileUpload(event)">
+
+        <div id="imageSection" style="display:none;">
+            <div class="image-container" id="imageContainer">
+                <img id="previewImage" src="" alt="Preview">
+                <div class="zoom-controls">
+                    <button class="zoom-btn" onclick="zoomImage(0.2)">+</button>
+                    <button class="zoom-btn" onclick="zoomImage(-0.2)">-</button>
+                    <button class="zoom-btn" onclick="resetZoom()">↺</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="resultsSection" style="display:none;">
+            <div class="card">
+                <div class="card-title">📋 نتائج OCR</div>
+                <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;">
+                    <button class="btn btn-sm btn-primary" onclick="showEngineResult('all')" id="btn-all">الكل</button>
+                    <button class="btn btn-sm btn-outline" onclick="showEngineResult('tesseract')" id="btn-tesseract">Tesseract</button>
+                    <button class="btn btn-sm btn-outline" onclick="showEngineResult('easyocr')" id="btn-easyocr">EasyOCR</button>
+                    <button class="btn btn-sm btn-outline" onclick="showEngineResult('trocr')" id="btn-trocr">TrOCR</button>
+                    <button class="btn btn-sm btn-outline" onclick="showEngineResult('paddleocr')" id="btn-paddleocr">PaddleOCR</button>
+                </div>
+                <div id="resultsList"></div>
+            </div>
+
+            <div class="card" id="tableSection" style="display:none;">
+                <div class="card-title">📊 الجداول المستخرجة</div>
+                <div id="tableContent" class="table-container"></div>
+            </div>
+
+            <div class="card" id="editSection" style="display:none;">
+                <div class="card-title">✏️ تعديل النص</div>
+                <textarea class="edit-area" id="editArea" placeholder="عدّل النص هنا..."></textarea>
+                <div class="btn-group">
+                    <button class="btn btn-success" onclick="saveCorrection()">💾 حفظ التصحيح</button>
+                    <button class="btn btn-outline" onclick="toggleDiff()">🔍 مقارنة</button>
+                </div>
+                <div id="diffView" style="display:none; margin-top:12px;">
+                    <div class="diff-view" id="diffContent"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="loadingState" style="display:none;">
+            <div class="spinner"></div>
+            <div style="text-align:center; color:var(--text-muted);">جاري معالجة الصورة...</div>
+        </div>
+
+        <div class="empty-state" id="emptyState">
+            <div class="empty-icon">🔍</div>
+            <div style="font-size:16px; font-weight:600;">لا توجد نتائج للعرض</div>
+            <div style="font-size:13px; margin-top:6px;">ارفع صورة أو ملف PDF لبدء المراجعة</div>
+        </div>
+    </div>
+
+    <!-- History Page -->
+    <div class="page" id="page-history">
+        <div class="card">
+            <div class="card-title">📂 سجل المراجعات</div>
+            <div id="historyList">
+                <div class="empty-state"><div style="font-size:14px;">لا توجد مراجعات سابقة</div></div>
+            </div>
+        </div>
+        <button class="btn btn-outline" onclick="exportHistory()" style="margin-top:10px;">📤 تصدير السجل (JSON)</button>
+        <button class="btn btn-outline" onclick="clearHistory()" style="margin-top:8px;">🗑️ مسح السجل</button>
+    </div>
+
+    <!-- Evaluation Page -->
+    <div class="page" id="page-eval">
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-value" id="totalReviewed">0</div><div class="stat-label">إجمالي المراجعات</div></div>
+            <div class="stat-card"><div class="stat-value" id="avgCER">—</div><div class="stat-label">متوسط CER</div></div>
+            <div class="stat-card"><div class="stat-value" id="avgWER">—</div><div class="stat-label">متوسط WER</div></div>
+            <div class="stat-card"><div class="stat-value" id="correctionsCount">0</div><div class="stat-label">التصحيحات</div></div>
+        </div>
+        <div class="card">
+            <div class="card-title">📏 تقييم يدوي</div>
+            <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">أدخل النص المرجعي (Ground Truth) لتقييم دقة OCR</p>
+            <textarea class="edit-area" id="groundTruthInput" placeholder="أدخل النص الصحيح هنا..." style="min-height:80px;"></textarea>
+            <button class="btn btn-primary" onclick="manualEvaluate()" style="margin-top:10px;">📏 قيّم الدقة</button>
+            <div id="evalResult" style="display:none; margin-top:12px;">
+                <div class="stats-grid">
+                    <div class="stat-card"><div class="stat-value" id="evalCER">—</div><div class="stat-label">CER</div></div>
+                    <div class="stat-card"><div class="stat-value" id="evalWER">—</div><div class="stat-label">WER</div></div>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">📈 سجل التقييمات</div>
+            <div id="evalHistoryList"><div class="empty-state"><div style="font-size:14px;">لا توجد تقييمات</div></div></div>
+        </div>
+    </div>
+
+    <!-- Settings Page -->
+    <div class="page" id="page-settings">
+        <div class="card">
+            <div class="card-title">⚙️ إعدادات الاتصال</div>
+            <div class="setting-row"><div><div class="setting-label">رابط الخادم (API URL)</div><div class="setting-desc">عنوان خادم OmniFile Backend</div></div></div>
+            <input type="url" id="apiUrlInput" class="edit-area" style="min-height:40px; margin-bottom:12px;" placeholder="http://192.168.1.100:5001" value="http://localhost:5001">
+            <button class="btn btn-primary" onclick="testConnection()">🔗 اختبار الاتصال</button>
+            <div id="connectionStatus" style="margin-top:8px; font-size:13px;"></div>
+        </div>
+        <div class="card">
+            <div class="card-title">🔤 إعدادات العرض</div>
+            <div class="setting-row">
+                <div><div class="setting-label">حجم الخط</div></div>
+                <select id="fontSizeSelect" onchange="updateFontSize()" style="background:var(--bg-input); color:var(--text); border:1px solid var(--border); padding:6px 10px; border-radius:6px;">
+                    <option value="13">صغير</option><option value="15" selected>متوسط</option><option value="17">كبير</option><option value="20">كبير جداً</option>
+                </select>
+            </div>
+            <div class="setting-row">
+                <div><div class="setting-label">اتجاه النص</div></div>
+                <select id="dirSelect" onchange="updateDirection()" style="background:var(--bg-input); color:var(--text); border:1px solid var(--border); padding:6px 10px; border-radius:6px;">
+                    <option value="rtl" selected>RTL</option><option value="ltr">LTR</option><option value="auto">تلقائي</option>
+                </select>
+            </div>
+            <div class="setting-row">
+                <div><div class="setting-label">التعديل المباشر</div></div>
+                <label class="toggle"><input type="checkbox" id="editToggle" checked><span class="toggle-slider"></span></label>
+            </div>
+            <div class="setting-row">
+                <div><div class="setting-label">عرض مناطق الكشف</div></div>
+                <label class="toggle"><input type="checkbox" id="bboxToggle"><span class="toggle-slider"></span></label>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">💾 إدارة البيانات</div>
+            <button class="btn btn-outline" onclick="exportAllData()" style="margin-bottom:8px;">📤 تصدير التصحيحات</button>
+            <button class="btn btn-outline" onclick="importCorrections()" style="margin-bottom:8px;">📥 استيراد التصحيحات</button>
+            <button class="btn btn-danger" onclick="clearAllData()">🗑️ مسح جميع البيانات</button>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+    <input type="file" id="importInput" accept=".json" style="display:none" onchange="handleImport(event)">
+
+    <script>
+        let state = {
+            currentResults: null,
+            history: JSON.parse(localStorage.getItem('omnifile_history') || '[]'),
+            corrections: JSON.parse(localStorage.getItem('omnifile_corrections') || '{}'),
+            evalHistory: JSON.parse(localStorage.getItem('omnifile_evals') || '[]'),
+            zoomLevel: 1, currentEngine: 'all', originalText: '',
+        };
+
+        function showPage(page) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('page-' + page).classList.add('active');
+            document.getElementById('tab-' + page).classList.add('active');
+            if (page === 'history') renderHistory();
+            if (page === 'eval') { updateEvalStats(); renderEvalHistory(); }
+            if (page === 'settings') loadSettings();
+        }
+
+        function showToast(msg, type) {
+            var t = document.getElementById('toast');
+            var c = {info:'var(--primary)',success:'var(--success)',error:'var(--error)',warning:'var(--warning)'};
+            t.style.borderRight = '4px solid ' + (c[type]||c.info);
+            t.textContent = msg; t.classList.add('show');
+            setTimeout(function(){ t.classList.remove('show'); }, 2500);
+        }
+
+        async function handleFileUpload(event) {
+            var file = event.target.files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('previewImage').src = e.target.result;
+                document.getElementById('imageSection').style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+            document.getElementById('loadingState').style.display = 'block';
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('resultsSection').style.display = 'none';
+
+            try {
+                var apiUrl = document.getElementById('apiUrlInput').value;
+                var formData = new FormData();
+                formData.append('file', file);
+                var response = await fetch(apiUrl + '/api/ocr/process', { method: 'POST', body: formData });
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                var data = await response.json();
+                state.currentResults = data;
+                state.originalText = data.text || '';
+                renderResults(data);
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('resultsSection').style.display = 'block';
+                addToHistory(file.name, data);
+                showToast('تمت المعالجة بنجاح', 'success');
+            } catch(err) {
+                document.getElementById('loadingState').style.display = 'none';
+                showDemoResults(file.name);
+                showToast('وضع العرض التوضيحي', 'warning');
+            }
+        }
+
+        function showDemoResults(filename) {
+            var demoData = {
+                filename: filename, engines: [
+                    { name: 'Tesseract', confidence: 0.82, text: 'هذا نص تجريبي من محرك Tesseract\nللعرض التوضيحي فقط', time_ms: 450 },
+                    { name: 'EasyOCR', confidence: 0.89, text: 'هذا نص تجريبي من محرك EasyOCR\nللعرض التوضيحي فقط', time_ms: 1200 },
+                    { name: 'TrOCR', confidence: 0.93, text: 'هذا نص تجريبي من محرك TrOCR\nللعرض التوضيحي فقط', time_ms: 2100 },
+                    { name: 'PaddleOCR', confidence: 0.87, text: 'هذا نص تجريبي من محرك PaddleOCR\nللعرض التوضيحي فقط', time_ms: 800 }
+                ],
+                tables: [{ rows: [['العمود 1','العمود 2','العمود 3'],['قيمة 1','قيمة 2','قيمة 3'],['قيمة 4','قيمة 5','قيمة 6']] }],
+                text: 'هذا نص تجريبي من محرك Tesseract\nللعرض التوضيحي فقط'
+            };
+            state.currentResults = demoData; state.originalText = demoData.text;
+            renderResults(demoData);
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('resultsSection').style.display = 'block';
+            addToHistory(filename, demoData);
+        }
+
+        function renderResults(data) {
+            var list = document.getElementById('resultsList'); list.innerHTML = '';
+            var engines = data.engines || [];
+            if (engines.length === 0 && data.text) engines.push({ name: 'OCR', confidence: 0, text: data.text, time_ms: 0 });
+            var fs = document.getElementById('fontSizeSelect').value;
+            engines.forEach(function(eng) {
+                var ct = eng.confidence > 0.9 ? 'tag-success' : eng.confidence > 0.7 ? 'tag-warning' : 'tag-error';
+                var card = document.createElement('div');
+                card.className = 'result-card';
+                card.id = 'result-' + eng.name.toLowerCase();
+                card.onclick = function() { startEdit(eng.text, eng.name); };
+                card.innerHTML = '<div class="result-header"><span class="result-engine">' + eng.name + '</span><span class="result-confidence">' +
+                    (eng.confidence ? '<span class="tag ' + ct + '">' + (eng.confidence*100).toFixed(1) + '%</span>' : '') +
+                    (eng.time_ms ? '<span style="margin-right:6px;">' + eng.time_ms + 'ms</span>' : '') +
+                    '</span></div><div class="result-text" style="font-size:' + fs + 'px;">' + eng.text + '</div>';
+                list.appendChild(card);
+            });
+            if (data.tables && data.tables.length > 0) {
+                document.getElementById('tableSection').style.display = 'block';
+                document.getElementById('tableContent').innerHTML = data.tables.map(function(t) {
+                    return '<table class="data-table">' + t.rows.map(function(r) {
+                        return '<tr>' + r.map(function(c){ return '<td style="direction:rtl;">' + c + '</td>'; }).join('') + '</tr>';
+                    }).join('') + '</table>';
+                }).join('');
+            } else { document.getElementById('tableSection').style.display = 'none'; }
+
+            if (document.getElementById('editToggle').checked) {
+                document.getElementById('editSection').style.display = 'block';
+                if (engines.length > 0) {
+                    state.originalText = engines[0].text;
+                    document.getElementById('editArea').value = engines[0].text;
+                }
+            }
+        }
+
+        function showEngineResult(engine) {
+            state.currentEngine = engine;
+            document.querySelectorAll('[id^="btn-"]').forEach(function(b){ b.className='btn btn-sm btn-outline'; });
+            document.getElementById('btn-' + engine).className = 'btn btn-sm btn-primary';
+            document.querySelectorAll('.result-card').forEach(function(c) {
+                c.style.display = (engine === 'all' || c.id === 'result-' + engine) ? 'block' : 'none';
+            });
+        }
+
+        function startEdit(text, engineName) {
+            if (!document.getElementById('editToggle').checked) return;
+            state.originalText = text;
+            document.getElementById('editArea').value = text;
+            document.getElementById('editSection').style.display = 'block';
+            document.getElementById('editSection').scrollIntoView({ behavior: 'smooth' });
+            document.getElementById('diffView').style.display = 'none';
+        }
+
+        function saveCorrection() {
+            var corrected = document.getElementById('editArea').value;
+            if (corrected === state.originalText) { showToast('لا توجد تغييرات', 'warning'); return; }
+            state.corrections['corr_' + Date.now()] = { original: state.originalText, corrected: corrected, timestamp: new Date().toISOString(), engine: state.currentEngine };
+            localStorage.setItem('omnifile_corrections', JSON.stringify(state.corrections));
+            state.originalText = corrected;
+            showToast('تم حفظ التصحيح', 'success');
+            document.getElementById('correctionsCount').textContent = Object.keys(state.corrections).length;
+        }
+
+        function toggleDiff() {
+            var dv = document.getElementById('diffView');
+            if (dv.style.display === 'none') {
+                var a = state.originalText.split(/\s+/), b = document.getElementById('editArea').value.split(/\s+/);
+                var html = '', mx = Math.max(a.length, b.length);
+                for (var i = 0; i < mx; i++) {
+                    if (a[i] !== b[i]) {
+                        if (a[i]) html += '<span class="diff-removed">' + a[i] + '</span> ';
+                        if (b[i]) html += '<span class="diff-added">' + b[i] + '</span> ';
+                    } else if (a[i]) { html += a[i] + ' '; }
+                }
+                document.getElementById('diffContent').innerHTML = html;
+                dv.style.display = 'block';
+            } else { dv.style.display = 'none'; }
+        }
+
+        function manualEvaluate() {
+            var gt = document.getElementById('groundTruthInput').value.trim();
+            var hyp = state.currentResults ? (state.currentResults.text || document.getElementById('editArea').value.trim()) : document.getElementById('editArea').value.trim();
+            if (!gt || !hyp) { showToast('أدخل النص المرجعي', 'error'); return; }
+            var cer = calcCER(gt, hyp), wer = calcWER(gt, hyp);
+            document.getElementById('evalCER').textContent = (cer*100).toFixed(1) + '%';
+            document.getElementById('evalWER').textContent = (wer*100).toFixed(1) + '%';
+            document.getElementById('evalResult').style.display = 'block';
+            state.evalHistory.unshift({ cer:cer, wer:wer, gt:gt.substring(0,50), hyp:hyp.substring(0,50), ts:new Date().toISOString() });
+            localStorage.setItem('omnifile_evals', JSON.stringify(state.evalHistory));
+            renderEvalHistory(); updateEvalStats();
+        }
+
+        function normText(t) {
+            return t.replace(/[\u064B-\u065F\u0670]/g,'').replace(/[إأٱ]/g,'ا').replace(/ى/g,'ي').replace(/\s+/g,' ').trim();
+        }
+        function calcCER(r,h) { r=normText(r); h=normText(h); if(!r.length) return h.length?1:0; var dp=Array(r.length+1).fill(null).map(function(){return Array(h.length+1).fill(0);}); for(var i=0;i<=r.length;i++)dp[i][0]=i; for(var j=0;j<=h.length;j++)dp[0][j]=j; for(var i=1;i<=r.length;i++)for(var j=1;j<=h.length;j++){var c=r[i-1]===h[j-1]?0:1; dp[i][j]=Math.min(dp[i-1][j]+1,dp[i][j-1]+1,dp[i-1][j-1]+c);} return dp[r.length][h.length]/r.length; }
+        function calcWER(r,h) { var rw=normText(r).split(/\s+/), hw=normText(h).split(/\s+/); if(!rw.length) return hw.length?1:0; var dp=Array(rw.length+1).fill(null).map(function(){return Array(hw.length+1).fill(0);}); for(var i=0;i<=rw.length;i++)dp[i][0]=i; for(var j=0;j<=hw.length;j++)dp[0][j]=j; for(var i=1;i<=rw.length;i++)for(var j=1;j<=hw.length;j++){var c=rw[i-1]===hw[j-1]?0:1; dp[i][j]=Math.min(dp[i-1][j]+1,dp[i][j-1]+1,dp[i-1][j-1]+c);} return dp[rw.length][hw.length]/rw.length; }
+
+        function addToHistory(fn, data) {
+            state.history.unshift({ id: Date.now(), filename: fn, ts: new Date().toISOString(), engines: (data.engines||[]).map(function(e){return e.name;}), text: (data.text||'').substring(0,100), img: document.getElementById('previewImage').src });
+            if (state.history.length > 50) state.history = state.history.slice(0,50);
+            localStorage.setItem('omnifile_history', JSON.stringify(state.history));
+        }
+
+        function renderHistory() {
+            var list = document.getElementById('historyList');
+            if (!state.history.length) { list.innerHTML = '<div class="empty-state"><div style="font-size:14px;">لا توجد مراجعات</div></div>'; return; }
+            list.innerHTML = state.history.map(function(e) {
+                return '<div class="history-item"><img class="history-thumb" src="' + (e.img||'') + '" alt=""><div class="history-info"><div class="history-filename">' + e.filename + '</div><div class="history-meta">' + e.engines.join(', ') + ' — ' + new Date(e.ts).toLocaleString('ar') + '</div></div><span class="tag tag-success">' + e.engines.length + ' محركات</span></div>';
+            }).join('');
+        }
+
+        function renderEvalHistory() {
+            var list = document.getElementById('evalHistoryList');
+            if (!state.evalHistory.length) { list.innerHTML = '<div class="empty-state"><div style="font-size:14px;">لا توجد تقييمات</div></div>'; return; }
+            list.innerHTML = state.evalHistory.map(function(e) {
+                var ct = e.cer < 0.1 ? 'tag-success' : e.cer < 0.3 ? 'tag-warning' : 'tag-error';
+                return '<div class="history-item" style="flex-direction:column;align-items:stretch;"><div style="display:flex;justify-content:space-between;"><span class="tag ' + ct + '">CER: ' + (e.cer*100).toFixed(1) + '%</span><span class="tag ' + ct + '">WER: ' + (e.wer*100).toFixed(1) + '%</span></div><div class="history-meta" style="margin-top:6px;">' + new Date(e.ts).toLocaleString('ar') + '</div></div>';
+            }).join('');
+        }
+
+        function updateEvalStats() {
+            document.getElementById('totalReviewed').textContent = state.history.length;
+            document.getElementById('correctionsCount').textContent = Object.keys(state.corrections).length;
+            if (state.evalHistory.length > 0) {
+                var ac = state.evalHistory.reduce(function(s,e){return s+e.cer;},0)/state.evalHistory.length;
+                var aw = state.evalHistory.reduce(function(s,e){return s+e.wer;},0)/state.evalHistory.length;
+                document.getElementById('avgCER').textContent = (ac*100).toFixed(1)+'%';
+                document.getElementById('avgWER').textContent = (aw*100).toFixed(1)+'%';
+            }
+        }
+
+        function zoomImage(d) { state.zoomLevel=Math.max(0.5,Math.min(5,state.zoomLevel+d)); document.getElementById('previewImage').style.transform='scale('+state.zoomLevel+')'; }
+        function resetZoom() { state.zoomLevel=1; document.getElementById('previewImage').style.transform='scale(1)'; }
+
+        function loadSettings() { var s=JSON.parse(localStorage.getItem('omnifile_settings')||'{}'); if(s.apiUrl)document.getElementById('apiUrlInput').value=s.apiUrl; if(s.fontSize)document.getElementById('fontSizeSelect').value=s.fontSize; if(s.direction)document.getElementById('dirSelect').value=s.direction; }
+        function saveSettings() { localStorage.setItem('omnifile_settings', JSON.stringify({ apiUrl:document.getElementById('apiUrlInput').value, fontSize:document.getElementById('fontSizeSelect').value, direction:document.getElementById('dirSelect').value })); }
+
+        async function testConnection() {
+            var u=document.getElementById('apiUrlInput').value, s=document.getElementById('connectionStatus');
+            s.innerHTML='جاري الاختبار...'; s.style.color='var(--warning)';
+            try { var r=await fetch(u+'/health',{signal:AbortSignal.timeout(5000)}); if(r.ok){var d=await r.json(); s.innerHTML='✅ متصل'; s.style.color='var(--success)'; saveSettings(); showToast('تم الاتصال','success');}else throw new Error(); }
+            catch(e){ s.innerHTML='❌ فشل الاتصال'; s.style.color='var(--error)'; saveSettings(); }
+        }
+
+        function updateFontSize() { var s=document.getElementById('fontSizeSelect').value; document.querySelectorAll('.result-text').forEach(function(e){e.style.fontSize=s+'px';}); saveSettings(); }
+        function updateDirection() { var d=document.getElementById('dirSelect').value; document.querySelectorAll('.result-text,.edit-area').forEach(function(e){e.style.direction=d;}); saveSettings(); }
+
+        function downloadJSON(data, fn) { var b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); var u=URL.createObjectURL(b); var a=document.createElement('a'); a.href=u; a.download=fn; a.click(); URL.revokeObjectURL(u); }
+        function exportHistory() { downloadJSON({history:state.history,corrections:state.corrections,evaluations:state.evalHistory},'omnifile_history.json'); showToast('تم التصدير','success'); }
+        function clearHistory() { if(confirm('مسح السجل؟')){state.history=[];localStorage.removeItem('omnifile_history');renderHistory();showToast('تم المسح','success');} }
+        function exportAllData() { downloadJSON({corrections:state.corrections,history:state.history,evaluations:state.evalHistory},'omnifile_export.json'); showToast('تم التصدير','success'); }
+        function importCorrections() { document.getElementById('importInput').click(); }
+        function handleImport(e) { var f=e.target.files[0]; if(!f)return; var r=new FileReader(); r.onload=function(ev){ try{var d=JSON.parse(ev.target.result); if(d.corrections){Object.assign(state.corrections,d.corrections);localStorage.setItem('omnifile_corrections',JSON.stringify(state.corrections));} showToast('تم الاستيراد','success');}catch(err){showToast('فشل القراءة','error');} }; r.readAsText(f); }
+        function clearAllData() { if(confirm('مسح جميع البيانات؟')){localStorage.clear();state.history=[];state.corrections={};state.evalHistory=[];renderHistory();updateEvalStats();showToast('تم المسح','success');} }
+
+        document.addEventListener('DOMContentLoaded', function(){ loadSettings(); updateEvalStats(); });
+    </script>
+</body>
+</html>

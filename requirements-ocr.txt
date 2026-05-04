@@ -1,0 +1,25 @@
+# =============================================================================
+# OmniFile AI Processor — OCR Engines (محركات التعرف على النصوص)
+# =============================================================================
+# أضف هذا فوق requirements-core.txt للحصول على محركات OCR كاملة.
+# حجم التثبيت المتوقع إضافي: ~3 GB | وقت التثبيت الإضافي: ~10 دقائق
+# =============================================================================
+
+# === Computer Vision & OCR ===
+PyMuPDF>=1.23.0
+pdf2image>=1.16.0
+easyocr>=1.7.0
+pytesseract>=0.3.10
+opencv-python-headless>=4.8.0
+Pillow>=10.0.0
+paddlepaddle>=2.5.0
+paddleocr>=2.7.0
+scikit-image>=0.21.0
+rapidfuzz>=3.0.0
+
+# === Deep Learning Runtime ===
+torch>=2.1.0
+torchvision>=0.15.0
+
+# === Performance ===
+onnxruntime>=1.16.0

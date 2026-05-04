@@ -1,0 +1,44 @@
+# =============================================================================
+# OmniFile AI Processor - Persistent Volume Claims & ConfigMap
+# =============================================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: models-cache-pvc
+  namespace: omnifile
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: standard
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: uploads-pvc
+  namespace: omnifile
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: omnifile-config
+  namespace: omnifile
+data:
+  APP_NAME: "OmniFile AI Processor"
+  APP_VERSION: "3.0.0"
+  LOG_LEVEL: "INFO"
+  OCR_ENGINES: "trocr,easyocr,tesseract,paddleocr"
+  SUPPORTED_LANGUAGES: "en,ar,de"
+  ENABLE_SUMMARIZATION: "true"
+  ENABLE_TRANSLATION: "true"
+  ENABLE_SECURITY: "true"
+  DARK_MODE: "true"
