@@ -1,0 +1,674 @@
+══════════════════════════════════════════════════════════════════════
+  مشروع: Ocr_Project.zip
+  التصدير: 2026-05-04 00:13:30
+  الملفات البرمجية: 17
+══════════════════════════════════════════════════════════════════════
+
+──────────────────────────────────────────────────────────────────────
+📄  Ocr_Project/README.md
+──────────────────────────────────────────────────────────────────────
+<<<<<<< HEAD
+# OCR Intelligent avec correction automatique et apprentissage
+
+Cette application Streamlit permet d'extraire du texte d'images ou de PDF via plusieurs méthodes OCR (Tesseract, EasyOCR, docTR), d'afficher et comparer les résultats, d'exporter le meilleur résultat dans un fichier Word, et d'apprendre des corrections utilisateur pour s'améliorer au fil du temps.
+
+## Fonctionnalités principales
+- **OCR multi-méthodes** : Tesseract, EasyOCR, docTR (Deep Learning)
+- **Comparaison automatique** : Affichage côte à côte des résultats et scores de confiance
+- **Export Word** : Génération d'un fichier Word avec le texte extrait et l'image
+- **Correction automatique** : Utilisation d'un modèle T5 entraîné sur vos corrections
+- **Mémoire exacte** : Si une correction existe déjà pour un document, elle est utilisée directement
+- **Apprentissage continu** : Ajoutez vos corrections, régénérez le dataset et réentraînez le modèle
+
+## Installation
+```bash
+pip install -r requirements.txt
+```
+
+## Lancer l'application
+```bash
+streamlit run frontend/app.py
+```
+
+## Pipeline d'apprentissage
+1. **Uploader une image/PDF** : L'OCR s'exécute, le meilleur résultat est exporté en Word
+2. **Corriger le Word** : Téléchargez, corrigez, puis ré-uploadez le fichier Word corrigé
+3. **Générer le dataset** :
+   ```bash
+   python generate_correction_csv.py
+   ```
+4. **Entraîner le modèle de correction** :
+   ```bash
+   python train_t5_correction.py
+   ```
+5. **Relancer l'app** : Les corrections sont désormais appliquées automatiquement
+
+## Dépendances principales
+- streamlit, opencv-python, pytesseract, easyocr, python-doctr[torch], python-docx, PyMuPDF, Pillow, torch, transformers, pandas
+
+## Structure du projet
+- `frontend/app.py` : Interface utilisateur Streamlit
+- `backend/` : Scripts OCR, correction, export, prétraitement
+- `corrected/` : Textes corrigés par l'utilisateur
+- `correction_model/` : Modèle T5 entraîné pour la correction
+- `generate_correction_csv.py` : Génère le dataset à partir des corrections
+- `train_t5_correction.py` : Entraîne le modèle de correction
+
+## Notes
+- Pour de meilleurs résultats, accumulez des corrections sur vos documents récurrents.
+- Le système privilégie toujours la correction humaine si elle existe pour un document donné.
+=======
+# Ocr_projet
+Application OCR intelligente avec apprentissage automatique et correction
+>>>>>>> 498e6f5e7d37a2f5a77903d5ee0273070c5c3083
+
+──────────────────────────────────────────────────────────────────────
+📄  Ocr_Project/backend/corrector.py
+──────────────────────────────────────────────────────────────────────
+from transformers import T5ForConditionalGeneration, T5Tokenizer
+import torch
+
+# Charger le modèle et le tokenizer une seule fois
+model = T5ForConditionalGeneration.from_pretrained('./correction_model')
+tokenizer = T5Tokenizer.from_pretrained('./correction_model')
+
+def correct_text(ocr_text):
+    input_text = "ocr: " + ocr_text
+    input_ids = tokenizer(input_text, return_tensors="pt").input_ids
+    outputs = model.generate(input_ids, max_length=256)
+    return tokenizer.decode(outputs[0], skip_special_tokens=True) 
+
+──────────────────────────────────────────────────────────────────────
+📄  Ocr_Project/backend/export.py
+──────────────────────────────────────────────────────────────────────
+from docx import Document
+from docx.shared import RGBColor
+from docx.shared import Inches
+import os
+
+def export_to_word(text_lines, confidences, output_path, image_path=None, method=None):
+    doc = Document()
+    doc.add_heading('Résultat OCR', 0)
+
+    # Si la méthode gagnante est Tesseract, on insère l'image originale
+    if method == "tesseract" and image_path is not None and os.path.exists(image_path):
+        doc.add_picture(image_path, width=Inches(5.5))
+        doc.add_paragraph("\nTexte extrait :\n")
+
+    for line, conf in zip(text_lines, confidences):
+        p = doc.add_paragraph()
+        run = p.add_run(line)
+        if conf < 85:
+            run.font.color.rgb = RGBColor(255, 255, 0)  # Jaune
+    doc.save(output_path)
+
+──────────────────────────────────────────────────────────────────────
+📄  Ocr_Project/backend/main.py
+──────────────────────────────────────────────────────────────────────
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+import warnings
+warnings.filterwarnings("ignore")
+from backend.preprocessing import preprocess_image
+from backend.ocr_tesseract import ocr_tesseract
+from backend.ocr_easyocr import ocr_easyocr
+from backend.ocr_doctr import ocr_doctr
+from backend.export import export_to_word
+from backend.corrector import correct_text
+
+def run_all_ocr_methods(image_paths):
+    results = {"tesseract": {"lines": [], "confs": []},
+               "easyocr": {"lines": [], "confs": []},
+               "doctr": {"lines": [], "confs": []}}
+
+    # Mémoire exacte : si une correction existe déjà pour la première image, on l'utilise directement
+    base_name = os.path.splitext(os.path.basename(image_paths[0]))[0]
+    corrected_path = os.path.join("corrected", base_name + "_corrige.txt")
+    if os.path.exists(corrected_path):
+        with open(corrected_path, "r", encoding="utf-8") as f:
+            corrected_lines = f.read().splitlines()
+        # On remplit les résultats avec la correction pour toutes les méthodes (pour l'affichage)
+        for method in results:
+            results[method]["lines"] = corrected_lines
+            results[method]["confs"] = [100] * len(corrected_lines)
+            results[method]["avg_conf"] = 100
+        best_method = "doctr"  # ou autre, ici arbitraire car c'est la correction qui compte
+        os.makedirs("output", exist_ok=True)
+        output_path = os.path.join("output", f"result_{best_method}.docx")
+        export_to_word(corrected_lines, [100]*len(corrected_lines), output_path, image_path=image_paths[0], method=best_method)
+        return results, best_method, output_path
+
+    # Sinon, pipeline normal OCR + correction automatique
+    for image_path in image_paths:
+        image = preprocess_image(image_path)
+        lines_tess, confs_tess = ocr_tesseract(image, return_conf=True)
+        results["tesseract"]["lines"].extend(lines_tess)
+        results["tesseract"]["confs"].extend(confs_tess)
+
+        lines_easy, confs_easy = ocr_easyocr(image_path)
+        results["easyocr"]["lines"].extend(lines_easy)
+        results["easyocr"]["confs"].extend(confs_easy)
+
+        lines_doctr, confs_doctr = ocr_doctr(image_path)
+        results["doctr"]["lines"].extend(lines_doctr)
+        results["doctr"]["confs"].extend(confs_doctr)
+
+    for method in results:
+        confs = results[method]["confs"]
+        results[method]["avg_conf"] = sum(confs) / len(confs) if confs else 0
+
+    best_method = max(results.items(), key=lambda x: x[1]["avg_conf"])[0]
+    os.makedirs("output", exist_ok=True)
+    output_path = os.path.join("output", f"result_{best_method}.docx")
+    export_to_word(results[best_method]["lines"], results[best_method]["confs"], output_path, image_path=image_paths[0], method=best_method)
+
+    # Correction automatique après OCR
+    ocr_text = "\n".join(results[best_method]["lines"])
+    corrected_text = correct_text(ocr_text)
+    results[best_method]["lines"] = corrected_text.split("\n")
+
+    return results, best_method, output_path
+
+──────────────────────────────────────────────────────────────────────
+📄  Ocr_Project/backend/model_selector.py
+──────────────────────────────────────────────────────────────────────
+from PIL import Image
+import numpy as np
+
+def choose_ocr_method(image_path):
+    image = Image.open(image_path).convert("L")
+    np_img = np.array(image)
+    std = np.std(np_img)
+
+    if std < 60:
+        return "easyocr"
+    else:
+        return "tesseract"
+    
+
+──────────────────────────────────────────────────────────────────────
+📄  Ocr_Project/backend/ocr_doctr.py
+──────────────────────────────────────────────────────────────────────
+from doctr.io import DocumentFile
+from doctr.models import ocr_predictor
+
+def ocr_doctr(image_path):
+    doc = DocumentFile.from_images(image_path)
+    model = ocr_predictor(pretrained=True)
+    result = model(doc)
+    export = result.export()
+    lines = []
+    for block in export["pages"][0]["blocks"]:
+        for line in block["lines"]:
+            line_text = " ".join([word["value"] for word in line["words"]])
+            lines.append(line_text)
+    confs = [100] * len(lines)
+    return lines, confs 
+
+──────────────────────────────────────────────────────────────────────
+📄  Ocr_Project/backend/ocr_easyocr.py
+──────────────────────────────────────────────────────────────────────
+import easyocr
+reader = easyocr.Reader(['fr'])
+
+def ocr_easyocr(path):
+    results = reader.readtext(path)
+    lines = []
+    confidences = []
+    for detection in results:
+        lines.append(detection[1])
+        confidences.append(detection[2] * 100)
+    return lines, confidences
+
+──────────────────────────────────────────────────────────────────────
+📄  Ocr_Project/backend/ocr_tesseract.py
+──────────────────────────────────────────────────────────────────────
+import os
+os.environ['TESSDATA_PREFIX'] = r'C:\Program Files\Tesseract-OCR\tessdata'
+import pytesseract
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+from pytesseract import Output
+
+def ocr_tesseract(image, return_conf=False):
+    data = pytesseract.image_to_data(image, lang='fra', config='--psm 6', output_type=Output.DICT)
+    lines = []
+    confidences = []
+    current_line = ""
+    current_conf = []
+    last_line_num = -1
+
+    for i, word in enumerate(data['text']):
+        if word.strip() == "":
+            continue
+        line_num = data['line_num'][i]
+        if line_num != last_line_num and current_line:
+            lines.append(current_line.strip())
+            confidences.append(sum(current_conf)/len(current_conf) if current_conf else 100)
+            current_line = word + " "
+            current_conf = [data['conf'][i]]
+            last_line_num = line_num
+        else:
+            current_line += word + " "
+            current_conf.append(data['conf'][i])
+            last_line_num = line_num
+    if current_line:
+        lines.append(current_line.strip())
+        confidences.append(sum(current_conf)/len(current_conf) if current_conf else 100)
+    if return_conf:
+        return lines, confidences
+    return "\n".join(lines)
+
+──────────────────────────────────────────────────────────────────────
+📄  Ocr_Project/backend/ocr_trocr.py
+──────────────────────────────────────────────────────────────────────
+from transformers import TrOCRProcessor, VisionEncoderDecoderModel
+from PIL import Image
+import torch
+
+processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-handwritten")
+model = VisionEncoderDecoderModel.from_pretrained("microsoft/trocr-base-handwritten")
+
+def ocr_trocr(path):
+    image = Image.open(path).convert("RGB")
+    pixel_values = processor(images=image, return_tensors="pt").pixel_values
+    generated_ids = model.generate(pixel_values)
+    text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+    return [text], [90]  # supposition: texte complet avec une confiance de 90%
+
+──────────────────────────────────────────────────────────────────────
+📄  Ocr_Project/backend/preprocessing.py
+──────────────────────────────────────────────────────────────────────
+import cv2
+import numpy as np
+
+def preprocess_image(path):
+    image = cv2.imread(path)
+    if image is None:
+        raise FileNotFoundError(f"Image introuvable : {path}")
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    coords = cv2.findNonZero(cv2.bitwise_not(gray))
+    angle = cv2.minAreaRect(coords)[-1]
+    angle = -(90 + angle) if angle < -45 else -angle
+    (h, w) = gray.shape[:2]
+    M = cv2.getRotationMatrix2D((w // 2, h // 2), angle, 1.0)
+    gray = cv2.warpAffine(gray, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+    binary = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                   cv2.THRESH_BINARY, 11, 2)
+    binary = cv2.medianBlur(binary, 3)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+    return cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
+
+──────────────────────────────────────────────────────────────────────
+📄  Ocr_Project/corrected/exemple1_corrige.txt
+──────────────────────────────────────────────────────────────────────
+Résultat OCR
+LOGO
+Facture No
+Ville, le .....
+Nom de l'entreprise
+Adresse
+Ville et Code Postal
+Numéro de tèléphone
+Email
+Nom du client
+Adresse
+Numéro de téléphone
+Email
+Description
+Prix
+Unité Quantité Montant HT
+unitaire
+HT
+Détailler prestation ici
+€
+heures
+€
+€
+heures
+€
+€
+heures
+€
+Total HT
+€
+TVA ..%
+: €
+Modalités et conditions de
+Total TTC
+€
+règlement :
+Signature :
+Date d'échéance : 1.....
+Mon entreprise - Société au capital de euros
+N Siret:
+
+──────────────────────────────────────────────────────────────────────
+📄  Ocr_Project/corrected/facture1_corrige.txt
+──────────────────────────────────────────────────────────────────────
+Résultat OCR
+LOGO
+Facture No
+Ville, le .....
+Nom de l'entreprise
+Adresse
+Ville et Code Postal
+Numéro de tèléphone
+Email
+Nom du client
+Adresse
+Numéro de téléphone
+Email
+Description
+Prix
+Unité Quantité Montant HT
+unitaire
+HT
+Détailler prestation ici
+€
+heures
+€
+€
+heures
+€
+€
+heures
+€
+Total HT
+€
+TVA ..%
+: €
+Modalités et conditions de
+Total TTC
+€
+règlement :
+Signature :
+Date d'échéance : 1.....
+Mon entreprise - Société au capital de euros
+N Siret:
+
+──────────────────────────────────────────────────────────────────────
+📄  Ocr_Project/frontend/app.py
+──────────────────────────────────────────────────────────────────────
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+import warnings
+warnings.filterwarnings("ignore")
+import streamlit as st
+import os, sys
+import fitz
+from PIL import Image
+from streamlit.components.v1 import html
+import docx
+
+# 🔁 Ajout du chemin backend
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from backend.main import run_all_ocr_methods, export_to_word
+
+st.set_page_config(page_title="OCR Intelligent", layout="wide")
+st.image("frontend/safran_logo.png", width=250)
+with open("frontend/custom_style.html") as f:
+    html(f.read(), height=0)
+st.markdown("<h1> OCR Intelligent </h1>", unsafe_allow_html=True)
+
+uploaded_file = st.file_uploader(" Téléversez une image ou un PDF", type=["png", "jpg", "jpeg", "pdf"])
+
+if uploaded_file:
+    os.makedirs("images", exist_ok=True)
+    os.makedirs("output", exist_ok=True)
+    file_path = os.path.join("images", uploaded_file.name)
+
+    if uploaded_file.type == "application/pdf":
+        doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
+        st.warning(f"PDF détecté, traitement de {len(doc)} pages.")
+        image_paths = []
+        for i, page in enumerate(doc):
+            pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
+            image_path = os.path.join("images", f"page_{i+1}.png")
+            pix.save(image_path)
+            image_paths.append(image_path)
+    else:
+        with open(file_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+        image_paths = [file_path]
+
+    # --- OCR multiple
+    with st.spinner(" Analyse en cours, merci de patienter..."):
+        results, best_method, word_file = run_all_ocr_methods(image_paths)
+    st.success(" Analyse terminée !")
+
+    # --- Affichage
+    col_img, col_text = st.columns([1, 3])
+    with col_img:
+        st.image(image_paths[0], caption=" Image analysée")
+
+    with col_text:
+        cols = st.columns(len(results))
+        for i, (method, data) in enumerate(results.items()):
+            with cols[i]:
+                st.markdown(f"###  {method.upper()} ({data['avg_conf']:.2f}%)")
+                st.text_area("Texte extrait", "\n".join(data['lines']), height=250, key=f"text_{method}")
+
+    st.success(f" Meilleure méthode : {best_method.upper()}")
+    with open(word_file, "rb") as f:
+        st.download_button(" Télécharger le Word", f, file_name=os.path.basename(word_file))
+
+# --- Upload d'un Word corrigé ---
+st.markdown("---")
+st.markdown("### Uploader un Word corrigé")
+corrected_file = st.file_uploader("Déposez ici votre Word corrigé", type=["docx"], key="corrected")
+if corrected_file is not None:
+    os.makedirs("corrected", exist_ok=True)
+    # On extrait le texte du Word corrigé
+    doc = docx.Document(corrected_file)
+    corrected_text = "\n".join([p.text for p in doc.paragraphs])
+    # On essaie de retrouver le nom du fichier d'origine (si possible)
+    base_name = uploaded_file.name if uploaded_file else "unknown"
+    txt_name = os.path.splitext(base_name)[0] + "_corrige.txt"
+    corrected_path = os.path.join("corrected", txt_name)
+    with open(corrected_path, "w", encoding="utf-8") as f:
+        f.write(corrected_text)
+    st.success(f"Texte corrigé enregistré dans {corrected_path}")
+
+──────────────────────────────────────────────────────────────────────
+📄  Ocr_Project/frontend/custom_style.html
+──────────────────────────────────────────────────────────────────────
+<style>
+/* Police + couleurs modernes */
+body, .stApp {
+    background-color: #0d1117;
+    color: #c9d1d9;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+/* Titre principal */
+h1 {
+    text-align: center;
+    color: #58a6ff;
+    margin-bottom: 2rem;
+}
+
+/* Bouton Upload */
+section[data-testid="stFileUploader"] > div {
+    background-color: #161b22;
+    padding: 1rem;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    margin-bottom: 2rem;
+}
+
+/* Message succès */
+.stAlert-success {
+    background-color: #1f6feb;
+    color: white;
+    font-weight: bold;
+}
+
+/* Zone de texte */
+textarea {
+    background-color: #161b22 !important;
+    color: #c9d1d9 !important;
+    border: 1px solid #30363d !important;
+    font-family: 'Courier New', monospace;
+}
+
+/* Bouton download */
+section [data-testid="stDownloadButton"] button {
+    background-color: #238636;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+section [data-testid="stDownloadButton"] button:hover {
+    background-color: #2ea043;
+}
+
+/* Image chargée */
+img {
+    border-radius: 8px;
+    border: 1px solid #30363d;
+    margin-bottom: 1rem;
+}
+</style>
+
+──────────────────────────────────────────────────────────────────────
+📄  Ocr_Project/generate_correction_csv.py
+──────────────────────────────────────────────────────────────────────
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+import glob
+import pandas as pd
+from backend.ocr_tesseract import ocr_tesseract
+from backend.ocr_easyocr import ocr_easyocr
+from backend.ocr_doctr import ocr_doctr
+from backend.preprocessing import preprocess_image
+
+corrected_dir = "corrected"
+images_dir = "images"
+csv_path = "corrections.csv"
+
+data = []
+
+fichiers_corriges = glob.glob(os.path.join(corrected_dir, "*.txt"))
+
+for txt_file in fichiers_corriges:
+    base_name = os.path.basename(txt_file).replace("_corrige.txt", "")
+    # On cherche l'image d'origine
+    possible_images = glob.glob(os.path.join(images_dir, base_name + ".*"))
+    if not possible_images:
+        continue
+    image_path = possible_images[0]
+    # OCR brut (ici Tesseract, tu peux changer pour EasyOCR ou docTR)
+    image = preprocess_image(image_path)
+    ocr_lines, _ = ocr_tesseract(image, return_conf=True)
+    ocr_text = "\n".join(ocr_lines)
+    # Texte corrigé
+    with open(txt_file, "r", encoding="utf-8") as f:
+        corrige_text = f.read()
+    data.append({"ocr": ocr_text, "corrige": corrige_text})
+
+# Sauvegarde en CSV
+if data:
+    df = pd.DataFrame(data)
+    df.to_csv(csv_path, index=False, encoding="utf-8")
+else:
+    pass
+
+──────────────────────────────────────────────────────────────────────
+📄  Ocr_Project/requirements.txt
+──────────────────────────────────────────────────────────────────────
+streamlit>=1.32.0
+opencv-python>=4.5.0
+pytesseract>=0.3.10
+easyocr
+python-doctr[torch]>=0.12.0
+python-docx>=0.8.11
+PyMuPDF>=1.18.19
+Pillow>=9.2.0
+torch>=2.0.0
+torchvision>=0.15.0
+transformers>=4.40.0
+accelerate>=0.24.0
+pandas>=2.0.0
+scikit-learn>=1.0.0
+h5py>=3.1.0
+scipy>=1.4.0
+shapely>=2.1.0
+langdetect>=1.0.9
+validators>=0.18.0
+rapidfuzz>=3.0.0
+anyascii>=0.3.2
+onnx>=1.12.0
+
+──────────────────────────────────────────────────────────────────────
+📄  Ocr_Project/train_t5_correction.py
+──────────────────────────────────────────────────────────────────────
+import pandas as pd
+from transformers import T5ForConditionalGeneration, T5Tokenizer, Seq2SeqTrainer, Seq2SeqTrainingArguments
+from torch.utils.data import Dataset
+import torch
+
+# 1. Charger le dataset
+print('Chargement du dataset...')
+df = pd.read_csv('corrections.csv')
+
+# 2. Préparer les entrées pour T5
+inputs = ["ocr: " + str(o) for o in df['ocr']]
+targets = [str(c) for c in df['corrige']]
+
+# 3. Tokenizer et modèle
+print('Chargement du modèle et du tokenizer...')
+tokenizer = T5Tokenizer.from_pretrained('t5-small')
+model = T5ForConditionalGeneration.from_pretrained('t5-small')
+
+# 4. Dataset PyTorch
+class CorrectionDataset(Dataset):
+    def __init__(self, inputs, targets, tokenizer, max_length=256):
+        self.inputs = inputs
+        self.targets = targets
+        self.tokenizer = tokenizer
+        self.max_length = max_length
+
+    def __len__(self):
+        return len(self.inputs)
+
+    def __getitem__(self, idx):
+        input_enc = self.tokenizer(self.inputs[idx], truncation=True, padding='max_length', max_length=self.max_length, return_tensors="pt")
+        target_enc = self.tokenizer(self.targets[idx], truncation=True, padding='max_length', max_length=self.max_length, return_tensors="pt")
+        return {
+            'input_ids': input_enc['input_ids'].squeeze(),
+            'attention_mask': input_enc['attention_mask'].squeeze(),
+            'labels': target_enc['input_ids'].squeeze()
+        }
+
+print('Préparation du dataset...')
+train_dataset = CorrectionDataset(inputs, targets, tokenizer)
+
+# 5. Entraînement
+print('Début de l\'entraînement...')
+training_args = Seq2SeqTrainingArguments(
+    output_dir='./correction_model',
+    num_train_epochs=5,
+    per_device_train_batch_size=4,
+    save_steps=1000,
+    save_total_limit=2,
+    logging_steps=100
+)
+
+trainer = Seq2SeqTrainer(
+    model=model,
+    args=training_args,
+    train_dataset=train_dataset
+)
+
+trainer.train()
+model.save_pretrained('./correction_model')
+tokenizer.save_pretrained('./correction_model')
+print("Modèle de correction entraîné et sauvegardé dans ./correction_model") 

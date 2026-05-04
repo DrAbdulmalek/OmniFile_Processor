@@ -1,0 +1,2418 @@
+══════════════════════════════════════════════════════════════════════
+  مشروع: Urdu-Arabic-Text-Recognition-AI-Tool.zip
+  التصدير: 2026-05-04 00:13:30
+  الملفات البرمجية: 15
+══════════════════════════════════════════════════════════════════════
+
+──────────────────────────────────────────────────────────────────────
+📄  Urdu-Arabic-Text-Recognition-AI-Tool/Glyphs.txt
+──────────────────────────────────────────────────────────────────────
+ا
+آ
+إ
+ب
+پ
+ت
+ٹ
+ث
+ج
+چ
+ح
+خ
+د
+ڈ
+ذ
+ر
+ڑ
+ز
+ژ
+س
+ش
+ص
+ض
+ط
+ظ
+ع
+غ
+ف
+ق
+ک
+ك
+گ
+ل
+م
+ن
+ں
+و
+ہ
+ھ
+ء
+ی
+ے
+ئ
+ۓ
+ي
+ې
+ى
+ٿ
+ڐ
+ڙ
+أ
+ؤ
+ۀ
+ۃ
+ة
+ه
+ۂ
+ﮥ
+ٴ
+َ
+ً
+ُ
+ِ
+ٍ
+ْ
+ٗ
+ٓ
+ٰ
+ٖ
+٘
+ٔ
+ّ
+ؔ
+۰
+۱
+۲
+۳
+۴
+۵
+۶
+۷
+۸
+۹
+٪
+%
++
+=
+٤
+٫
+,
+-
+_
+ـ
+٥
+٬
+"
+'
+/
+\
+>
+<
+؍
+،
+؛
+:
+؟
+{
+}
+[
+]
+(
+)
+.
+‘
+’
+٠
+۔
+“
+”
+!
+*
+A
+B
+C
+D
+E
+F
+G
+H
+I
+J
+K
+L
+M
+N
+O
+P
+Q
+R
+S
+T
+U
+V
+W
+X
+Y
+Z
+a
+b
+c
+d
+e
+f
+g
+h
+i
+j
+k
+l
+m
+n
+o
+p
+q
+r
+s
+t
+u
+v
+w
+x
+y
+z
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+
+──────────────────────────────────────────────────────────────────────
+📄  Urdu-Arabic-Text-Recognition-AI-Tool/README.md
+──────────────────────────────────────────────────────────────────────
+# Urdu/Arabic - Text Recognition AI Tool
+
+UA-TRAIT is a deep learning–based neural network OCR tool built specifically for recognizing **Urdu & Arabic** scripts.
+It is built using a modern architecture: **HRNet** for feature extraction, **DBiLSTM** for sequence modeling, and **CTC Loss** for transcription.
+
+---
+
+## Requirements
+
+- Python 3.11.5
+- [`uv`](https://github.com/astral-sh/uv) for dependency and environment management
+- PyTorch, torchvision, lmdb, numpy, and related libraries
+
+---
+
+## Dataset
+
+UA-TRAIT is trained on a hybrid Urdu + Arabic dataset:
+
+| Language | Source     | Fonts/Samples |
+|----------|------------|---------------|
+| Arabic   | Synthetic  | 18 fonts      |
+| Urdu     | Real-world | UTRSet Real   |
+
+### Setup Dataset
+
+```bash
+unzip ddataset.zip -d UA-TRAIT/
+````
+
+Expected structure:
+
+```
+UA-TRAIT/
+└── dataset/
+    ├── train/
+    │   ├── test/
+    │   └── gt.txt
+    └── test/
+        ├── test/
+        └── gt.txt
+```
+
+---
+### Install Dependencies
+
+1.  Install `uv`:
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+On `ArchLinux`:
+```bash
+$ sudo pacman -S uv
+```
+2. Inside `UA-TRAIT` dir run this cmd:
+
+```bash
+uv sync
+```
+## Creating LMDB Datasets
+
+### For Training
+
+```bash
+uv run create_lmdb_dataset.py \
+  --inputPath dataset/train/ \
+  --gtFile dataset/train/gt.txt \
+  --outputPath ./lmdb_train
+```
+
+### For Testing
+
+```bash
+uv run create_lmdb_dataset.py \
+  --inputPath dataset/test/ \
+  --gtFile dataset/test/gt.txt \
+  --outputPath ./lmdb_test
+```
+
+---
+
+## Training the Model
+
+```bash
+uv run train.py \
+  --train_data ./lmdb_train \
+  --valid_data ./lmdb_test \
+  --FeatureExtraction HRNet \
+  --SequenceModeling DBiLSTM \
+  --Prediction CTC \
+  --exp_name UA-TRAIT \
+  --num_epochs 100 \
+  --batch_size 8
+```
+
+---
+
+## Model Architecture
+
+| Component         | Description                                      |
+| ----------------- | ------------------------------------------------ |
+| Feature Extractor | HRNet (High-Resolution Network)                  |
+| Sequence Model    | DBiLSTM (Bidirectional LSTM ×2)                  |
+| Prediction        | CTC Loss (Connectionist Temporal Classification) |
+
+---
+
+
+## References
+
+* Python EOL: [https://devguide.python.org/versions/](https://devguide.python.org/versions/)
+* HRNet Paper: [https://arxiv.org/abs/1904.04514](https://arxiv.org/abs/1904.04514)
+* CTC Explanation: [https://distill.pub/2017/ctc/](https://distill.pub/2017/ctc/)
+* UTRNet Repo: [https://github.com/abdur75648/UTRNet-High-Resolution-Urdu-Text-Recognition.git](https://github.com/abdur75648/UTRNet-High-Resolution-Urdu-Text-Recognition.git)
+* uv Packaging Tool: [https://github.com/astral-sh/uv](https://github.com/astral-sh/uv)
+
+---
+
+## Project Motivation & Modernization
+
+This project is reimplementation of [**UTRNet**](https://github.com/abdur75648/UTRNet-High-Resolution-Urdu-Text-Recognition.git), an early Urdu OCR tool built in Python 3.7 with older PyTorch dependencies.
+
+### Why a Migration Was Needed?
+
+- **Python 3.7 reached EOL** on *June 27, 2023* → [Reference](https://devguide.python.org/versions/)
+- The original code was incompatible with Python 3.11+ and recent PyTorch versions
+- Training crashed due to:
+  - In-place operations affecting `autograd`
+  - Unicode errors from unregistered characters
+  - Dependency conflicts with updated libraries
+
+### Migration Highlights
+
+- Migrated from **Python 3.7 → 3.11.5**
+- Upgraded all major dependencies (Torch, torchvision, etc.)
+- Patched **Unicode charset issues**
+- Fixed in-place ops causing autograd failures
+- Integrated [`uv`](https://github.com/astral-sh/uv) for faster environment syncing
+- Refactored dataset processing and improved training stability
+
+---
+
+## Unicode Crash Fixes
+
+Some characters in the original dataset triggered runtime crashes during training:
+
+- `U+0649` — Arabic Alef Maksura
+- `U+06CC` — Farsi Yeh / Bari Yeh (Urdu)
+- `U+FE87` — Alef with Hamza Below (Isolated Form)
+
+These characters were missing from the original charset
+
+──────────────────────────────────────────────────────────────────────
+📄  Urdu-Arabic-Text-Recognition-AI-Tool/create_lmdb_dataset.py
+──────────────────────────────────────────────────────────────────────
+import os
+
+import cv2
+import fire
+import lmdb
+import numpy as np
+
+
+def checkImageIsValid(imageBin):
+    if imageBin is None:
+        return False
+    imageBuf = np.frombuffer(imageBin, dtype=np.uint8)
+    img = cv2.imdecode(imageBuf, cv2.IMREAD_GRAYSCALE)
+    imgH, imgW = img.shape[0], img.shape[1]
+    if imgH * imgW == 0:
+        return False
+    return True
+
+
+def writeCache(env, cache):
+    with env.begin(write=True) as txn:
+        for k, v in cache.items():
+            txn.put(k, v)
+
+
+def createDataset(inputPath, gtFile, outputPath, checkValid=True):
+    """
+    Create LMDB dataset for training and evaluation.
+    ARGS:
+        inputPath  : input folder path where starts imagePath
+        outputPath : LMDB output path
+        gtFile     : list of image path and label
+        checkValid : if true, check the validity of every image
+    """
+    os.makedirs(outputPath, exist_ok=True)
+    env = lmdb.open(outputPath, map_size=1073741824)
+    cache = {}
+    cnt = 1
+
+    with open(gtFile, "r", encoding="utf-8") as data:
+        datalist = data.readlines()
+
+    nSamples = len(datalist)
+    for i in range(nSamples):
+        ########################################### Try/Except Added By Abdur ###########################################
+        try:
+            imagePath, label = datalist[i].strip("\n").split("\t")
+        except:
+            # print (datalist[i])
+            continue
+        imagePath = os.path.join(inputPath, imagePath)
+
+        # # only use alphanumeric data
+        # if re.search('[^a-zA-Z0-9]', label):
+        #     continue
+
+        if not os.path.exists(imagePath):
+            print("%s does not exist" % imagePath)
+            continue
+        with open(imagePath, "rb") as f:
+            imageBin = f.read()
+        if checkValid:
+            try:
+                if not checkImageIsValid(imageBin):
+                    print("%s is not a valid image" % imagePath)
+                    continue
+            except Exception as i:
+                print("error occured", i)
+                with open(outputPath + "/error_image_log.txt", "a") as log:
+                    log.write("%s-th image data occured error\n" % str(i))
+                continue
+
+        imageKey = "image-%09d".encode() % cnt
+        labelKey = "label-%09d".encode() % cnt
+        cache[imageKey] = imageBin
+        cache[labelKey] = label.encode()
+
+        if cnt % 1000 == 0:
+            writeCache(env, cache)
+            cache = {}
+            # print('Written %d / %d' % (cnt, nSamples))
+        cnt += 1
+    nSamples = cnt - 1
+    cache["num-samples".encode()] = str(nSamples).encode()
+    writeCache(env, cache)
+    print("Created dataset with %d samples" % nSamples)
+
+
+if __name__ == "__main__":
+    fire.Fire(createDataset)
+
+──────────────────────────────────────────────────────────────────────
+📄  Urdu-Arabic-Text-Recognition-AI-Tool/dataset.py
+──────────────────────────────────────────────────────────────────────
+import os
+import sys
+import re
+import six
+import math
+import lmdb
+import torch
+import random
+import numpy as np
+from PIL import Image
+import torchvision.transforms as T
+# from torch._utils import _accumulate
+from itertools import accumulate
+from torch.utils.data import Dataset, ConcatDataset, Subset
+
+class Batch_Balanced_Dataset(object):
+
+    def __init__(self, opt, rand_aug = False):
+        """
+        Modulate the data ratio in the batch.
+        For example, when select_data is "MJ-ST" and batch_ratio is "0.5-0.5",
+        the 50% of the batch is filled with MJ and the other 50% of the batch is filled with ST.
+        """
+        log = open(f'./saved_models/{opt.exp_name}/log_dataset.txt', 'a',encoding="utf-8")
+        dashed_line = '-' * 80
+        print(dashed_line)
+        log.write(dashed_line + '\n')
+        print(f'dataset_root: {opt.train_data}\nopt.select_data: {opt.select_data}\nopt.batch_ratio: {opt.batch_ratio}')
+        log.write(f'dataset_root: {opt.train_data}\nopt.select_data: {opt.select_data}\nopt.batch_ratio: {opt.batch_ratio}\n')
+        assert len(opt.select_data) == len(opt.batch_ratio)
+
+        _AlignCollate = AlignCollate(imgH=opt.imgH, imgW=opt.imgW, keep_ratio_with_pad=opt.PAD)
+        self.data_loader_list = []
+        self.dataloader_iter_list = []
+        batch_size_list = []
+        Total_batch_size = 0
+        for selected_d, batch_ratio_d in zip(opt.select_data, opt.batch_ratio):
+            _batch_size = max(round(opt.batch_size * float(batch_ratio_d)), 1)
+            print(dashed_line)
+            log.write(dashed_line + '\n')
+            _dataset, _dataset_log = hierarchical_dataset(root=opt.train_data, opt=opt, select_data=[selected_d], rand_aug=rand_aug)
+            total_number_dataset = len(_dataset)
+            log.write(_dataset_log)
+
+            """
+            The total number of data can be modified with opt.total_data_usage_ratio.
+            ex) opt.total_data_usage_ratio = 1 indicates 100% usage, and 0.2 indicates 20% usage.
+            See 4.2 section in our paper.
+            """
+            number_dataset = int(total_number_dataset * float(opt.total_data_usage_ratio))
+            dataset_split = [number_dataset, total_number_dataset - number_dataset]
+            indices = range(total_number_dataset)
+            _dataset, _ = [Subset(_dataset, indices[offset - length:offset])
+                           for offset, length in zip(accumulate(dataset_split), dataset_split)]
+            selected_d_log = f'num total samples of {selected_d}: {total_number_dataset} x {opt.total_data_usage_ratio} (total_data_usage_ratio) = {len(_dataset)}\n'
+            selected_d_log += f'num samples of {selected_d} per batch: {opt.batch_size} x {float(batch_ratio_d)} (batch_ratio) = {_batch_size}'
+            print(selected_d_log)
+            log.write(selected_d_log + '\n')
+            batch_size_list.append(str(_batch_size))
+            Total_batch_size += _batch_size
+
+            _data_loader = torch.utils.data.DataLoader(
+                _dataset, batch_size=_batch_size,
+                shuffle=True,
+                num_workers=0,
+                collate_fn=_AlignCollate, pin_memory=True)
+            self.data_loader_list.append(_data_loader)
+            self.dataloader_iter_list.append(iter(_data_loader))
+
+        Total_batch_size_log = f'{dashed_line}\n'
+        batch_size_sum = '+'.join(batch_size_list)
+        Total_batch_size_log += f'Total_batch_size: {batch_size_sum} = {Total_batch_size}\n'
+        Total_batch_size_log += f'{dashed_line}'
+        opt.batch_size = Total_batch_size
+
+        print(Total_batch_size_log)
+        log.write(Total_batch_size_log + '\n')
+        log.close()
+
+    def get_batch(self):
+        balanced_batch_images = []
+        balanced_batch_texts = []
+
+        for i, data_loader_iter in enumerate(self.dataloader_iter_list):
+            try:
+                image, text = data_loader_iter.next()
+                balanced_batch_images.append(image)
+                balanced_batch_texts += text
+            except StopIteration:
+                self.dataloader_iter_list[i] = iter(self.data_loader_list[i])
+                image, text = self.dataloader_iter_list[i].next()
+                balanced_batch_images.append(image)
+                balanced_batch_texts += text
+            except ValueError:
+                pass
+
+        balanced_batch_images = torch.cat(balanced_batch_images, 0)
+
+        return balanced_batch_images, balanced_batch_texts
+
+
+def hierarchical_dataset(root, opt, select_data='/', rand_aug = False):
+    """ select_data='/' contains all sub-directory of root directory """
+    dataset_list = []
+    dataset_log = f'dataset_root:    {root}\t dataset: {select_data[0]}'
+    # print(dataset_log)
+    dataset_log += '\n'
+    for dirpath, dirnames, filenames in os.walk(root+'/'):
+        if not dirnames:
+            select_flag = False
+            for selected_d in select_data:
+                if selected_d in dirpath:
+                    select_flag = True
+                    break
+
+            if select_flag:
+                dataset = LmdbDataset(dirpath, opt, rand_aug=rand_aug)
+                sub_dataset_log = f'sub-directory:\t/{os.path.relpath(dirpath, root)}\t num samples: {len(dataset)}'
+                # print(sub_dataset_log)
+                dataset_log += f'{sub_dataset_log}\n'
+                dataset_list.append(dataset)
+
+    concatenated_dataset = ConcatDataset(dataset_list)
+
+    return concatenated_dataset, dataset_log
+
+
+class LmdbDataset(Dataset):
+    def __init__(self, root, opt,rand_aug=False, transform=None):
+        self.root = root
+        self.opt = opt
+        self.rand_aug = rand_aug
+        self.transform = transform
+        self.env = lmdb.open(root, max_readers=32, readonly=True, lock=False, readahead=False, meminit=False)
+        if not self.env:
+            print('cannot create lmdb from %s' % (root))
+            sys.exit(0)
+
+        with self.env.begin(write=False) as txn:
+            nSamples = int(txn.get('num-samples'.encode()))
+            self.nSamples = nSamples
+            self.filtered_index_list = []
+            for index in range(self.nSamples):
+                index += 1  # lmdb starts with 1
+                label_key = 'label-%09d'.encode() % index
+                label = txn.get(label_key).decode('utf-8')
+
+                if len(label) > self.opt.batch_max_length:
+                    # print(f'The length of the label is longer than max_length: length {len(label)}, {label} in dataset {self.root}')
+                    continue
+
+                # By default, images containing characters which are not in opt.character are filtered.
+                # You can add [UNK] token to `opt.character` in utils.py instead of this filtering
+                out_of_char = f'[^{self.opt.character}]'
+                if re.search(out_of_char, label):
+                    print ("This string contains a character not part of our dictionnary")
+                    continue
+
+                self.filtered_index_list.append(index)
+
+                self.nSamples = len(self.filtered_index_list)
+        if self.transform is None:
+            self.transform = []
+        if self.rand_aug:
+            from modules.augmentation import rand_augment_transform,salt_and_pepper_noise, random_border_crop, random_resize
+            self.transform.append(rand_augment_transform())
+            self.transform.append(T.ColorJitter(brightness=0.25, contrast=0.25, saturation=0.25, hue=0.25))
+            if random.random()<0.25:
+                self.transform.append(lambda img: salt_and_pepper_noise(img))
+            if random.random()<0.25:
+                self.transform.append(lambda img: random_border_crop(img))
+            self.transform.append(T.RandomRotation(5))
+            if random.random()<0.25:
+                self.transform.append(lambda img: random_resize(img))
+            self.transform = T.Compose(self.transform)
+
+    def __len__(self):
+        return self.nSamples
+
+    def __getitem__(self, index):
+        assert index <= len(self), 'index range error'
+        index = self.filtered_index_list[index]
+
+        with self.env.begin(write=False) as txn:
+            label_key = 'label-%09d'.encode() % index
+            label = txn.get(label_key).decode('utf-8')
+            img_key = 'image-%09d'.encode() % index
+            imgbuf = txn.get(img_key)
+
+            buf = six.BytesIO()
+            buf.write(imgbuf)
+            buf.seek(0)
+            try:
+                if self.opt.rgb:
+                    img1 = Image.open(buf).convert('RGB')  # for color image
+                    img = img1.transpose(Image.FLIP_LEFT_RIGHT)
+                else:
+                    img1 = Image.open(buf).convert('L')
+                    img = img1.transpose(Image.FLIP_LEFT_RIGHT)
+
+            except IOError:
+                print(f'Corrupted image for {index}')
+                # make dummy image and dummy label for corrupted image.
+                if self.opt.rgb:
+                    img = Image.new('RGB', (self.opt.imgW, self.opt.imgH))
+                    img = img.transpose(Image.FLIP_LEFT_RIGHT)
+                else:
+                    img = Image.new('L', (self.opt.imgW, self.opt.imgH))
+                    img = img.transpose(Image.FLIP_LEFT_RIGHT)
+                label = '[dummy_label]'
+
+            # We only train and evaluate on alphanumerics (or pre-defined character set in train.py)
+            out_of_char = f'[^{self.opt.character}]'
+            label = re.sub(out_of_char, '', label)
+
+            if self.transform:
+                img = self.transform(img)
+
+        return (img, label)
+
+class ResizeNormalize(object):
+
+    def __init__(self, size, interpolation=Image.BICUBIC):
+        self.size = size
+        self.interpolation = interpolation
+        self.toTensor = T.ToTensor()
+
+    def __call__(self, img):
+        img = img.resize(self.size, self.interpolation)
+        img = self.toTensor(img)
+        img.sub_(0.5).div_(0.5)
+        return img
+
+
+class NormalizePAD(object):
+
+    def __init__(self, max_size, PAD_type='right'):
+        self.toTensor = T.ToTensor()
+        self.max_size = max_size
+        self.max_width_half = math.floor(max_size[2] / 2)
+        self.PAD_type = PAD_type
+
+    def __call__(self, img):
+        img = self.toTensor(img)
+        img.sub_(0.5).div_(0.5)
+        c, h, w = img.size()
+        Pad_img = torch.FloatTensor(*self.max_size).fill_(0)
+        Pad_img[:, :, :w] = img  # right pad
+        if self.max_size[2] != w:  # add border Pad
+            Pad_img[:, :, w:] = img[:, :, w - 1].unsqueeze(2).expand(c, h, self.max_size[2] - w)
+
+        return Pad_img
+
+
+class AlignCollate(object):
+
+    def __init__(self, imgH=32, imgW=100, keep_ratio_with_pad=True):
+        self.imgH = imgH
+        self.imgW = imgW
+        self.keep_ratio_with_pad = keep_ratio_with_pad
+
+    def __call__(self, batch):
+        batch = filter(lambda x: x is not None, batch)
+        images, labels = zip(*batch)
+
+        if self.keep_ratio_with_pad:  # same concept with 'Rosetta' paper
+            resized_max_w = self.imgW
+            input_channel = 3 if images[0].mode == 'RGB' else 1
+            transform = NormalizePAD((input_channel, self.imgH, resized_max_w))
+
+            resized_images = []
+            for image in images:
+                w, h = image.size
+                ratio = w / float(h)
+                if math.ceil(self.imgH * ratio) > self.imgW:
+                    resized_w = self.imgW
+                else:
+                    resized_w = math.ceil(self.imgH * ratio)
+
+                resized_image = image.resize((resized_w, self.imgH), Image.BICUBIC)
+                resized_images.append(transform(resized_image))
+                # resized_image.save('./image_test/%d_test.jpg' % w)
+
+            image_tensors = torch.cat([t.unsqueeze(0) for t in resized_images], 0)
+
+        else:
+            transform = ResizeNormalize((self.imgW, self.imgH))
+            image_tensors = [transform(image) for image in images]
+            image_tensors = torch.cat([t.unsqueeze(0) for t in image_tensors], 0)
+
+        return image_tensors, labels
+
+def tensor2im(image_tensor, imtype=np.uint8):
+    image_numpy = image_tensor.cpu().float().numpy()
+    if image_numpy.shape[0] == 1:
+        image_numpy = np.tile(image_numpy, (3, 1, 1))
+    image_numpy = (np.transpose(image_numpy, (1, 2, 0)) + 1) / 2.0 * 255.0
+    return image_numpy.astype(imtype)
+
+
+def save_image(image_numpy, image_path):
+    image_pil = Image.fromarray(image_numpy)
+    image_pil.save(image_path)
+
+──────────────────────────────────────────────────────────────────────
+📄  Urdu-Arabic-Text-Recognition-AI-Tool/model.py
+──────────────────────────────────────────────────────────────────────
+from modules.feature_extraction import HRNet_FeatureExtractor
+from modules.sequence_modeling import BidirectionalLSTM, MDLSTM
+from modules.dropout_layer import dropout_layer
+import torch.nn as nn
+
+
+class Model(nn.Module):
+
+    def __init__(self, opt):
+        super(Model, self).__init__()
+        self.opt = opt
+        self.stages = {'Feat': opt.FeatureExtraction,
+                       'Seq': opt.SequenceModeling,
+                       'Pred': opt.Prediction}
+
+        """ FeatureExtraction """
+        if opt.FeatureExtraction == 'HRNet':
+            self.FeatureExtraction = HRNet_FeatureExtractor(opt.input_channel, opt.output_channel)
+        else:
+            raise Exception('No FeatureExtraction module specified')
+        self.FeatureExtraction_output = opt.output_channel
+        self.AdaptiveAvgPool = nn.AdaptiveAvgPool2d((None, 1)) # Transform final (imgH/16-1) -> 1
+        
+        """
+        Temporal Dropout
+        """
+        self.dropout1 = dropout_layer(opt.device)
+        self.dropout2 = dropout_layer(opt.device)
+        self.dropout3 = dropout_layer(opt.device)
+        self.dropout4 = dropout_layer(opt.device)
+        self.dropout5 = dropout_layer(opt.device)
+
+        """ Sequence modeling"""
+        if opt.SequenceModeling == 'DBiLSTM':
+            self.SequenceModeling = nn.Sequential(
+                BidirectionalLSTM(self.FeatureExtraction_output, opt.hidden_size, opt.hidden_size),
+                BidirectionalLSTM(opt.hidden_size, opt.hidden_size, opt.hidden_size))
+        elif opt.SequenceModeling == 'MDLSTM':
+            self.SequenceModeling = MDLSTM(self.FeatureExtraction_output, opt.hidden_size, opt.hidden_size)
+        else:
+            raise Exception('No Sequence Modeling module specified')
+        self.SequenceModeling_output = opt.hidden_size
+
+        """ Prediction """
+        if opt.Prediction == 'CTC':
+            self.Prediction = nn.Linear(self.SequenceModeling_output, opt.num_class)
+        else:
+            raise Exception('Prediction is neither CTC or Attn')
+
+    def forward(self, input, text=None, is_train=True):
+        """ Feature extraction stage """
+        visual_feature = self.FeatureExtraction(input)
+        # print(visual_feature.shape) # [32, 32, 32, 400] #HRNet, [32, 512, 32, 400] #UNet
+        visual_feature = self.AdaptiveAvgPool(visual_feature.permute(0, 3, 1, 2))  # [b, c, h, w] -> [b, w, c, h]
+        # print(visual_feature.shape) # [32, 400, 32, 1] #HRNet, [32, 400, 512, 1] #UNet
+        visual_feature = visual_feature.squeeze(3)
+        # print(visual_feature.shape) # [32, 400, 32] #HRNet, [32, 400, 512] #UNet
+
+        """ Temporal Dropout + Sequence modeling stage """
+        # contextual_feature = self.SequenceModeling(visual_feature) ##### Without temporal dropout
+        if (self.training):
+            visual_feature_after_dropout1 = self.dropout1(visual_feature)
+            contextual_feature = self.SequenceModeling(visual_feature_after_dropout1)
+        else :
+            visual_feature_after_dropout1 = self.dropout1(visual_feature)
+            visual_feature_after_dropout2 = self.dropout2(visual_feature)
+            visual_feature_after_dropout3 = self.dropout3(visual_feature)
+            visual_feature_after_dropout4 = self.dropout4(visual_feature)
+            visual_feature_after_dropout5 = self.dropout5(visual_feature)
+            contextual_feature1 = self.SequenceModeling(visual_feature_after_dropout1)
+            contextual_feature2 = self.SequenceModeling(visual_feature_after_dropout2)
+            contextual_feature3 = self.SequenceModeling(visual_feature_after_dropout3)
+            contextual_feature4 = self.SequenceModeling(visual_feature_after_dropout4)
+            contextual_feature5 = self.SequenceModeling(visual_feature_after_dropout5)
+            contextual_feature =  ( (contextual_feature1).add ((contextual_feature2).add(((contextual_feature3).add(((contextual_feature4).add(contextual_feature5)))))) ) * (1/5)
+
+        """ Prediction stage """
+        if self.stages['Pred'] == 'CTC':
+            prediction = self.Prediction(contextual_feature.contiguous())
+        else:
+            if text is None:
+                raise Exception('Input text (for prediction) to model is None')
+            text = text.to(self.opt.device)
+            prediction = self.Prediction(contextual_feature, text, is_train, batch_max_length=self.opt.batch_max_length)
+        
+        return prediction
+
+──────────────────────────────────────────────────────────────────────
+📄  Urdu-Arabic-Text-Recognition-AI-Tool/modules/augmentation.py
+──────────────────────────────────────────────────────────────────────
+from functools import partial
+import random as rnd
+import imgaug.augmenters as iaa
+import numpy as np
+from PIL import ImageFilter, Image
+from timm.data import auto_augment
+
+_OP_CACHE = {}
+
+def _get_op(key, factory):
+    try:
+        op = _OP_CACHE[key]
+    except KeyError:
+        op = factory()
+        _OP_CACHE[key] = op
+    return op
+
+
+def _get_param(level, img, max_dim_factor, min_level=1):
+    max_level = max(min_level, max_dim_factor * max(img.size))
+    return round(min(level, max_level))
+
+def gaussian_blur(img, radius, **__):
+    radius = _get_param(radius, img, 0.02)
+    key = 'gaussian_blur_' + str(radius)
+    op = _get_op(key, lambda: ImageFilter.GaussianBlur(radius))
+    return img.filter(op)
+
+def motion_blur(img, k, **__):
+    k = _get_param(k, img, 0.08, 3) | 1  # bin to odd values
+    key = 'motion_blur_' + str(k)
+    op = _get_op(key, lambda: iaa.MotionBlur(k))
+    return Image.fromarray(op(image=np.asarray(img)))
+
+def gaussian_noise(img, scale, **_):
+    scale = _get_param(scale, img, 0.25) | 1  # bin to odd values
+    key = 'gaussian_noise_' + str(scale)
+    op = _get_op(key, lambda: iaa.AdditiveGaussianNoise(scale=scale))
+    return Image.fromarray(op(image=np.asarray(img)))
+
+def poisson_noise(img, lam, **_):
+    lam = _get_param(lam, img, 0.2) | 1  # bin to odd values
+    key = 'poisson_noise_' + str(lam)
+    op = _get_op(key, lambda: iaa.AdditivePoissonNoise(lam))
+    return Image.fromarray(op(image=np.asarray(img)))
+
+def salt_and_pepper_noise(image, prob=0.05):
+    if prob <= 0:
+        return image
+    arr = np.asarray(image)
+    original_dtype = arr.dtype
+    intensity_levels = 2 ** (arr[0, 0].nbytes * 8)
+    min_intensity = 0
+    max_intensity = intensity_levels - 1
+    random_image_arr = np.random.choice([min_intensity, 1, np.nan], p=[prob / 2, 1 - prob, prob / 2], size=arr.shape)
+    salt_and_peppered_arr = arr.astype(np.float) * random_image_arr
+    salt_and_peppered_arr = np.nan_to_num(salt_and_peppered_arr, nan=max_intensity).astype(original_dtype)
+    return Image.fromarray(salt_and_peppered_arr)
+
+def random_border_crop(image):
+    img_width,img_height = image.size
+    crop_left = int(img_width * rnd.uniform(0.0, 0.025))
+    crop_top = int(img_height * rnd.uniform(0.0, 0.075))            
+    crop_right = int(img_width * rnd.uniform(0.975, 1.0))
+    crop_bottom = int(img_height * rnd.uniform(0.925, 1.0))
+    final_image = image.crop((crop_left, crop_top, crop_right, crop_bottom))
+    return final_image
+
+def random_resize(image):
+    size = image.size
+    new_size = [rnd.randint(int(0.5*size[0]), int(1.5*size[0])), rnd.randint(int(0.5*size[1]), int(1.5*size[1]))]
+    reduce_factor = rnd.randint(1,4)
+    new_size = tuple([int(x/reduce_factor) for x in new_size])
+    final_image = image.resize(new_size)
+    return final_image
+
+def _level_to_arg(level, _hparams, max):
+    level = max * level / auto_augment._LEVEL_DENOM
+    return level,
+
+_RAND_TRANSFORMS = [
+    'AutoContrast',
+    'Equalize',
+    'Invert',
+    # 'Rotate',
+    'Posterize',
+    'Solarize',
+    'SolarizeAdd',
+    'Color',
+    'Contrast',
+    'Brightness',
+    'Sharpness',
+    'ShearX',
+]
+#_RAND_TRANSFORMS.remove('SharpnessIncreasing')  # remove, interferes with *blur ops
+_RAND_TRANSFORMS.extend([
+    'GaussianBlur',
+    'GaussianNoise',
+    'PoissonNoise'
+])
+auto_augment.LEVEL_TO_ARG.update({
+    'GaussianBlur': partial(_level_to_arg, max=4),
+    'MotionBlur': partial(_level_to_arg, max=20),
+    'GaussianNoise': partial(_level_to_arg, max=0.1 * 255),
+    'PoissonNoise': partial(_level_to_arg, max=40)
+})
+auto_augment.NAME_TO_OP.update({
+    'GaussianBlur': gaussian_blur,
+    'MotionBlur': motion_blur,
+    'GaussianNoise': gaussian_noise,
+    'PoissonNoise': poisson_noise
+})
+
+def rand_augment_transform(magnitude=5, num_layers=3):
+    # These are tuned for magnitude=5, which means that effective magnitudes are half of these values.
+    hparams = {
+        'img_mean':128,
+        # 'rotate_deg': 5,
+        'shear_x_pct': 0.9,
+        'shear_y_pct': 0.0,
+    }
+    ra_ops = auto_augment.rand_augment_ops(magnitude, hparams, transforms=_RAND_TRANSFORMS)
+    # Supply weights to disable replacement in random selection (i.e. avoid applying the same op twice)
+    choice_weights = [1. / len(ra_ops) for _ in range(len(ra_ops))]
+    return auto_augment.RandAugment(ra_ops, num_layers, choice_weights)
+
+──────────────────────────────────────────────────────────────────────
+📄  Urdu-Arabic-Text-Recognition-AI-Tool/modules/cnn/hrnet.py
+──────────────────────────────────────────────────────────────────────
+import torch
+from torch import nn
+
+# from utils import draw_feature_map
+
+
+BN_MOMENTUM = 0.1
+
+# Conv Module - Does not change the shape of the input, only the number of channels
+class Conv(nn.Module):
+    def __init__(self, in_ch, out_ch, kernel_size=3, stride=1, relued=True):
+        super(Conv, self).__init__()
+        padding = (kernel_size - 1) // 2
+        self.conv_bn = nn.Sequential(
+                nn.Conv2d(in_ch, out_ch, kernel_size, stride, padding, bias=False),
+                nn.BatchNorm2d(out_ch, momentum=BN_MOMENTUM))
+        self.relu = nn.ReLU()
+        self.relued = relued
+
+    def forward(self, x):
+        x = self.conv_bn(x)
+        if self.relued:
+            x = self.relu(x)
+        return x
+
+
+# BasicBlock - Does not change shape or size of the input at all
+class BasicBlock(nn.Module):
+    def __init__(self, in_ch, out_ch):
+        super(BasicBlock, self).__init__()
+        self.conv = nn.Sequential(
+                Conv(in_ch, out_ch),
+                Conv(in_ch, out_ch, relued=False))
+        self.relu = nn.ReLU()
+    def forward(self, x):
+        identity = x
+        x = self.conv(x)
+        # x += identity
+        x = x + identity
+        return self.relu(x)
+
+# Bottleneck - Does not change shape of the input, increases channels to 4*out_ch (instead of out_ch)
+class Bottleneck(nn.Module):
+
+    expansion = 4
+
+    def __init__(self, in_ch, out_ch, downsampling=None):
+        super(Bottleneck, self).__init__()
+        self.conv = nn.Sequential(
+                Conv(in_ch, out_ch, kernel_size=1),
+                Conv(out_ch, out_ch),
+                Conv(out_ch, out_ch * self.expansion, kernel_size=1, relued=False))
+        self.relu = nn.ReLU()
+        self.downsampling = downsampling
+
+    def forward(self, x):
+        identity = x
+        x = self.conv(x)
+        if self.downsampling:
+            identity = self.downsampling(identity)
+        # x += identity
+        x = x + identity
+        return self.relu(x)
+
+# UpSampling - Reduces the number of channels to ch // up_factor and increases input size up_factor times
+class UpSampling(nn.Module):
+    def __init__(self, ch, up_factor):
+        super(UpSampling, self).__init__()
+        self.up_sampling = nn.Sequential(
+                nn.Upsample(scale_factor=up_factor, mode='bilinear', align_corners=False),
+                Conv(ch, ch // up_factor, 1, relued=False))
+    def forward(self, x):
+        return self.up_sampling(x)
+
+# DownSampling - Increases the number of channels and reduces input size by a factor of (2^num_samplings)
+class DownSampling(nn.Module):
+    def __init__(self, ch, num_samplings):
+        super(DownSampling, self).__init__()
+        convs = []
+        for i in range(num_samplings):
+            relued = True if i < num_samplings - 1 else False
+            convs.append(Conv(ch, ch * 2, 3, 2, relued=relued))
+            ch *= 2
+        self.down_sampling = nn.Sequential(*convs)
+
+    def forward(self, x):
+        return self.down_sampling(x)
+
+
+class HRBlock(nn.Module):
+    def __init__(self, ch, index, last_stage, block, num_conv_block_per_list=4):
+        super(HRBlock, self).__init__()
+        self.index = index
+        self.last_stage = last_stage
+        self.num_conv_block_per_list = num_conv_block_per_list
+        self.relu = nn.ReLU()
+
+        self.parallel_conv_lists = nn.ModuleList()
+        for i in range(index):
+            ch_i = ch * 2**i
+            conv_list = []
+            for j in range(num_conv_block_per_list):
+                conv_list.append(block(ch_i, ch_i))
+            self.parallel_conv_lists.append(nn.Sequential(*conv_list))
+
+        self.up_conv_lists = nn.ModuleList()
+        for i in range(index - 1):
+            conv_list = nn.ModuleList()
+            for j in range(i + 1, index):
+                up_factor = 2 ** (j-i)
+                ch_j = ch * 2**j
+                conv_list.append(UpSampling(ch_j, up_factor))
+            self.up_conv_lists.append(conv_list)
+
+        self.down_conv_lists = nn.ModuleList()
+        for i in range(1, index if last_stage else index + 1):
+            conv_list = nn.ModuleList()
+            for j in range(i):
+                ch_j = ch * 2**j
+                conv_list.append(DownSampling(ch_j, i - j))
+            self.down_conv_lists.append(conv_list)
+
+    def forward(self, x_list):
+        parallel_res_list = []
+        for i in range(self.index):
+            x = x_list[i]
+            x = self.parallel_conv_lists[i](x)
+            parallel_res_list.append(x)
+
+        final_res_list = []
+        for i in range(self.index if self.last_stage else self.index + 1):
+            # Downsampling all streams to a dimension just lower than the lowest stream, for next stage (Don't do for last stage i.e. index = 4 obviously)
+            if i == self.index:
+                x = 0
+                for t, m in zip(parallel_res_list, self.down_conv_lists[-1]):
+                    # x += m(t)
+                    x = x + m(t)
+            else:
+                x = parallel_res_list[i]
+                # Upsampling all streams (except the uppermost), to all possible dimensions above it till the highest stream
+                if i != self.index - 1:
+                    res_list = parallel_res_list[i+1:]
+                    up_x = 0
+                    for t, m in zip(res_list, self.up_conv_lists[i]):
+                        # up_x += m(t)
+                        up_x = up_x + m(t)
+                    # x += up_x
+                    x = x + up_x
+                # Downsampling all streams (except the lowest) to all possible dimensions below it till the lowest stream dimension
+                if i != 0:
+                    res_list = parallel_res_list[:i]
+                    down_x = 0
+                    for t, m in zip(res_list, self.down_conv_lists[i - 1]):
+                        # down_x += m(t)
+                        down_x = down_x + m(t)
+                    # x += down_x
+                    x = x + down_x
+            x = self.relu(x)
+            final_res_list.append(x)
+        return final_res_list
+
+
+class HRNet(nn.Module):
+    def __init__(self, in_ch=1, out_ch=32, mid_ch=64, num_stage=4):
+        super(HRNet, self).__init__()
+        self.init_conv = nn.Sequential(
+                    Conv(in_ch, 64, 1),
+                    Conv(64, 64, 1))
+        self.head = nn.Sequential(
+                    Conv(mid_ch * (1 + 2 + 4 + 8), mid_ch * (1 + 2 + 4 + 8), 1),
+                    nn.Conv2d(mid_ch * (1 + 2 + 4 + 8), out_ch, 1))
+        self.first_layer = self._make_layer(64, 64, Bottleneck, 4)
+        self.first_transition = self._make_transition_layer(256, mid_ch, 1)
+        self.num_stage = num_stage
+        self.hr_blocks = nn.ModuleList()
+        for i in range(1, num_stage):
+            self.hr_blocks.append(HRBlock(mid_ch, i + 1, True if i == num_stage - 1 else False, BasicBlock))
+
+        self.up_samplings = nn.ModuleList()
+        for i in range(num_stage - 1):
+            up_factor = 2 ** (i + 1)
+            up = nn.Upsample(scale_factor=up_factor, mode='bilinear')
+            self.up_samplings.append(up)
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.normal_(m.weight, std=0.001)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+
+    def _make_layer(self, in_ch, ch, block, num):
+        downsampling = None
+        if in_ch != ch * block.expansion:
+            downsampling = Conv(in_ch, ch * block.expansion, 1, relued=False)
+        layers = []
+        layers.append(block(in_ch, ch, downsampling))
+        for i in range(1, num):
+            layers.append(block(ch * block.expansion, ch))
+        return nn.Sequential(*layers)
+    
+    def _make_transition_layer(self, in_ch, out_ch, stage):
+        layers = nn.ModuleList()
+        layers.append(Conv(in_ch, out_ch, 1))
+        layers.append(Conv(in_ch, out_ch * 2, 3, 2))
+        return layers
+
+    def forward(self, x):
+        x = self.init_conv(x)
+        # Save visual_features from any 10 random channels for visualization # For image at index 0 in batch
+        # draw_feature_map(x,"vis_feature_maps/initial_layer", num_channel=25)
+        # if os.path.exists('vis_feature_maps/initial_layer'):
+  
+        x = self.first_layer(x)
+        x_list = [m(x) for m in self.first_transition]
+        for i in range(self.num_stage - 1):
+            x_list = self.hr_blocks[i](x_list)
+            # Visualization from any 10 random channels for visualization # For image at index 0 in batch
+            # if i==2: # Last stage
+            #     draw_feature_map( x_list[-1],"vis_feature_maps/lower_layers",25)
+
+        res_list = [x_list[0]]
+        for t, m in zip(x_list[1:], self.up_samplings):
+            res_list.append(m(t))
+        x = torch.cat(res_list, dim=1)
+        x = self.head(x)
+        # draw_feature_map(x,"vis_feature_maps/output_layer", num_channel=25)
+        return x
+
+# x = [torch.randn(1, 64, 32, 400),torch.randn(1, 128, 16, 200), torch.rand(1, 256, 8, 100)]
+# model = HRBlock(ch=64,index=3,last_stage=False,block=BasicBlock) # index = 2,3,4
+# x = torch.randn(1, 1, 32, 400)
+# model = HRNet()
+# out = model(x)
+# print(out.shape)
+
+──────────────────────────────────────────────────────────────────────
+📄  Urdu-Arabic-Text-Recognition-AI-Tool/modules/dropout_layer.py
+──────────────────────────────────────────────────────────────────────
+import torch.nn as nn
+import torch
+import numpy as np
+
+class dropout_layer(nn.Module):
+    
+    def __init__(self,device):
+        super(dropout_layer, self).__init__()
+        self.device = device
+        
+    def forward(self, input):
+        nums = (np.random.rand(input.shape[1]) > 0.2).astype (int)
+        dummy_array_output = torch.from_numpy(nums).to(self.device)
+        dummy_array_output_t = torch.reshape(dummy_array_output, (input.shape[1], 1)).to(self.device) # Transpose
+        dummy_array_output_f = dummy_array_output_t.repeat(input.shape[0], 1,input.shape[2]).to(self.device) # Same size as input
+        output =  input*dummy_array_output_f  # element-wise multiplication
+        return output
+
+──────────────────────────────────────────────────────────────────────
+📄  Urdu-Arabic-Text-Recognition-AI-Tool/modules/feature_extraction.py
+──────────────────────────────────────────────────────────────────────
+import torch.nn as nn
+from modules.cnn.hrnet import HRNet
+
+class HRNet_FeatureExtractor(nn.Module):
+    def __init__(self, input_channel=1, output_channel=32):
+        super(HRNet_FeatureExtractor, self).__init__()
+        self.ConvNet = HRNet(input_channel, output_channel)
+
+    def forward(self, input):
+        return self.ConvNet(input)
+
+    
+# x = torch.randn(1, 1, 32, 400)
+# model = HRNet_FeatureExtractor()
+# out = model(x)
+
+──────────────────────────────────────────────────────────────────────
+📄  Urdu-Arabic-Text-Recognition-AI-Tool/modules/sequence_modeling.py
+──────────────────────────────────────────────────────────────────────
+import torch.nn as nn
+
+class BidirectionalLSTM(nn.Module):
+
+    def __init__(self, input_size, hidden_size, output_size):
+        super(BidirectionalLSTM, self).__init__()
+        self.rnn = nn.LSTM(input_size, hidden_size, bidirectional=True, batch_first=True)
+        self.linear = nn.Linear(hidden_size * 2, output_size)
+
+    def forward(self, input):
+        """
+        input : visual feature [batch_size x T x input_size]
+        output : contextual feature [batch_size x T x output_size]
+        """
+        self.rnn.flatten_parameters()
+        recurrent, _ = self.rnn(input)  # batch_size x T x input_size -> batch_size x T x (2*hidden_size)
+        output = self.linear(recurrent)  # batch_size x T x output_size
+        return output
+
+class LSTM(nn.Module):
+
+    def __init__(self, input_size, hidden_size, output_size):
+        super(LSTM, self).__init__()
+        self.rnn = nn.LSTM(input_size, hidden_size, batch_first=True)
+        self.linear = nn.Linear(hidden_size, output_size)
+
+    def forward(self, input):
+        """
+        input : visual feature [batch_size x T x input_size]
+        output : contextual feature [batch_size x T x output_size]
+        """
+        self.rnn.flatten_parameters()
+        recurrent, _ = self.rnn(input)  # batch_size x T x input_size -> batch_size x T x hidden_size
+        output = self.linear(recurrent)  # batch_size x T x output_size
+        return output
+
+class MDLSTM(nn.Module):
+    # The visual features of textline are given as input to a MDLSTM
+    # Each of the LSTMs then recursively maps these features into a lower dimensional space
+    # The standard one dimensional LSTM network can be extended to multiple dimensions by using n self connections with n forget gates
+    # Inspired by HM-LSTM originally proposed in - https://arxiv.org/pdf/1609.01704.pdf
+    def __init__(self, input_size, hidden_size, output_size):
+        super(MDLSTM, self).__init__()
+        self.rnn = nn.Sequential(
+                LSTM(input_size, hidden_size, 2*hidden_size),
+                LSTM(2*hidden_size, hidden_size, 4*hidden_size),
+                LSTM(4*hidden_size, hidden_size, 2*hidden_size),
+                LSTM(2*hidden_size, hidden_size, hidden_size))
+        self.linear = nn.Linear(hidden_size, output_size)
+    def forward(self, input):
+        """
+        input : visual feature [batch_size x T x input_size]
+        output : contextual feature [batch_size x T x output_size]
+        """
+        for rnn in self.rnn:
+            rnn.rnn.flatten_parameters()
+        recurrent = self.rnn(input)  # batch_size x T x input_size -> batch_size x T x hidden_size
+        output = self.linear(recurrent)  # batch_size x T x output_size
+        return output
+
+# import torch
+# x = torch.randn(1,100, 512)
+# net1 = BidirectionalLSTM(512, 256, 512)
+# net2 = LSTM(512, 256, 512)
+# net3 = GRU(512, 256, 512)
+# net4 = MDLSTM(512, 256, 512)
+
+# print("=========================================")
+# out1 = net1(x)
+# print(out1.shape)
+# print("=========================================")
+# out2 = net2(x)
+# print(out2.shape)
+# print("=========================================")
+# out3 = net3(x)
+# print(out3.shape)
+# print("=========================================")
+# out4 = net4(x)
+# print(out4.shape)
+
+──────────────────────────────────────────────────────────────────────
+📄  Urdu-Arabic-Text-Recognition-AI-Tool/pyproject.toml
+──────────────────────────────────────────────────────────────────────
+[project]
+name = "ocr"
+version = "0.1.0"
+description = "A ddep learnig model for Arabic & Urdu scripts"
+readme = "README.md"
+requires-python = "==3.11.5"
+dependencies = [
+    "fire>=0.7.0",
+    "imgaug>=0.4.0",
+    "lmdb>=1.6.2",
+    "matplotlib>=3.10.3",
+    "nltk>=3.9.1",
+    "numpy==1.23.5",
+    "opencv-python>=4.8.1.78",
+    "pytz>=2025.2",
+    "timm==0.6.13",
+    "torch>=2.4.0",
+    "torchvision>=0.19.0",
+    "tqdm>=4.67.1",
+]
+
+──────────────────────────────────────────────────────────────────────
+📄  Urdu-Arabic-Text-Recognition-AI-Tool/read.py
+──────────────────────────────────────────────────────────────────────
+import os
+import pytz
+import math
+import argparse
+from PIL import Image
+from datetime import datetime
+import torch
+from model import Model
+from dataset import NormalizePAD
+from utils import CTCLabelConverter, Logger
+
+def read(opt, device):
+    opt.device = device
+    os.makedirs("read_outputs", exist_ok=True)
+    datetime_now = str(datetime.now(pytz.timezone('Asia/Karachi')).strftime("%Y-%m-%d_%H-%M-%S"))
+    logger = Logger(f'read_outputs/{datetime_now}.txt')
+    """ model configuration """
+    if 'CTC' in opt.Prediction:
+        converter = CTCLabelConverter(opt.character)
+    opt.num_class = len(converter.character)
+
+    if opt.rgb:
+        opt.input_channel = 3
+    model = Model(opt)
+    logger.log('model input parameters', opt.imgH, opt.imgW, opt.num_fiducial, opt.input_channel, opt.output_channel,
+          opt.hidden_size, opt.num_class, opt.batch_max_length, opt.FeatureExtraction,
+          opt.SequenceModeling, opt.Prediction)
+    model = model.to(device)
+
+    # load model
+    model.load_state_dict(torch.load(opt.saved_model, map_location=device))
+    logger.log('Loaded pretrained model from %s' % opt.saved_model)
+    model.eval()
+    
+    if opt.rgb:
+        img = Image.open(opt.image_path).convert('RGB')
+    else:
+        img = Image.open(opt.image_path).convert('L')
+    img = img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+    w, h = img.size
+    ratio = w / float(h)
+    if math.ceil(opt.imgH * ratio) > opt.imgW:
+        resized_w = opt.imgW
+    else:
+        resized_w = math.ceil(opt.imgH * ratio)
+    img = img.resize((resized_w, opt.imgH), Image.Resampling.BICUBIC)
+    transform = NormalizePAD((1, opt.imgH, opt.imgW))
+    img = transform(img)
+    img = img.unsqueeze(0)
+    # print(img.shape) # torch.Size([1, 1, 32, 400])
+    batch_size = img.shape[0] # 1
+    img = img.to(device)
+    preds = model(img)
+    preds_size = torch.IntTensor([preds.size(1)] * batch_size)
+    
+    _, preds_index = preds.max(2)
+    preds_str = converter.decode(preds_index.data, preds_size.data)[0]
+    
+    logger.log(preds_str)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+
+    # Image Inference
+    parser.add_argument('--image_path', required=True, help='Path to input image for inference')
+    parser.add_argument('--saved_model', required=True, help='Path to trained model to load')
+
+    # Input Image Config
+    parser.add_argument('--batch_max_length', type=int, default=100, help='Maximum text label length')
+    parser.add_argument('--imgH', type=int, default=32, help='Image height')
+    parser.add_argument('--imgW', type=int, default=400, help='Image width')
+    parser.add_argument('--rgb', action='store_true', help='Use RGB input (default: grayscale)')
+
+    # Model Architecture - Locked to HRNet + DBiLSTM + CTC
+    parser.add_argument('--FeatureExtraction', type=str, default="HRNet", help='(Locked) Feature extractor')
+    parser.add_argument('--SequenceModeling', type=str, default="DBiLSTM", help='(Locked) Sequence modeling')
+    parser.add_argument('--Prediction', type=str, default="CTC", help='(Locked) Prediction method')
+    parser.add_argument('--num_fiducial', type=int, default=20, help='Number of fiducial points (only relevant for TPS if used)')
+    parser.add_argument('--input_channel', type=int, default=1, help='Input channels for the model (1 for grayscale)')
+    parser.add_argument('--output_channel', type=int, default=512, help='Output channels from feature extractor')
+    parser.add_argument('--hidden_size', type=int, default=256, help='Hidden size of LSTM layers')
+
+    # Device Selection
+    parser.add_argument('--device_id', type=str, default=None, help='CUDA device ID if GPU is available')
+
+    opt = parser.parse_args()
+
+    # Force output_channel override for HRNet
+    if opt.FeatureExtraction == "HRNet":
+        opt.output_channel = 32
+
+    # Load character set
+    with open("UrduGlyphs.txt", "r", encoding="utf-8") as file:
+        opt.character = ''.join([line.strip() for line in file.readlines()]) + " "
+
+    # Device Setup
+    cuda_str = 'cuda'
+    if opt.device_id is not None:
+        cuda_str = f'cuda:{opt.device_id}'
+    device = torch.device(cuda_str if torch.cuda.is_available() else 'cpu')
+    print("Device : ", device)
+
+    read(opt, device)
+
+──────────────────────────────────────────────────────────────────────
+📄  Urdu-Arabic-Text-Recognition-AI-Tool/test.py
+──────────────────────────────────────────────────────────────────────
+import os,shutil
+import time
+import argparse
+import random
+import numpy as np
+import matplotlib.pyplot as plt
+from datetime import datetime
+import pytz
+
+import torch
+import torch.utils.data
+import torch.nn.functional as F
+from tqdm import tqdm
+from nltk.metrics.distance import edit_distance
+
+from utils import CTCLabelConverter, Averager, Logger
+from dataset import hierarchical_dataset, AlignCollate
+from model import Model
+
+def validation(model, criterion, evaluation_loader, converter, opt, device):
+    """ validation or evaluation """
+    eval_arr = []
+    sum_len_gt = 0
+
+    n_correct = 0
+    
+    norm_ED = 0
+    length_of_data = 0
+    infer_time = 0
+    valid_loss_avg = Averager()
+
+    for i, (image_tensors, labels) in enumerate(tqdm(evaluation_loader)):
+        batch_size = image_tensors.size(0)
+        length_of_data = length_of_data + batch_size
+        image = image_tensors.to(device)
+        # For max length prediction
+        length_for_pred = torch.IntTensor([opt.batch_max_length] * batch_size).to(device)
+        text_for_pred = torch.LongTensor(batch_size, opt.batch_max_length + 1).fill_(0).to(device)
+
+        text_for_loss, length_for_loss = converter.encode(labels, batch_max_length=opt.batch_max_length)
+
+        start_time = time.time()
+        if 'CTC' in opt.Prediction:
+            preds = model(image)
+            forward_time = time.time() - start_time
+            preds_size = torch.IntTensor([preds.size(1)] * batch_size)
+            cost = criterion(preds.log_softmax(2).permute(1, 0, 2), text_for_loss, preds_size, length_for_loss)
+            _, preds_index = preds.max(2)
+            preds_str = converter.decode(preds_index.data, preds_size.data)
+        else:
+            preds = model(image, text=text_for_pred, is_train=False)
+            forward_time = time.time() - start_time
+
+            preds = preds[:, :text_for_loss.shape[1] - 1, :].to(device)
+            target = text_for_loss[:, 1:].to(device)  # without [GO] Symbol
+            cost = criterion(preds.contiguous().view(-1, preds.shape[-1]), target.contiguous().view(-1))
+            _, preds_index = preds.max(2)
+            preds_str = converter.decode(preds_index, length_for_pred)
+            labels = converter.decode(text_for_loss[:, 1:], length_for_loss)
+
+        infer_time += forward_time
+        valid_loss_avg.add(cost)
+
+        # calculate accuracy & confidence score
+        preds_prob = F.softmax(preds, dim=2)
+        preds_max_prob, _ = preds_prob.max(dim=2)
+        confidence_score_list = []
+        for gt, pred, pred_max_prob in zip(labels, preds_str, preds_max_prob):
+            if 'Attn' in opt.Prediction:
+                gt = gt[:gt.find('[s]')]
+                pred_EOS = pred.find('[s]')
+                pred = pred[:pred_EOS]  # prune after "end of sentence" token ([s])
+                pred_max_prob = pred_max_prob[:pred_EOS]
+
+            if pred == gt:
+                n_correct += 1
+
+            # ICDAR2019 Normalized Edit Distance
+            if len(gt) == 0 or len(pred) == 0:
+                ED = 0
+            elif len(gt) > len(pred):
+                ED = 1 - edit_distance(pred, gt) / len(gt)
+            else:
+                ED = 1 - edit_distance(pred, gt) / len(pred)
+
+            eval_arr.append([gt,pred,ED])
+
+            sum_len_gt += len(gt)
+            norm_ED += (ED*len(gt))
+
+            # calculate confidence score (= multiply of pred_max_prob)
+            try:
+                confidence_score = pred_max_prob.cumprod(dim=0)[-1]
+            except:
+                confidence_score = 0  # for empty pred case, when prune after "end of sentence" token ([s])
+            confidence_score_list.append(confidence_score)
+            # print(pred, gt, pred==gt, confidence_score)
+
+    accuracy = n_correct / float(length_of_data) * 100
+    norm_ED = norm_ED / float(sum_len_gt)
+
+    return valid_loss_avg.val(), accuracy, norm_ED, eval_arr
+
+
+def test(opt, device):
+    opt.device = device
+    os.makedirs("test_outputs", exist_ok=True)
+    datetime_now = str(datetime.now(pytz.timezone('Asia/Kolkata')).strftime("%Y-%m-%d_%H-%M-%S"))
+    logger = Logger(f'test_outputs/{datetime_now}.txt')
+    """ model configuration """
+    if 'CTC' in opt.Prediction:
+        converter = CTCLabelConverter(opt.character)
+    opt.num_class = len(converter.character)
+
+    if opt.rgb:
+        opt.input_channel = 3
+    model = Model(opt)
+    logger.log('model input parameters', opt.imgH, opt.imgW, opt.input_channel, opt.output_channel,
+          opt.hidden_size, opt.num_class, opt.batch_max_length, opt.FeatureExtraction,
+          opt.SequenceModeling, opt.Prediction)
+    model = model.to(device)
+
+    # load model
+    model.load_state_dict(torch.load(opt.saved_model, map_location=device))
+    logger.log('Loaded pretrained model from %s' % opt.saved_model)
+    # logger.log(model)
+
+    """ setup loss """
+    if 'CTC' in opt.Prediction:
+        criterion = torch.nn.CTCLoss(zero_infinity=True).to(device)
+    else:
+        criterion = torch.nn.CrossEntropyLoss(ignore_index=0).to(device)  # ignore [GO] token = ignore index 0
+
+    """ evaluation """
+    model.eval()
+    with torch.no_grad():
+        AlignCollate_evaluation = AlignCollate(imgH=opt.imgH, imgW=opt.imgW)#, keep_ratio_with_pad=opt.PAD)
+        eval_data, eval_data_log = hierarchical_dataset(root=opt.eval_data, opt=opt, rand_aug=False)
+        logger.log(eval_data_log)
+        evaluation_loader = torch.utils.data.DataLoader(
+            eval_data, batch_size=opt.batch_size,
+            shuffle=False,
+            num_workers=int(opt.workers),
+            collate_fn=AlignCollate_evaluation, pin_memory=True)
+        _, accuracy, norm_ED, eval_arr = validation( model, criterion, evaluation_loader, converter, opt,device)
+    logger.log("="*20)
+    logger.log(f'Accuracy : {accuracy:0.4f}\n')
+    logger.log(f'Norm_ED : {norm_ED:0.4f}\n')
+    logger.log("="*20)
+    
+    if opt.visualize:
+        logger.log("Threshold - ", opt.threshold)
+        logger.log("ED","\t","gt","\t","pred")
+        arr = []
+        for gt,pred,ED in eval_arr:
+            ED = ED*100.0
+            arr.append(ED)
+            if ED<=(opt.threshold):
+                logger.log(ED,"\t",gt,"\t",pred)
+        plt.hist(arr, edgecolor="red")
+        plt.savefig('test_outputs/'+str(datetime_now)+".png")
+        plt.close()
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+
+    # Evaluation options
+    parser.add_argument('--visualize', action='store_true', help='Enable visualization of bad samples')
+    parser.add_argument('--threshold', type=float, default=50.0, help='Save samples below this threshold in txt file')
+    parser.add_argument('--eval_data', required=True, help='Path to evaluation dataset')
+
+    # Runtime settings
+    parser.add_argument('--workers', type=int, default=4, help='Number of data loading workers')
+    parser.add_argument('--batch_size', type=int, default=32, help='Input batch size')
+    parser.add_argument('--saved_model', required=True, help='Path to saved model for evaluation')
+
+    # Image preprocessing
+    parser.add_argument('--batch_max_length', type=int, default=100, help='Maximum label length')
+    parser.add_argument('--imgH', type=int, default=32, help='Height of input image')
+    parser.add_argument('--imgW', type=int, default=400, help='Width of input image')
+    parser.add_argument('--rgb', action='store_true', help='Use RGB input (default is grayscale)')
+
+    # Model architecture
+    parser.add_argument('--FeatureExtraction', type=str, default="HRNet", help='Feature extractor module (e.g. HRNet)')
+    parser.add_argument('--SequenceModeling', type=str, default="DBiLSTM", help='Sequence modeling module (e.g. DBiLSTM, MDLSTM)')
+    parser.add_argument('--Prediction', type=str, default="CTC", help='Prediction stage (CTC or Attn)')
+    parser.add_argument('--input_channel', type=int, default=1, help='Number of input channels (1 for grayscale)')
+    parser.add_argument('--output_channel', type=int, default=512, help='Number of output channels from feature extractor')
+    parser.add_argument('--hidden_size', type=int, default=256, help='Hidden size of the sequence model')
+
+    # GPU configuration
+    parser.add_argument('--device_id', type=str, default=None, help='CUDA device ID (if using GPU)')
+
+    opt = parser.parse_args()
+    if opt.FeatureExtraction == "HRNet":
+        opt.output_channel = 32
+    
+    # Fix random seeds for both numpy and pytorch
+    seed = 1111
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+    """ vocab / character number configuration """
+    file = open("UrduGlyphs.txt","r",encoding="utf-8")
+    content = file.readlines()
+    content = ''.join([str(elem).strip('\n') for elem in content])
+    opt.character = content+" "
+    
+    cuda_str = 'cuda'
+    if opt.device_id is not None:
+        cuda_str = f'cuda:{opt.device_id}'
+    device = torch.device(cuda_str if torch.cuda.is_available() else 'cpu')
+    print("Device : ", device)
+    
+    # opt.eval_data = "/DATA/parseq/val/"
+    # test(opt, device)
+    
+    # opt.eval_data = "/DATA/parseq/IIITH/lmdb_new/"
+    # test(opt, device)
+    
+    # opt.eval_data = "/DATA/public_datasets/UPTI/valid/"
+    # test(opt, device)
+    
+    test(opt, device)
+
+──────────────────────────────────────────────────────────────────────
+📄  Urdu-Arabic-Text-Recognition-AI-Tool/train.py
+──────────────────────────────────────────────────────────────────────
+import os
+import time
+import random
+import argparse
+
+import torch
+import time
+import numpy as np
+from tqdm import tqdm
+import torch.utils.data
+import torch.nn.init as init
+import torch.optim as optim
+
+from model import Model
+from test import validation
+from utils import Averager, Logger
+from dataset import hierarchical_dataset, AlignCollate
+from utils import CTCLabelConverter
+
+
+import torch
+torch.autograd.set_detect_anomaly(True)
+
+
+def train(opt, device):
+    # opt.num_gpu = 8 # Multi-GPU Training -> Uncomment line 24 & line 63-64
+    logger = Logger(f'./saved_models/{opt.exp_name}/log_train.txt')
+    opt.device = device
+    opt.select_data = opt.select_data.split('-')
+    opt.batch_ratio = opt.batch_ratio.split('-')
+    # Load The Train Dataset
+    AlignCollate_train = AlignCollate(imgH=opt.imgH, imgW=opt.imgW)
+    train_dataset, train_dataset_log  = hierarchical_dataset(root=opt.train_data, opt=opt,rand_aug=True)
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset, batch_size=opt.batch_size,
+        shuffle=True,
+        num_workers=int(opt.workers),
+        collate_fn=AlignCollate_train, pin_memory=False)
+    # """
+    logger.log('Device : {}'.format(device))
+    logger.log('-' * 80 + '\n')
+    logger.log("Training Dataset Loaded: ", train_dataset_log)
+
+    AlignCollate_valid = AlignCollate(imgH=opt.imgH, imgW=opt.imgW)
+    valid_dataset, valid_dataset_log = hierarchical_dataset(root=opt.valid_data, opt=opt, rand_aug=False)
+    valid_loader = torch.utils.data.DataLoader(
+        valid_dataset, batch_size=opt.batch_size,
+        shuffle=True,
+        num_workers=int(opt.workers),
+        collate_fn=AlignCollate_valid, pin_memory=False)
+    logger.log("Validation Dataset Loaded : ", valid_dataset_log)
+    logger.log('-' * 80 + '\n')
+    
+    """ model configuration """
+    if 'CTC' in opt.Prediction:
+        converter = CTCLabelConverter(opt.character)
+    opt.num_class = len(converter.character)
+
+    if opt.rgb:
+        opt.input_channel = 3
+    model = Model(opt)
+    # Multi-GPU Training -> Uncomment line 24 & line 63-64
+    # if opt.num_gpu > 1:
+    #     model = torch.nn.DataParallel(model, device_ids=range(opt.num_gpu))
+    logger.log('model input parameters', opt.imgH, opt.imgW, opt.input_channel, opt.output_channel,
+          opt.hidden_size, opt.num_class, opt.batch_max_length, opt.FeatureExtraction,
+          opt.SequenceModeling, opt.Prediction)
+
+    # weight initialization
+    for name, param in model.named_parameters():
+        if 'localization_fc2' in name:
+            logger.log(f'Skip {name} as it is already initialized')
+            continue
+        try:
+            if 'bias' in name:
+                init.constant_(param, 0.0)
+            elif 'weight' in name:
+                init.kaiming_normal_(param)
+        except Exception as e:
+            if 'weight' in name:
+                param.data.fill_(1)
+            continue
+
+    model = model.to(device)
+    model.train()
+    if opt.saved_model != '':
+        logger.log(f'loading pretrained model from {opt.saved_model}')
+        if opt.FT:
+            model.load_state_dict(torch.load(opt.saved_model), strict=False)
+        else:
+            model.load_state_dict(torch.load(opt.saved_model))
+    # logger.log("Model:")
+    # logger.log(model)
+
+    """ setup loss """
+    if 'CTC' in opt.Prediction:
+        criterion = torch.nn.CTCLoss(zero_infinity=True).to(device)
+    else:
+        criterion = torch.nn.CrossEntropyLoss(ignore_index=0).to(device)  # ignore [GO] token = ignore index 0
+    # loss averager
+    loss_avg = Averager()
+
+    # filter that only require gradient decent
+    filtered_parameters = []
+    params_num = []
+    for p in filter(lambda p: p.requires_grad, model.parameters()):
+        filtered_parameters.append(p)
+        params_num.append(np.prod(p.size()))
+    sum_params_num = sum(params_num)
+    logger.log(f'Trainable params num : {sum_params_num/1000000:.2f}M')
+    # [print(name, p.numel()) for name, p in filter(lambda p: p[1].requires_grad, model.named_parameters())]
+
+    # setup optimizer
+    if opt.adam:
+        optimizer = optim.Adam(filtered_parameters, lr=opt.lr, betas=(opt.beta1, 0.999))
+    else:
+        optimizer = optim.Adadelta(filtered_parameters, lr=opt.lr, rho=opt.rho, eps=opt.eps)
+    logger.log("Optimizer: ", optimizer)
+    
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.1)
+    reduce_lr = [50,100] # epochs where you want to reduce the LR by 10
+    
+    # Slowly decrease the learning rate from initial lr to 0 over the course of training
+    # scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=opt.num_epochs, eta_min=0.01)
+
+    """ final options """
+    # print(opt)
+    opt_log = '------------ Options -------------\n'
+    args = vars(opt)
+    for k, v in args.items():
+        opt_log += f'{str(k)}: {str(v)}\n'
+    opt_log += '---------------------------------------\n'
+    logger.log(opt_log)
+
+    """ start training """
+    start_iter = 0
+    if opt.saved_model != '':
+        try:
+            start_iter = int(opt.saved_model.split('_')[-1].split('.')[0])
+            logger.log(f'continue to train, start_iter: {start_iter}')
+        except:
+            pass
+
+    start_time = time.time()
+    best_accuracy = -1
+    best_norm_ED = -1
+    iteration = start_iter
+    
+    init_time = time.time()
+    for epoch in tqdm(range(opt.num_epochs)):
+        logger.log("="*20,"Epoch =",epoch+1,"="*20)
+        
+        for i, (image_tensors, labels) in enumerate(tqdm(train_loader)):
+            #image_tensors, labels = train_dataset_batch.get_batch()
+            image = image_tensors.to(device)
+            # Cheking if correct inputs are being given)
+            # if os.path.exists("check_dir"):
+            #     import shutil
+            #     shutil.rmtree("check_dir")
+            # os.makedirs("check_dir")
+            # for var1 in range(image.size(0)):
+            #     file_name_1 = "check_dir/" + str(iteration)+str(var1)+"label.txt"
+            #     with open(file_name_1,"a", encoding="utf-8") as labelFile:
+            #         labelFile.write((labels[var1]))
+            #     img_normalized = image[var1]*0.5 + 0.5
+            #     pilTrans = transforms.ToPILImage()(img_normalized).transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+            #     pilTrans.save(str("check_dir/" + str(iteration)+str(var1)+"image.png"))
+
+            text, length = converter.encode(labels, batch_max_length=opt.batch_max_length)
+            batch_size = image.size(0)
+
+            if 'CTC' in opt.Prediction:
+                preds = model(image)
+                preds_size = torch.IntTensor([preds.size(1)] * batch_size)
+                preds = preds.log_softmax(2).permute(1, 0, 2)
+                cost = criterion(preds, text, preds_size, length)
+
+            else:
+                preds = model(image, text=text[:, :-1].to(device))  # align with Attention.forward
+                target = text[:, 1:].to(device)  # without [GO] Symbol
+                cost = criterion(preds.view(-1, preds.shape[-1]).contiguous(), target.contiguous().view(-1))
+
+            model.zero_grad()
+            cost.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), opt.grad_clip)  # gradient clipping with 5 (Default)
+            optimizer.step()
+
+            loss_avg.add(cost)
+        
+        if epoch in reduce_lr:
+            scheduler.step()
+            logger.log(f'Learning rate reduced to {scheduler.get_lr()}')
+        
+        # scheduler.step()
+
+        elapsed_time = time.time() - start_time
+        model.eval()
+        with torch.no_grad():
+            valid_loss, current_accuracy, current_norm_ED, _ = validation(
+                model, criterion, valid_loader, converter, opt, device)
+        model.train()
+        # training loss and validation loss
+        loss_log = f'[{epoch+1}/{opt.num_epochs}] Train loss: {loss_avg.val():0.5f}, Valid loss: {valid_loss:0.5f}, Elapsed_time: {elapsed_time:0.5f}'
+        loss_avg.reset()
+        current_model_log = f'{"Current_accuracy":17s}: {current_accuracy:0.2f}, {"Current_norm_ED":17s}: {current_norm_ED:0.4f}'
+
+        # keep best accuracy model (on valid dataset)
+        if current_accuracy > best_accuracy:
+            best_accuracy = current_accuracy
+            torch.save(model.state_dict(), f'./saved_models/{opt.exp_name}/best_accuracy.pth')
+        if current_norm_ED > best_norm_ED:
+            best_norm_ED = current_norm_ED
+            torch.save(model.state_dict(), f'./saved_models/{opt.exp_name}/best_norm_ED.pth')
+        best_model_log = f'{"Best_accuracy":17s}: {best_accuracy:0.4f}, {"Best_norm_ED":17s}: {best_norm_ED:0.4f}'
+        loss_model_log = f'{loss_log}\n{current_model_log}\n{best_model_log}'
+        logger.log(loss_model_log + '\n')
+    
+    end_time = time.time()
+    logger.log("Total time taken for training: " + str(end_time-init_time))
+    
+    
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+
+    # Experiment Info
+    parser.add_argument('--exp_name', required=True, help='Where to store logs and models')
+    parser.add_argument('--train_data', required=True, help='Path to training dataset')
+    parser.add_argument('--valid_data', required=True, help='Path to validation dataset')
+
+    # Runtime & Reproducibility
+    parser.add_argument('--manualSeed', type=int, default=1111, help='Random seed for reproducibility')
+    parser.add_argument('--workers', type=int, default=4, help='Number of data loading workers')
+    parser.add_argument('--batch_size', type=int, default=32, help='Input batch size')
+    parser.add_argument('--num_epochs', type=int, default=100, help='Total number of training epochs')
+    parser.add_argument('--valInterval', type=int, default=500, help='Interval (in iterations) between each validation run')
+
+    # Resume / Finetune
+    parser.add_argument('--saved_model', default='', help='Path to a pre-trained model to resume training')
+    parser.add_argument('--FT', action='store_true', help='Enable fine-tuning when loading saved model')
+
+    # Optimizer Settings
+    parser.add_argument('--adam', action='store_true', help='Use Adam optimizer (default is Adadelta)')
+    parser.add_argument('--lr', type=float, default=1.0, help='Learning rate (Adadelta default: 1.0)')
+    parser.add_argument('--beta1', type=float, default=0.9, help='Beta1 for Adam optimizer')
+    parser.add_argument('--rho', type=float, default=0.95, help='Rho for Adadelta')
+    parser.add_argument('--eps', type=float, default=1e-8, help='Epsilon value for numerical stability')
+    parser.add_argument('--grad_clip', type=float, default=5, help='Gradient clipping value to avoid exploding gradients')
+
+    # Dataset Control (multi-source / advanced batching if needed)
+    parser.add_argument('--select_data', type=str, default='/', help='Dataset selection (default: all `/` )')
+    parser.add_argument('--batch_ratio', type=str, default='1', help='Batch ratio for multiple datasets (e.g., MJ-ST)')
+    parser.add_argument('--total_data_usage_ratio', type=str, default='1.0', help='Ratio of total training data to use')
+
+    # Input Image / Label Settings
+    parser.add_argument('--batch_max_length', type=int, default=100, help='Maximum text label length per image')
+    parser.add_argument('--imgH', type=int, default=32, help='Input image height')
+    parser.add_argument('--imgW', type=int, default=400, help='Input image width')
+    parser.add_argument('--rgb', action='store_true', help='Use RGB images (default is grayscale)')
+
+    # Model Architecture (HRNet + DBiLSTM | MDLSTM + CTC for this setup)
+    parser.add_argument('--FeatureExtraction', type=str, default="HRNet", help='Feature extractor module HRNet')
+    parser.add_argument('--SequenceModeling', type=str, default="DBiLSTM", help='Sequence modeling module DBiLSTM | MDLSTM')
+    parser.add_argument('--Prediction', type=str, default="CTC", help='Prediction stage CTC')
+    parser.add_argument('--input_channel', type=int, default=1, help='Number of input channels (1 for grayscale)')
+    parser.add_argument('--output_channel', type=int, default=32, help='Number of output channels from HRNet')
+    parser.add_argument('--hidden_size', type=int, default=256, help='Hidden layer size in LSTM')
+
+    # Device Control
+    parser.add_argument('--device_id', type=str, default=None, help='CUDA device ID if GPU is available')
+
+    opt = parser.parse_args()
+
+    if opt.FeatureExtraction == "HRNet":
+        opt.output_channel = 32
+
+    os.makedirs(f'./saved_models/{opt.exp_name}', exist_ok=True)
+
+    """ vocab / character number configuration """
+    file = open("Glyphs.txt","r",encoding="utf-8")
+    content = file.readlines()
+    content = ''.join([str(elem).strip('\n') for elem in content])
+    opt.character = content+" "
+    file.close()
+    
+    """ Seed setting """
+    print("Random Seed: ", opt.manualSeed)
+    random.seed(opt.manualSeed)
+    np.random.seed(opt.manualSeed)
+    torch.manual_seed(opt.manualSeed)
+    torch.cuda.manual_seed(opt.manualSeed)
+    
+    cuda_str = 'cuda'
+    if opt.device_id is not None:
+        cuda_str = f'cuda:{opt.device_id}'
+    device = torch.device(cuda_str if torch.cuda.is_available() else 'cpu')
+    print("Device : ", device)
+    
+    train(opt, device)
+
+──────────────────────────────────────────────────────────────────────
+📄  Urdu-Arabic-Text-Recognition-AI-Tool/utils.py
+──────────────────────────────────────────────────────────────────────
+import pytz
+import torch
+import numpy as np
+from datetime import datetime
+import matplotlib.pyplot as plt
+from torch.autograd import Variable
+
+import os,random,shutil
+import matplotlib.pyplot as plt
+
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
+
+class CTCLabelConverter(object):
+    """ Convert between text-label and text-index """
+
+    def __init__(self, character):
+        # character (str): set of the possible characters.
+        dict_character = list(character)
+
+        self.dict = {}
+        for i, char in enumerate(dict_character):
+            # NOTE: 0 is reserved for 'CTCblank' token required by CTCLoss
+            self.dict[char] = i + 1
+
+        self.character = ['[CTCblank]'] + dict_character  # dummy '[CTCblank]' token for CTCLoss (index 0)
+
+    def encode(self, text, batch_max_length=25):
+        """convert text-label into text-index.
+        input:
+            text: text labels of each image. [batch_size]
+            batch_max_length: max length of text label in the batch. 25 by default
+
+        output:
+            text: text index for CTCLoss. [batch_size, batch_max_length]
+            length: length of each text. [batch_size]
+        """
+        length = [len(s) for s in text]
+
+        # The index used for padding (=0) would not affect the CTC loss calculation.
+        batch_text = torch.LongTensor(len(text), batch_max_length).fill_(0)
+        for i, t in enumerate(text):
+            text = list(t)
+            text = [self.dict[char] for char in text]
+            batch_text[i][:len(text)] = torch.LongTensor(text)
+        return (batch_text, torch.IntTensor(length))
+
+    def decode(self, text_index, length):
+        """ convert text-index into text-label. """
+        texts = []
+        for index, l in enumerate(length):
+            t = text_index[index, :]
+
+            char_list = []
+            for i in range(l):
+                if t[i] != 0 and (not (i > 0 and t[i - 1] == t[i])):  # removing repeated characters and blank.
+                    char_list.append(self.character[t[i]])
+            text = ''.join(char_list)
+
+            texts.append(text)
+        return texts
+
+
+class CTCLabelConverterForBaiduWarpctc(object):
+    """ Convert between text-label and text-index for baidu warpctc """
+
+    def __init__(self, character):
+        # character (str): set of the possible characters.
+        dict_character = list(character)
+
+        self.dict = {}
+        for i, char in enumerate(dict_character):
+            # NOTE: 0 is reserved for 'CTCblank' token required by CTCLoss
+            self.dict[char] = i + 1
+
+        self.character = ['[CTCblank]'] + dict_character  # dummy '[CTCblank]' token for CTCLoss (index 0)
+
+    def encode(self, text, batch_max_length=25):
+        """convert text-label into text-index.
+        input:
+            text: text labels of each image. [batch_size]
+        output:
+            text: concatenated text index for CTCLoss.
+                    [sum(text_lengths)] = [text_index_0 + text_index_1 + ... + text_index_(n - 1)]
+            length: length of each text. [batch_size]
+        """
+        length = [len(s) for s in text]
+        text = ''.join(text)
+        text = [self.dict[char] for char in text]
+
+        return (torch.IntTensor(text), torch.IntTensor(length))
+
+    def decode(self, text_index, length):
+        """ convert text-index into text-label. """
+        texts = []
+        index = 0
+        for l in length:
+            t = text_index[index:index + l]
+
+            char_list = []
+            for i in range(l):
+                if t[i] != 0 and (not (i > 0 and t[i - 1] == t[i])):  # removing repeated characters and blank.
+                    char_list.append(self.character[t[i]])
+            text = ''.join(char_list)
+
+            texts.append(text)
+            index += l
+        return texts
+
+
+
+def imshow(img, title,batch_size=1):
+  std_correction = np.asarray([0.229, 0.224, 0.225]).reshape(3, 1, 1)
+  mean_correction = np.asarray([0.485, 0.456, 0.406]).reshape(3, 1, 1)
+  npimg = np.multiply(img.numpy(), std_correction) + mean_correction
+  plt.figure(figsize = (batch_size * 4, 4))
+  plt.axis("off")
+  plt.imshow(np.transpose(npimg, (1, 2, 0)))
+  plt.title(title)
+  plt.show()
+
+
+class Averager(object):
+    """Compute average for torch.Tensor, used for loss average."""
+
+    def __init__(self):
+        self.reset()
+
+    def add(self, v):
+        count = v.data.numel()
+        v = v.data.sum()
+        self.n_count += count
+        self.sum += v
+
+    def reset(self):
+        self.n_count = 0
+        self.sum = 0
+
+    def val(self):
+        res = 0
+        if self.n_count != 0:
+            res = self.sum / float(self.n_count)
+        return res
+
+class Logger(object):
+    """For logging while training"""
+    def __init__(self, path):
+        self.logFile = path
+        datetime_now = str(datetime.now(pytz.timezone('Asia/Kolkata')).strftime("%Y-%m-%d_%H-%M-%S"))
+        with open(self.logFile,"w",encoding="utf-8") as f:
+            f.write("Logging at @ " + str(datetime_now) + "\n")
+
+    def log(self,*input):
+        message = ""
+        for x in input:
+            message+=str(x) + " "
+        message = message.strip()
+        print(message)
+        with open(self.logFile,"a",encoding="utf-8") as f:
+            f.write(str(message)+"\n")
+
+
+def allign_two_strings(x:str, y:str, pxy:int=1, pgap:int=1):
+    """
+    Source: https://www.geeksforgeeks.org/sequence-alignment-problem/
+    """
+    i = 0
+    j = 0
+    m = len(x)
+    n = len(y)
+    dp = np.zeros([m+1,n+1], dtype=int)
+    dp[0:(m+1),0] = [ i * pgap for i in range(m+1)]
+    dp[0,0:(n+1)] = [ i * pgap for i in range(n+1)]
+ 
+    i = 1
+    while i <= m:
+        j = 1
+        while j <= n:
+            if x[i - 1] == y[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1]
+            else:
+                dp[i][j] = min(dp[i - 1][j - 1] + pxy,
+                                dp[i - 1][j] + pgap,
+                                dp[i][j - 1] + pgap)
+            j += 1
+        i += 1
+     
+    l = n + m 
+    i = m
+    j = n
+     
+    xpos = l
+    ypos = l
+ 
+    xans = np.zeros(l+1, dtype=int)
+    yans = np.zeros(l+1, dtype=int)
+ 
+    while not (i == 0 or j == 0):
+        #print(f"i: {i}, j: {j}")
+        if x[i - 1] == y[j - 1]:       
+            xans[xpos] = ord(x[i - 1])
+            yans[ypos] = ord(y[j - 1])
+            xpos -= 1
+            ypos -= 1
+            i -= 1
+            j -= 1
+        elif (dp[i - 1][j - 1] + pxy) == dp[i][j]:
+         
+            xans[xpos] = ord(x[i - 1])
+            yans[ypos] = ord(y[j - 1])
+            xpos -= 1
+            ypos -= 1
+            i -= 1
+            j -= 1
+         
+        elif (dp[i - 1][j] + pgap) == dp[i][j]:
+            xans[xpos] = ord(x[i - 1])
+            yans[ypos] = ord('_')
+            xpos -= 1
+            ypos -= 1
+            i -= 1
+         
+        elif (dp[i][j - 1] + pgap) == dp[i][j]:       
+            xans[xpos] = ord('_')
+            yans[ypos] = ord(y[j - 1])
+            xpos -= 1
+            ypos -= 1
+            j -= 1
+         
+ 
+    while xpos > 0:
+        if i > 0:
+            i -= 1
+            xans[xpos] = ord(x[i])
+            xpos -= 1
+        else:
+            xans[xpos] = ord('_')
+            xpos -= 1
+     
+    while ypos > 0:
+        if j > 0:
+            j -= 1
+            yans[ypos] = ord(y[j])
+            ypos -= 1
+        else:
+            yans[ypos] = ord('_')
+            ypos -= 1
+
+    id = 1
+    i = l
+    while i >= 1:
+        if (chr(yans[i]) == '_') and chr(xans[i]) == '_':
+            id = i + 1
+            break
+         
+        i -= 1
+ 
+    i = id
+    x_seq = ""
+    while i <= l:
+        x_seq += chr(xans[i])
+        i += 1
+ 
+    # Y
+    i = id
+    y_seq = ""
+    while i <= l:
+        y_seq += chr(yans[i])
+        i += 1
+    
+    return x_seq, y_seq
+
+# Function to count the number of trainable parameters in a model in "Millions"
+def count_parameters(model,precision=2):
+    return (round(sum(p.numel() for p in model.parameters() if p.requires_grad) / 10.**6, precision))
+
+'''
+# Code for counting the number of FLOPs in the CNN backbone during inference
+Source - https://github.com/fdbtrs/ElasticFace/blob/main/utils/countFLOPS.py
+'''
+
+def count_model_flops(model,in_channels=1, input_res=[32, 400], multiply_adds=True):
+    list_conv = []
+
+    def conv_hook(self, input, output):
+        batch_size, input_channels, input_height, input_width = input[0].size()
+        output_channels, output_height, output_width = output[0].size()
+
+        kernel_ops = self.kernel_size[0] * self.kernel_size[1] * (self.in_channels / self.groups)
+        bias_ops = 1 if self.bias is not None else 0
+
+        params = output_channels * (kernel_ops + bias_ops)
+        flops = (kernel_ops * (
+            2 if multiply_adds else 1) + bias_ops) * output_channels * output_height * output_width * batch_size
+        list_conv.append(flops)
+    list_linear = []
+
+    def linear_hook(self, input, output):
+        batch_size = input[0].size(0) if input[0].dim() == 2 else 1
+
+        weight_ops = self.weight.nelement() * (2 if multiply_adds else 1)
+        if self.bias is not None:
+            bias_ops = self.bias.nelement() if self.bias.nelement() else 0
+            flops = batch_size * (weight_ops + bias_ops)
+        else:
+            flops = batch_size * weight_ops
+        list_linear.append(flops)
+
+    list_bn = []
+
+    def bn_hook(self, input, output):
+        list_bn.append(input[0].nelement() * 2)
+
+    list_relu = []
+
+    def relu_hook(self, input, output):
+        list_relu.append(input[0].nelement())
+
+    list_pooling = []
+
+    def pooling_hook(self, input, output):
+        batch_size, input_channels, input_height, input_width = input[0].size()
+        output_channels, output_height, output_width = output[0].size()
+        # If kernel_size is a tuple type, computer ops as product of elements or else if it is int type, compute ops as square of kernel_size
+        kernel_ops = self.kernel_size[0] * self.kernel_size[1] if isinstance(self.kernel_size, tuple) else self.kernel_size * self.kernel_size
+        bias_ops = 0
+        params = 0
+        flops = (kernel_ops + bias_ops) * output_channels * output_height * output_width * batch_size
+        list_pooling.append(flops)
+    
+    def dropout_hook(self, input, output):
+        # calculate the number of operations for a dropout function by assuming that each operation involves one comparison and one multiplication
+        batch_size, input_channels, input_height, input_width = input[0].size()
+        list_conv.append(2*batch_size*input_channels*input_height*input_width)
+    
+    def sigmoid_hook(self,input,output):
+        # calculate the number of operations for a sigmoid function by assuming that each operation involves two multiplications and one addition
+        batch_size, input_channels, input_height, input_width = input[0].size()
+        list_conv.append(3*batch_size*input_channels*input_height*input_width)
+    
+    def upsample_hook(self, input, output):
+        batch_size, input_channels, input_height, input_width = input[0].size()
+        output_channels, output_height, output_width = output[0].size()
+
+        kernel_ops = self.scale_factor * self.scale_factor # * (self.in_channels / self.groups)
+        flops = (kernel_ops * (
+            2 if multiply_adds else 1)) * output_channels * output_height * output_width * batch_size
+        list_conv.append(flops)
+
+    handles = []
+
+    def foo(net):
+        childrens = list(net.children())
+        if not childrens:
+            if isinstance(net, torch.nn.Conv2d) or isinstance(net, torch.nn.ConvTranspose2d):
+                handles.append(net.register_forward_hook(conv_hook))
+            elif isinstance(net, torch.nn.Linear):
+                handles.append(net.register_forward_hook(linear_hook))
+            elif isinstance(net, torch.nn.BatchNorm2d) or isinstance(net, torch.nn.BatchNorm1d):
+                handles.append(net.register_forward_hook(bn_hook))
+            elif isinstance(net, torch.nn.ReLU) or isinstance(net, torch.nn.PReLU):
+                handles.append(net.register_forward_hook(relu_hook))
+            elif isinstance(net, torch.nn.MaxPool2d) or isinstance(net, torch.nn.AvgPool2d):
+                handles.append(net.register_forward_hook(pooling_hook))
+            elif isinstance(net, torch.nn.Dropout):
+                handles.append(net.register_forward_hook(dropout_hook))
+            elif isinstance(net,torch.nn.Upsample):
+                handles.append(net.register_forward_hook(upsample_hook))
+            elif isinstance(net,torch.nn.Sigmoid):
+                handles.append(net.register_forward_hook(sigmoid_hook))
+            else:
+                print("warning" + str(net))
+            return
+        for c in childrens:
+            foo(c)
+
+    model.eval()
+    foo(model)
+    input = Variable(torch.rand(in_channels, input_res[1], input_res[0]).unsqueeze(0), requires_grad=True)
+    out = model(input)
+    total_flops = (sum(list_conv) + sum(list_linear) + sum(list_bn) + sum(list_relu) + sum(list_pooling))
+    for h in handles:
+        h.remove()
+    model.train()
+    
+    def flops_to_string(flops, units='MFLOPS', precision=4):
+        if units == 'GFLOPS':
+            return str(round(flops / 10.**9, precision)) + ' ' + units
+        elif units == 'MFLOPS':
+            return str(round(flops / 10.**6, precision)) + ' ' + units
+        elif units == 'KFLOPS':
+            return str(round(flops / 10.**3, precision)) + ' ' + units
+        else:
+            return str(flops) + ' FLOPS'
+    
+    return flops_to_string(total_flops)
+
+
+def draw_feature_map(visual_feature,vis_dir,num_channel=10):
+    """draws feature maps for the given visual features
+    Args:
+        visual_feature (Tensor): Shape (C, H, W)
+        vis_dir (String): Directory to save the feature maps
+    """
+    if os.path.exists(vis_dir):
+        shutil.rmtree(vis_dir)
+    os.makedirs(vis_dir)
+    # Save visual_feature from num_channel random channels for visualization
+    for i in range(num_channel):
+        random_channel = random.randint(0, visual_feature.shape[1]-1)
+        visual_feature_for_visualization = visual_feature[0, random_channel, :, :].detach().cpu().numpy()
+        # Horizontal flip
+        visual_feature_for_visualization = visual_feature_for_visualization[:,::-1]
+        # Normalize
+        visual_feature_for_visualization = (visual_feature_for_visualization - visual_feature_for_visualization.min()) / (visual_feature_for_visualization.max() - visual_feature_for_visualization.min())
+        # Draw heatmap
+        plt.imshow(visual_feature_for_visualization, cmap='gray', interpolation='nearest')
+        plt.axis("off")
+        plt.savefig(os.path.join(vis_dir, "channel_{}.png".format(random_channel)), bbox_inches='tight', pad_inches=0)

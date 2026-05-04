@@ -1,0 +1,5632 @@
+══════════════════════════════════════════════════════════════════════
+  مشروع: ml-model-training-ui.zip
+  التصدير: 2026-05-04 00:13:30
+  الملفات البرمجية: 6
+══════════════════════════════════════════════════════════════════════
+
+──────────────────────────────────────────────────────────────────────
+📄  ml-model-training-ui/README.md
+──────────────────────────────────────────────────────────────────────
+# OCR Training UI
+
+OCR Training UI is an Optical Character Recognition (OCR) training tool designed to help users annotate and correct text extractions from scanned documents. This project aims to provide a user-friendly interface for improving the accuracy of OCR technology by allowing manual corrections and categorization of errors.
+
+## Table of Contents
+- [Features](#features)
+- [Demo](#demo)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Contributing](#contributing)
+- [Contact](#contact)
+
+## Features
+- **Zoom Control**: Adjust the zoom level of the document for better visibility.
+- **Annotation Boxes**: Visualize the OCR text extraction boxes on the document.
+- **Error Categorization**: Manually correct text and categorize errors.
+- **Toggle Panel**: Easily toggle the annotation panel for a streamlined interface.
+
+## Demo
+A live demo of the project can be found [here](https://citizenbob.github.io/ml-model-training-ui/).
+
+## Installation
+1. Clone the repository:
+
+    ```bash
+    git clone https://github.com/duebelbytes/ml-model-training-ui.git
+    ```
+
+2. Navigate to the project directory:
+
+    ```bash
+    cd ml-model-training-ui
+    ```
+
+3. Open the `index.html` file in your preferred web browser to run the application locally.
+
+## Usage
+1. Load a document by replacing `record.jpg` with your own image in the `img` tag within `index.html`.
+2. Adjust the zoom level using the slider in the control panel to get a better view of the document.
+3. Click on the annotation boxes to select them and manually correct the text in the input fields provided in the right panel.
+4. Categorize the errors using the dropdown menu next to each text input field.
+5. Toggle the annotation panel using the button in the header to hide or show the correction form.
+6. Click the `Validate` button to submit your corrections (note: this currently only logs the data to the console).
+
+## Contributing
+Contributions are welcome! Please follow these steps:
+
+1. Fork the repository.
+2. Create a new branch for your feature or bug fix:
+
+    ```bash
+    git checkout -b feature-name
+    ```
+
+3. Make your changes and commit them:
+
+    ```bash
+    git commit -m "Description of feature or bug fix"
+    ```
+
+4. Push to the branch:
+
+    ```bash
+    git push origin feature-name
+    ```
+
+5. Open a pull request describing your changes.
+
+──────────────────────────────────────────────────────────────────────
+📄  ml-model-training-ui/index.html
+──────────────────────────────────────────────────────────────────────
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OCR Trainer</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="ui-control-panel">
+      <input
+        type="range"
+        id="zoom-control"
+        min="0.5"
+        max="2"
+        step="0.1"
+        value="1"
+      />
+      <span>Slide to change zoom</span>
+    </div>
+    <div class="wrapper">
+      <div id="container">
+        <img id="document" src="record.jpg" alt="Document" />
+      </div>
+      <div id="overpanel" aria-hidden="false">
+        <header>
+          <button type="button" id="toggle" aria-expanded="true" aria-controls="overpanel">Toggle</button>
+          <h2>Text Extractions</h2>
+        </header>
+        <form id="description-form"></form>
+        <footer>
+          <button type="button" id="submit-button">Validate</button>
+        </footer>
+      </div>
+    </div>
+
+    <script src="scripts.js"></script>
+  </body>
+</html>
+
+──────────────────────────────────────────────────────────────────────
+📄  ml-model-training-ui/ocr_response.json
+──────────────────────────────────────────────────────────────────────
+{
+    "textAnnotations": [
+        {
+            "description": "Pg4of34",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1651,
+                        "y": 68
+                    },
+                    {
+                        "x": 1874,
+                        "y": 68
+                    },
+                    {
+                        "x": 1874,
+                        "y": 114
+                    },
+                    {
+                        "x": 1651,
+                        "y": 114
+                    }
+                ]
+            },
+            "confidence": 0.77090469
+        },
+        {
+            "description": "PgID872",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1934,
+                        "y": 70
+                    },
+                    {
+                        "x": 2149,
+                        "y": 70
+                    },
+                    {
+                        "x": 2149,
+                        "y": 114
+                    },
+                    {
+                        "x": 1934,
+                        "y": 114
+                    }
+                ]
+            },
+            "confidence": 0.76860275
+        },
+        {
+            "description": "po",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 128,
+                        "y": 192
+                    },
+                    {
+                        "x": 377,
+                        "y": 192
+                    },
+                    {
+                        "x": 377,
+                        "y": 337
+                    },
+                    {
+                        "x": 128,
+                        "y": 337
+                    }
+                ]
+            },
+            "confidence": 0.15322342
+        },
+        {
+            "description": "]",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 336,
+                        "y": 629
+                    },
+                    {
+                        "x": 339,
+                        "y": 629
+                    },
+                    {
+                        "x": 339,
+                        "y": 654
+                    },
+                    {
+                        "x": 336,
+                        "y": 654
+                    }
+                ]
+            },
+            "confidence": 0.56017921
+        },
+        {
+            "description": "i",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1323,
+                        "y": 638
+                    },
+                    {
+                        "x": 1326,
+                        "y": 638
+                    },
+                    {
+                        "x": 1326,
+                        "y": 649
+                    },
+                    {
+                        "x": 1323,
+                        "y": 649
+                    }
+                ]
+            },
+            "confidence": 0.64459129
+        },
+        {
+            "description": "wi",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1596,
+                        "y": 710
+                    },
+                    {
+                        "x": 1630,
+                        "y": 710
+                    },
+                    {
+                        "x": 1630,
+                        "y": 751
+                    },
+                    {
+                        "x": 1596,
+                        "y": 751
+                    }
+                ]
+            },
+            "confidence": 0.74302597
+        },
+        {
+            "description": "Da",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1695,
+                        "y": 716
+                    },
+                    {
+                        "x": 1735,
+                        "y": 716
+                    },
+                    {
+                        "x": 1735,
+                        "y": 742
+                    },
+                    {
+                        "x": 1695,
+                        "y": 742
+                    }
+                ]
+            },
+            "confidence": 0.40642986000000003
+        },
+        {
+            "description": "ebb,",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1626,
+                        "y": 716
+                    },
+                    {
+                        "x": 1689,
+                        "y": 716
+                    },
+                    {
+                        "x": 1689,
+                        "y": 744
+                    },
+                    {
+                        "x": 1626,
+                        "y": 744
+                    }
+                ]
+            },
+            "confidence": 0.5860039100000001
+        },
+        {
+            "description": "ee",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1594,
+                        "y": 748
+                    },
+                    {
+                        "x": 1724,
+                        "y": 748
+                    },
+                    {
+                        "x": 1724,
+                        "y": 804
+                    },
+                    {
+                        "x": 1594,
+                        "y": 804
+                    }
+                ]
+            },
+            "confidence": 0.27745697
+        },
+        {
+            "description": "M26",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1833,
+                        "y": 747
+                    },
+                    {
+                        "x": 1894,
+                        "y": 747
+                    },
+                    {
+                        "x": 1894,
+                        "y": 774
+                    },
+                    {
+                        "x": 1833,
+                        "y": 774
+                    }
+                ]
+            },
+            "confidence": 0.76212357
+        },
+        {
+            "description": "MedRec:",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1590,
+                        "y": 795
+                    },
+                    {
+                        "x": 1712,
+                        "y": 795
+                    },
+                    {
+                        "x": 1712,
+                        "y": 872
+                    },
+                    {
+                        "x": 1590,
+                        "y": 872
+                    }
+                ]
+            },
+            "confidence": 0.29905853
+        },
+        {
+            "description": "7",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1844,
+                        "y": 843
+                    },
+                    {
+                        "x": 1878,
+                        "y": 843
+                    },
+                    {
+                        "x": 1878,
+                        "y": 869
+                    },
+                    {
+                        "x": 1844,
+                        "y": 869
+                    }
+                ]
+            },
+            "confidence": 0.41823662
+        },
+        {
+            "description": "Complaint;",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 263,
+                        "y": 898
+                    },
+                    {
+                        "x": 440,
+                        "y": 898
+                    },
+                    {
+                        "x": 440,
+                        "y": 935
+                    },
+                    {
+                        "x": 263,
+                        "y": 935
+                    }
+                ]
+            },
+            "confidence": 0.79403076
+        },
+        {
+            "description": "aiey",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 526,
+                        "y": 934
+                    },
+                    {
+                        "x": 592,
+                        "y": 934
+                    },
+                    {
+                        "x": 592,
+                        "y": 1006
+                    },
+                    {
+                        "x": 526,
+                        "y": 1006
+                    }
+                ]
+            },
+            "confidence": 0.0
+        },
+        {
+            "description": "\u2014",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1424,
+                        "y": 947
+                    },
+                    {
+                        "x": 1573,
+                        "y": 947
+                    },
+                    {
+                        "x": 1573,
+                        "y": 1011
+                    },
+                    {
+                        "x": 1424,
+                        "y": 1011
+                    }
+                ]
+            },
+            "confidence": 0.5375386
+        },
+        {
+            "description": "+",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1573,
+                        "y": 956
+                    },
+                    {
+                        "x": 1582,
+                        "y": 956
+                    },
+                    {
+                        "x": 1582,
+                        "y": 976
+                    },
+                    {
+                        "x": 1573,
+                        "y": 976
+                    }
+                ]
+            },
+            "confidence": 0.49673115
+        },
+        {
+            "description": "irgent",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 570,
+                        "y": 980
+                    },
+                    {
+                        "x": 643,
+                        "y": 980
+                    },
+                    {
+                        "x": 643,
+                        "y": 1010
+                    },
+                    {
+                        "x": 570,
+                        "y": 1010
+                    }
+                ]
+            },
+            "confidence": 0.28848671
+        },
+        {
+            "description": "U",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 263,
+                        "y": 969
+                    },
+                    {
+                        "x": 291,
+                        "y": 969
+                    },
+                    {
+                        "x": 291,
+                        "y": 998
+                    },
+                    {
+                        "x": 263,
+                        "y": 998
+                    }
+                ]
+            },
+            "confidence": 0.86529366
+        },
+        {
+            "description": "+",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 398,
+                        "y": 980
+                    },
+                    {
+                        "x": 407,
+                        "y": 980
+                    },
+                    {
+                        "x": 407,
+                        "y": 1000
+                    },
+                    {
+                        "x": 398,
+                        "y": 1000
+                    }
+                ]
+            },
+            "confidence": 0.53528778
+        },
+        {
+            "description": "4\u2014Less",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 419,
+                        "y": 967
+                    },
+                    {
+                        "x": 537,
+                        "y": 967
+                    },
+                    {
+                        "x": 537,
+                        "y": 1011
+                    },
+                    {
+                        "x": 419,
+                        "y": 1011
+                    }
+                ]
+            },
+            "confidence": 0.45956017000000005
+        },
+        {
+            "description": "f",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1553,
+                        "y": 992
+                    },
+                    {
+                        "x": 1561,
+                        "y": 992
+                    },
+                    {
+                        "x": 1561,
+                        "y": 1011
+                    },
+                    {
+                        "x": 1553,
+                        "y": 1011
+                    }
+                ]
+            },
+            "confidence": 0.25856422
+        },
+        {
+            "description": "ED",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 355,
+                        "y": 972
+                    },
+                    {
+                        "x": 394,
+                        "y": 972
+                    },
+                    {
+                        "x": 394,
+                        "y": 1049
+                    },
+                    {
+                        "x": 355,
+                        "y": 1049
+                    }
+                ]
+            },
+            "confidence": 0.59576256
+        },
+        {
+            "description": "ED",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 406,
+                        "y": 972
+                    },
+                    {
+                        "x": 450,
+                        "y": 972
+                    },
+                    {
+                        "x": 450,
+                        "y": 1049
+                    },
+                    {
+                        "x": 406,
+                        "y": 1049
+                    }
+                ]
+            },
+            "confidence": 0.59576256
+        },
+        {
+            "description": "ie",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1461,
+                        "y": 990
+                    },
+                    {
+                        "x": 1492,
+                        "y": 990
+                    },
+                    {
+                        "x": 1492,
+                        "y": 1017
+                    },
+                    {
+                        "x": 1461,
+                        "y": 1017
+                    }
+                ]
+            },
+            "confidence": 0.39824615
+        },
+        {
+            "description": "Initial",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 260,
+                        "y": 1036
+                    },
+                    {
+                        "x": 360,
+                        "y": 1036
+                    },
+                    {
+                        "x": 360,
+                        "y": 1082
+                    },
+                    {
+                        "x": 260,
+                        "y": 1082
+                    }
+                ]
+            },
+            "confidence": 0.76994919
+        },
+        {
+            "description": "Signe:",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 459,
+                        "y": 1036
+                    },
+                    {
+                        "x": 544,
+                        "y": 1036
+                    },
+                    {
+                        "x": 544,
+                        "y": 1082
+                    },
+                    {
+                        "x": 459,
+                        "y": 1082
+                    }
+                ]
+            },
+            "confidence": 0.8622964500000001
+        },
+        {
+            "description": "5/30/2009",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 558,
+                        "y": 1036
+                    },
+                    {
+                        "x": 690,
+                        "y": 1036
+                    },
+                    {
+                        "x": 690,
+                        "y": 1082
+                    },
+                    {
+                        "x": 558,
+                        "y": 1082
+                    }
+                ]
+            },
+            "confidence": 0.42413975
+        },
+        {
+            "description": "BP:",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 280,
+                        "y": 1071
+                    },
+                    {
+                        "x": 339,
+                        "y": 1071
+                    },
+                    {
+                        "x": 339,
+                        "y": 1115
+                    },
+                    {
+                        "x": 280,
+                        "y": 1115
+                    }
+                ]
+            },
+            "confidence": 0.6830265799999999
+        },
+        {
+            "description": "115/62",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 349,
+                        "y": 1071
+                    },
+                    {
+                        "x": 442,
+                        "y": 1071
+                    },
+                    {
+                        "x": 442,
+                        "y": 1115
+                    },
+                    {
+                        "x": 349,
+                        "y": 1115
+                    }
+                ]
+            },
+            "confidence": 0.6830265799999999
+        },
+        {
+            "description": "\u2014",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1360,
+                        "y": 1085
+                    },
+                    {
+                        "x": 1585,
+                        "y": 1085
+                    },
+                    {
+                        "x": 1585,
+                        "y": 1150
+                    },
+                    {
+                        "x": 1360,
+                        "y": 1150
+                    }
+                ]
+            },
+            "confidence": 0.00588951
+        },
+        {
+            "description": "T:98.1",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 833,
+                        "y": 1116
+                    },
+                    {
+                        "x": 929,
+                        "y": 1116
+                    },
+                    {
+                        "x": 929,
+                        "y": 1147
+                    },
+                    {
+                        "x": 833,
+                        "y": 1147
+                    }
+                ]
+            },
+            "confidence": 0.39267151
+        },
+        {
+            "description": "re",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 254,
+                        "y": 1157
+                    },
+                    {
+                        "x": 1246,
+                        "y": 1157
+                    },
+                    {
+                        "x": 1246,
+                        "y": 1192
+                    },
+                    {
+                        "x": 254,
+                        "y": 1192
+                    }
+                ]
+            },
+            "confidence": 0.21836739000000002
+        },
+        {
+            "description": "Ey",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1586,
+                        "y": 1157
+                    },
+                    {
+                        "x": 2112,
+                        "y": 1157
+                    },
+                    {
+                        "x": 2112,
+                        "y": 1192
+                    },
+                    {
+                        "x": 1586,
+                        "y": 1192
+                    }
+                ]
+            },
+            "confidence": 0.08055695
+        },
+        {
+            "description": "(su",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 445,
+                        "y": 1215
+                    },
+                    {
+                        "x": 479,
+                        "y": 1215
+                    },
+                    {
+                        "x": 479,
+                        "y": 1237
+                    },
+                    {
+                        "x": 445,
+                        "y": 1237
+                    }
+                ]
+            },
+            "confidence": 0.24256523000000002
+        },
+        {
+            "description": "ntey",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 485,
+                        "y": 1216
+                    },
+                    {
+                        "x": 525,
+                        "y": 1216
+                    },
+                    {
+                        "x": 525,
+                        "y": 1238
+                    },
+                    {
+                        "x": 485,
+                        "y": 1238
+                    }
+                ]
+            },
+            "confidence": 0.23281319
+        },
+        {
+            "description": "30,",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 529,
+                        "y": 1216
+                    },
+                    {
+                        "x": 556,
+                        "y": 1216
+                    },
+                    {
+                        "x": 556,
+                        "y": 1236
+                    },
+                    {
+                        "x": 529,
+                        "y": 1236
+                    }
+                ]
+            },
+            "confidence": 0.73273026
+        },
+        {
+            "description": "2009",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 564,
+                        "y": 1196
+                    },
+                    {
+                        "x": 604,
+                        "y": 1196
+                    },
+                    {
+                        "x": 604,
+                        "y": 1248
+                    },
+                    {
+                        "x": 564,
+                        "y": 1248
+                    }
+                ]
+            },
+            "confidence": 0.7498857099999999
+        },
+        {
+            "description": "0006",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 607,
+                        "y": 1196
+                    },
+                    {
+                        "x": 656,
+                        "y": 1196
+                    },
+                    {
+                        "x": 656,
+                        "y": 1248
+                    },
+                    {
+                        "x": 607,
+                        "y": 1248
+                    }
+                ]
+            },
+            "confidence": 0.7745594
+        },
+        {
+            "description": "axc>",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 660,
+                        "y": 1217
+                    },
+                    {
+                        "x": 714,
+                        "y": 1217
+                    },
+                    {
+                        "x": 714,
+                        "y": 1237
+                    },
+                    {
+                        "x": 660,
+                        "y": 1237
+                    }
+                ]
+            },
+            "confidence": 0.0
+        },
+        {
+            "description": "PATIENT;",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 277,
+                        "y": 1245
+                    },
+                    {
+                        "x": 430,
+                        "y": 1245
+                    },
+                    {
+                        "x": 430,
+                        "y": 1276
+                    },
+                    {
+                        "x": 277,
+                        "y": 1276
+                    }
+                ]
+            },
+            "confidence": 0.82986465
+        },
+        {
+            "description": "Davarrio",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 562,
+                        "y": 1249
+                    },
+                    {
+                        "x": 687,
+                        "y": 1249
+                    },
+                    {
+                        "x": 687,
+                        "y": 1278
+                    },
+                    {
+                        "x": 562,
+                        "y": 1278
+                    }
+                ]
+            },
+            "confidence": 0.74937477
+        },
+        {
+            "description": "AGE;",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 835,
+                        "y": 1251
+                    },
+                    {
+                        "x": 919,
+                        "y": 1251
+                    },
+                    {
+                        "x": 919,
+                        "y": 1280
+                    },
+                    {
+                        "x": 835,
+                        "y": 1280
+                    }
+                ]
+            },
+            "confidence": 0.78045021
+        },
+        {
+            "description": "989752-6983,",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1139,
+                        "y": 1296
+                    },
+                    {
+                        "x": 1346,
+                        "y": 1296
+                    },
+                    {
+                        "x": 1346,
+                        "y": 1330
+                    },
+                    {
+                        "x": 1139,
+                        "y": 1330
+                    }
+                ]
+            },
+            "confidence": 0.84530869
+        },
+        {
+            "description": "\u2014",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 697,
+                        "y": 1432
+                    },
+                    {
+                        "x": 718,
+                        "y": 1432
+                    },
+                    {
+                        "x": 718,
+                        "y": 1438
+                    },
+                    {
+                        "x": 697,
+                        "y": 1438
+                    }
+                ]
+            },
+            "confidence": 0.63585403
+        },
+        {
+            "description": "Alcove,",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 310,
+                        "y": 1456
+                    },
+                    {
+                        "x": 422,
+                        "y": 1456
+                    },
+                    {
+                        "x": 422,
+                        "y": 1486
+                    },
+                    {
+                        "x": 310,
+                        "y": 1486
+                    }
+                ]
+            },
+            "confidence": 0.84563507
+        },
+        {
+            "description": "SIGNS;",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 380,
+                        "y": 1500
+                    },
+                    {
+                        "x": 486,
+                        "y": 1500
+                    },
+                    {
+                        "x": 486,
+                        "y": 1528
+                    },
+                    {
+                        "x": 380,
+                        "y": 1528
+                    }
+                ]
+            },
+            "confidence": 0.66778778
+        },
+        {
+            "description": "Pain",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1122,
+                        "y": 1506
+                    },
+                    {
+                        "x": 1185,
+                        "y": 1506
+                    },
+                    {
+                        "x": 1185,
+                        "y": 1533
+                    },
+                    {
+                        "x": 1122,
+                        "y": 1533
+                    }
+                ]
+            },
+            "confidence": 0.84205246
+        },
+        {
+            "description": "O2",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1230,
+                        "y": 1507
+                    },
+                    {
+                        "x": 1273,
+                        "y": 1507
+                    },
+                    {
+                        "x": 1273,
+                        "y": 1534
+                    },
+                    {
+                        "x": 1230,
+                        "y": 1534
+                    }
+                ]
+            },
+            "confidence": 0.81899406
+        },
+        {
+            "description": "00:34.",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1714,
+                        "y": 1505
+                    },
+                    {
+                        "x": 1805,
+                        "y": 1505
+                    },
+                    {
+                        "x": 1805,
+                        "y": 1549
+                    },
+                    {
+                        "x": 1714,
+                        "y": 1549
+                    }
+                ]
+            },
+            "confidence": 0.86914597
+        },
+        {
+            "description": "~~",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 569,
+                        "y": 1598
+                    },
+                    {
+                        "x": 609,
+                        "y": 1598
+                    },
+                    {
+                        "x": 609,
+                        "y": 1605
+                    },
+                    {
+                        "x": 569,
+                        "y": 1605
+                    }
+                ]
+            },
+            "confidence": 0.40125877000000004
+        },
+        {
+            "description": "~\u2014----\u2014--\u2014---\u2014--------------~+---",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 620,
+                        "y": 1598
+                    },
+                    {
+                        "x": 1451,
+                        "y": 1598
+                    },
+                    {
+                        "x": 1451,
+                        "y": 1613
+                    },
+                    {
+                        "x": 620,
+                        "y": 1613
+                    }
+                ]
+            },
+            "confidence": 0.0
+        },
+        {
+            "description": "~\u2014\u2014-",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 624,
+                        "y": 1641
+                    },
+                    {
+                        "x": 724,
+                        "y": 1641
+                    },
+                    {
+                        "x": 724,
+                        "y": 1648
+                    },
+                    {
+                        "x": 624,
+                        "y": 1648
+                    }
+                ]
+            },
+            "confidence": 0.37625648
+        },
+        {
+            "description": "-\u2014",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 739,
+                        "y": 1622
+                    },
+                    {
+                        "x": 759,
+                        "y": 1622
+                    },
+                    {
+                        "x": 759,
+                        "y": 1668
+                    },
+                    {
+                        "x": 739,
+                        "y": 1668
+                    }
+                ]
+            },
+            "confidence": 0.47384613000000003
+        },
+        {
+            "description": "\u2014-\u2014-\u2014-\u2014--~--------~-~---~---\u2014",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 767,
+                        "y": 1641
+                    },
+                    {
+                        "x": 1510,
+                        "y": 1641
+                    },
+                    {
+                        "x": 1510,
+                        "y": 1656
+                    },
+                    {
+                        "x": 767,
+                        "y": 1656
+                    }
+                ]
+            },
+            "confidence": 0.0054589799999999996
+        },
+        {
+            "description": "~~.",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1437,
+                        "y": 1622
+                    },
+                    {
+                        "x": 1514,
+                        "y": 1622
+                    },
+                    {
+                        "x": 1514,
+                        "y": 1668
+                    },
+                    {
+                        "x": 1437,
+                        "y": 1668
+                    }
+                ]
+            },
+            "confidence": 0.28784363
+        },
+        {
+            "description": "abrasions,",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1430,
+                        "y": 1676
+                    },
+                    {
+                        "x": 1570,
+                        "y": 1676
+                    },
+                    {
+                        "x": 1570,
+                        "y": 1706
+                    },
+                    {
+                        "x": 1430,
+                        "y": 1706
+                    }
+                ]
+            },
+            "confidence": 0.58144791
+        },
+        {
+            "description": "-\u2014",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 590,
+                        "y": 1748
+                    },
+                    {
+                        "x": 610,
+                        "y": 1748
+                    },
+                    {
+                        "x": 610,
+                        "y": 1794
+                    },
+                    {
+                        "x": 590,
+                        "y": 1794
+                    }
+                ]
+            },
+            "confidence": 0.43254238
+        },
+        {
+            "description": "--\u2014",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 625,
+                        "y": 1748
+                    },
+                    {
+                        "x": 668,
+                        "y": 1748
+                    },
+                    {
+                        "x": 668,
+                        "y": 1794
+                    },
+                    {
+                        "x": 625,
+                        "y": 1794
+                    }
+                ]
+            },
+            "confidence": 0.38487392
+        },
+        {
+            "description": "---~",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 682,
+                        "y": 1748
+                    },
+                    {
+                        "x": 754,
+                        "y": 1748
+                    },
+                    {
+                        "x": 754,
+                        "y": 1794
+                    },
+                    {
+                        "x": 682,
+                        "y": 1794
+                    }
+                ]
+            },
+            "confidence": 0.27804764
+        },
+        {
+            "description": "------------~-------+----~-~",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 765,
+                        "y": 1766
+                    },
+                    {
+                        "x": 1480,
+                        "y": 1766
+                    },
+                    {
+                        "x": 1480,
+                        "y": 1782
+                    },
+                    {
+                        "x": 765,
+                        "y": 1782
+                    }
+                ]
+            },
+            "confidence": 0.17269096
+        },
+        {
+            "description": "RECOMMENDATION:",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 364,
+                        "y": 1794
+                    },
+                    {
+                        "x": 695,
+                        "y": 1794
+                    },
+                    {
+                        "x": 695,
+                        "y": 1823
+                    },
+                    {
+                        "x": 364,
+                        "y": 1823
+                    }
+                ]
+            },
+            "confidence": 0.8289250199999999
+        },
+        {
+            "description": "-",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 706,
+                        "y": 1810
+                    },
+                    {
+                        "x": 721,
+                        "y": 1810
+                    },
+                    {
+                        "x": 721,
+                        "y": 1815
+                    },
+                    {
+                        "x": 706,
+                        "y": 1815
+                    }
+                ]
+            },
+            "confidence": 0.34008934
+        },
+        {
+            "description": "-",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 737,
+                        "y": 1811
+                    },
+                    {
+                        "x": 755,
+                        "y": 1811
+                    },
+                    {
+                        "x": 755,
+                        "y": 1816
+                    },
+                    {
+                        "x": 737,
+                        "y": 1816
+                    }
+                ]
+            },
+            "confidence": 0.61545452
+        },
+        {
+            "description": "~~",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 773,
+                        "y": 1810
+                    },
+                    {
+                        "x": 816,
+                        "y": 1810
+                    },
+                    {
+                        "x": 816,
+                        "y": 1816
+                    },
+                    {
+                        "x": 773,
+                        "y": 1816
+                    }
+                ]
+            },
+            "confidence": 0.48800334999999995
+        },
+        {
+            "description": "-",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 833,
+                        "y": 1810
+                    },
+                    {
+                        "x": 847,
+                        "y": 1810
+                    },
+                    {
+                        "x": 847,
+                        "y": 1818
+                    },
+                    {
+                        "x": 833,
+                        "y": 1818
+                    }
+                ]
+            },
+            "confidence": 0.34717934
+        },
+        {
+            "description": "-",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 861,
+                        "y": 1810
+                    },
+                    {
+                        "x": 875,
+                        "y": 1810
+                    },
+                    {
+                        "x": 875,
+                        "y": 1817
+                    },
+                    {
+                        "x": 861,
+                        "y": 1817
+                    }
+                ]
+            },
+            "confidence": 0.14317444000000001
+        },
+        {
+            "description": "-~~--\u2014----\u2014-~------~----~-~..",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 885,
+                        "y": 1810
+                    },
+                    {
+                        "x": 1593,
+                        "y": 1810
+                    },
+                    {
+                        "x": 1593,
+                        "y": 1826
+                    },
+                    {
+                        "x": 885,
+                        "y": 1826
+                    }
+                ]
+            },
+            "confidence": 0.23715286
+        },
+        {
+            "description": "A04",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 684,
+                        "y": 1923
+                    },
+                    {
+                        "x": 746,
+                        "y": 1923
+                    },
+                    {
+                        "x": 746,
+                        "y": 1950
+                    },
+                    {
+                        "x": 684,
+                        "y": 1950
+                    }
+                ]
+            },
+            "confidence": 0.82277046
+        },
+        {
+            "description": "200905292337",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 758,
+                        "y": 1916
+                    },
+                    {
+                        "x": 971,
+                        "y": 1916
+                    },
+                    {
+                        "x": 971,
+                        "y": 1969
+                    },
+                    {
+                        "x": 758,
+                        "y": 1969
+                    }
+                ]
+            },
+            "confidence": 0.0
+        },
+        {
+            "description": "160543",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 976,
+                        "y": 1916
+                    },
+                    {
+                        "x": 1068,
+                        "y": 1916
+                    },
+                    {
+                        "x": 1068,
+                        "y": 1969
+                    },
+                    {
+                        "x": 976,
+                        "y": 1969
+                    }
+                ]
+            },
+            "confidence": 0.0
+        },
+        {
+            "description": "(989)752~-6983,",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 844,
+                        "y": 1966
+                    },
+                    {
+                        "x": 1068,
+                        "y": 1966
+                    },
+                    {
+                        "x": 1068,
+                        "y": 2000
+                    },
+                    {
+                        "x": 844,
+                        "y": 2000
+                    }
+                ]
+            },
+            "confidence": 0.5678972600000001
+        },
+        {
+            "description": "Jr",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1943,
+                        "y": 1979
+                    },
+                    {
+                        "x": 1971,
+                        "y": 1979
+                    },
+                    {
+                        "x": 1971,
+                        "y": 2006
+                    },
+                    {
+                        "x": 1943,
+                        "y": 2006
+                    }
+                ]
+            },
+            "confidence": 0.85302505
+        },
+        {
+            "description": "M.D",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 300,
+                        "y": 2005
+                    },
+                    {
+                        "x": 370,
+                        "y": 2005
+                    },
+                    {
+                        "x": 370,
+                        "y": 2034
+                    },
+                    {
+                        "x": 300,
+                        "y": 2034
+                    }
+                ]
+            },
+            "confidence": 0.6330994
+        },
+        {
+            "description": "aan",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1154,
+                        "y": 2021
+                    },
+                    {
+                        "x": 1219,
+                        "y": 2021
+                    },
+                    {
+                        "x": 1219,
+                        "y": 2041
+                    },
+                    {
+                        "x": 1154,
+                        "y": 2041
+                    }
+                ]
+            },
+            "confidence": 0.7803006
+        },
+        {
+            "description": "A08",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 290,
+                        "y": 2048
+                    },
+                    {
+                        "x": 354,
+                        "y": 2048
+                    },
+                    {
+                        "x": 354,
+                        "y": 2075
+                    },
+                    {
+                        "x": 290,
+                        "y": 2075
+                    }
+                ]
+            },
+            "confidence": 0.75522842
+        },
+        {
+            "description": "eos)",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1160,
+                        "y": 2064
+                    },
+                    {
+                        "x": 1224,
+                        "y": 2064
+                    },
+                    {
+                        "x": 1224,
+                        "y": 2084
+                    },
+                    {
+                        "x": 1160,
+                        "y": 2084
+                    }
+                ]
+            },
+            "confidence": 0.2954805
+        },
+        {
+            "description": "oss",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1093,
+                        "y": 2105
+                    },
+                    {
+                        "x": 1187,
+                        "y": 2105
+                    },
+                    {
+                        "x": 1187,
+                        "y": 2126
+                    },
+                    {
+                        "x": 1093,
+                        "y": 2126
+                    }
+                ]
+            },
+            "confidence": 0.15649216
+        },
+        {
+            "description": "A08",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 288,
+                        "y": 2133
+                    },
+                    {
+                        "x": 352,
+                        "y": 2133
+                    },
+                    {
+                        "x": 352,
+                        "y": 2162
+                    },
+                    {
+                        "x": 288,
+                        "y": 2162
+                    }
+                ]
+            },
+            "confidence": 0.83327164
+        },
+        {
+            "description": "e107",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1158,
+                        "y": 2148
+                    },
+                    {
+                        "x": 1224,
+                        "y": 2148
+                    },
+                    {
+                        "x": 1224,
+                        "y": 2170
+                    },
+                    {
+                        "x": 1158,
+                        "y": 2170
+                    }
+                ]
+            },
+            "confidence": 0.5253405
+        },
+        {
+            "description": "Nkda,",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 508,
+                        "y": 2261
+                    },
+                    {
+                        "x": 592,
+                        "y": 2261
+                    },
+                    {
+                        "x": 592,
+                        "y": 2290
+                    },
+                    {
+                        "x": 508,
+                        "y": 2290
+                    }
+                ]
+            },
+            "confidence": 0.8650245700000001
+        },
+        {
+            "description": "(32",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 522,
+                        "y": 2424
+                    },
+                    {
+                        "x": 552,
+                        "y": 2424
+                    },
+                    {
+                        "x": 552,
+                        "y": 2470
+                    },
+                    {
+                        "x": 522,
+                        "y": 2470
+                    }
+                ]
+            },
+            "confidence": 0.41058661999999996
+        },
+        {
+            "description": "vay",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 566,
+                        "y": 2424
+                    },
+                    {
+                        "x": 598,
+                        "y": 2424
+                    },
+                    {
+                        "x": 598,
+                        "y": 2470
+                    },
+                    {
+                        "x": 566,
+                        "y": 2470
+                    }
+                ]
+            },
+            "confidence": 0.24148376
+        },
+        {
+            "description": "009",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 647,
+                        "y": 2424
+                    },
+                    {
+                        "x": 678,
+                        "y": 2424
+                    },
+                    {
+                        "x": 678,
+                        "y": 2470
+                    },
+                    {
+                        "x": 647,
+                        "y": 2470
+                    }
+                ]
+            },
+            "confidence": 0.32798676
+        },
+        {
+            "description": "0096",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 689,
+                        "y": 2424
+                    },
+                    {
+                        "x": 732,
+                        "y": 2424
+                    },
+                    {
+                        "x": 732,
+                        "y": 2470
+                    },
+                    {
+                        "x": 689,
+                        "y": 2470
+                    }
+                ]
+            },
+            "confidence": 0.84815361
+        },
+        {
+            "description": "axc)",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 741,
+                        "y": 2443
+                    },
+                    {
+                        "x": 794,
+                        "y": 2443
+                    },
+                    {
+                        "x": 794,
+                        "y": 2463
+                    },
+                    {
+                        "x": 741,
+                        "y": 2463
+                    }
+                ]
+            },
+            "confidence": 0.77998543
+        },
+        {
+            "description": "115/62,",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 548,
+                        "y": 2473
+                    },
+                    {
+                        "x": 650,
+                        "y": 2473
+                    },
+                    {
+                        "x": 650,
+                        "y": 2504
+                    },
+                    {
+                        "x": 548,
+                        "y": 2504
+                    }
+                ]
+            },
+            "confidence": 0.85211479
+        },
+        {
+            "description": "O2",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1268,
+                        "y": 2480
+                    },
+                    {
+                        "x": 1311,
+                        "y": 2480
+                    },
+                    {
+                        "x": 1311,
+                        "y": 2509
+                    },
+                    {
+                        "x": 1268,
+                        "y": 2509
+                    }
+                ]
+            },
+            "confidence": 0.68833649
+        },
+        {
+            "description": "ra,",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1469,
+                        "y": 2492
+                    },
+                    {
+                        "x": 1506,
+                        "y": 2492
+                    },
+                    {
+                        "x": 1506,
+                        "y": 2517
+                    },
+                    {
+                        "x": 1469,
+                        "y": 2517
+                    }
+                ]
+            },
+            "confidence": 0.83714355
+        },
+        {
+            "description": "2.",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 696,
+                        "y": 2568
+                    },
+                    {
+                        "x": 793,
+                        "y": 2568
+                    },
+                    {
+                        "x": 793,
+                        "y": 2589
+                    },
+                    {
+                        "x": 696,
+                        "y": 2589
+                    }
+                ]
+            },
+            "confidence": 0.0
+        },
+        {
+            "description": "multiple",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 599,
+                        "y": 2602
+                    },
+                    {
+                        "x": 716,
+                        "y": 2602
+                    },
+                    {
+                        "x": 716,
+                        "y": 2636
+                    },
+                    {
+                        "x": 599,
+                        "y": 2636
+                    }
+                ]
+            },
+            "confidence": 0.6418695099999999
+        },
+        {
+            "description": "complaints,",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 724,
+                        "y": 2603
+                    },
+                    {
+                        "x": 895,
+                        "y": 2603
+                    },
+                    {
+                        "x": 895,
+                        "y": 2637
+                    },
+                    {
+                        "x": 724,
+                        "y": 2637
+                    }
+                ]
+            },
+            "confidence": 0.80332123
+        },
+        {
+            "description": "1",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1301,
+                        "y": 2770
+                    },
+                    {
+                        "x": 1312,
+                        "y": 2770
+                    },
+                    {
+                        "x": 1312,
+                        "y": 2814
+                    },
+                    {
+                        "x": 1301,
+                        "y": 2814
+                    }
+                ]
+            },
+            "confidence": 0.56276131
+        },
+        {
+            "description": "}",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1607,
+                        "y": 2785
+                    },
+                    {
+                        "x": 1610,
+                        "y": 2785
+                    },
+                    {
+                        "x": 1610,
+                        "y": 2789
+                    },
+                    {
+                        "x": 1607,
+                        "y": 2789
+                    }
+                ]
+            },
+            "confidence": 0.42602981999999995
+        },
+        {
+            "description": "Mary's",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 470,
+                        "y": 2805
+                    },
+                    {
+                        "x": 539,
+                        "y": 2805
+                    },
+                    {
+                        "x": 539,
+                        "y": 2846
+                    },
+                    {
+                        "x": 470,
+                        "y": 2846
+                    }
+                ]
+            },
+            "confidence": 0.21947365000000002
+        },
+        {
+            "description": "Emergency",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 897,
+                        "y": 2805
+                    },
+                    {
+                        "x": 1017,
+                        "y": 2805
+                    },
+                    {
+                        "x": 1017,
+                        "y": 2846
+                    },
+                    {
+                        "x": 897,
+                        "y": 2846
+                    }
+                ]
+            },
+            "confidence": 0.72737038
+        },
+        {
+            "description": "South",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1223,
+                        "y": 2812
+                    },
+                    {
+                        "x": 1286,
+                        "y": 2812
+                    },
+                    {
+                        "x": 1286,
+                        "y": 2854
+                    },
+                    {
+                        "x": 1223,
+                        "y": 2854
+                    }
+                ]
+            },
+            "confidence": 0.4003611
+        },
+        {
+            "description": "Washington",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1293,
+                        "y": 2816
+                    },
+                    {
+                        "x": 1435,
+                        "y": 2816
+                    },
+                    {
+                        "x": 1435,
+                        "y": 2847
+                    },
+                    {
+                        "x": 1293,
+                        "y": 2847
+                    }
+                ]
+            },
+            "confidence": 0.43357703999999997
+        },
+        {
+            "description": "Saginaw,",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1517,
+                        "y": 2820
+                    },
+                    {
+                        "x": 1663,
+                        "y": 2820
+                    },
+                    {
+                        "x": 1663,
+                        "y": 2850
+                    },
+                    {
+                        "x": 1517,
+                        "y": 2850
+                    }
+                ]
+            },
+            "confidence": 0.72466255
+        },
+        {
+            "description": "Ml",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1636,
+                        "y": 2812
+                    },
+                    {
+                        "x": 1664,
+                        "y": 2812
+                    },
+                    {
+                        "x": 1664,
+                        "y": 2854
+                    },
+                    {
+                        "x": 1636,
+                        "y": 2854
+                    }
+                ]
+            },
+            "confidence": 0.25247375
+        },
+        {
+            "description": "|",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 689,
+                        "y": 2926
+                    },
+                    {
+                        "x": 691,
+                        "y": 2926
+                    },
+                    {
+                        "x": 691,
+                        "y": 2929
+                    },
+                    {
+                        "x": 689,
+                        "y": 2929
+                    }
+                ]
+            },
+            "confidence": 0.64237015
+        },
+        {
+            "description": "a",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 950,
+                        "y": 2929
+                    },
+                    {
+                        "x": 1056,
+                        "y": 2929
+                    },
+                    {
+                        "x": 1056,
+                        "y": 2935
+                    },
+                    {
+                        "x": 950,
+                        "y": 2935
+                    }
+                ]
+            },
+            "confidence": 0.0
+        },
+        {
+            "description": "|",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1333,
+                        "y": 2936
+                    },
+                    {
+                        "x": 1335,
+                        "y": 2936
+                    },
+                    {
+                        "x": 1335,
+                        "y": 2938
+                    },
+                    {
+                        "x": 1333,
+                        "y": 2938
+                    }
+                ]
+            },
+            "confidence": 0.60560707
+        },
+        {
+            "description": ":",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1607,
+                        "y": 2952
+                    },
+                    {
+                        "x": 1608,
+                        "y": 2952
+                    },
+                    {
+                        "x": 1608,
+                        "y": 2955
+                    },
+                    {
+                        "x": 1607,
+                        "y": 2955
+                    }
+                ]
+            },
+            "confidence": 0.21221405000000002
+        },
+        {
+            "description": "smo00s\u201d",
+            "boundingPoly": {
+                "vertices": [
+                    {
+                        "x": 1927,
+                        "y": 2950
+                    },
+                    {
+                        "x": 2119,
+                        "y": 2950
+                    },
+                    {
+                        "x": 2119,
+                        "y": 2994
+                    },
+                    {
+                        "x": 1927,
+                        "y": 2994
+                    }
+                ]
+            },
+            "confidence": 0.28314827000000004
+        }
+    ],
+    "fullTextAnnotation": {
+        "pages": [
+            {
+                "description": "Pg4of34",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1651,
+                            "y": 68
+                        },
+                        {
+                            "x": 1874,
+                            "y": 68
+                        },
+                        {
+                            "x": 1874,
+                            "y": 114
+                        },
+                        {
+                            "x": 1651,
+                            "y": 114
+                        }
+                    ]
+                },
+                "confidence": 0.77090469
+            },
+            {
+                "description": "PgID872",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1934,
+                            "y": 70
+                        },
+                        {
+                            "x": 2149,
+                            "y": 70
+                        },
+                        {
+                            "x": 2149,
+                            "y": 114
+                        },
+                        {
+                            "x": 1934,
+                            "y": 114
+                        }
+                    ]
+                },
+                "confidence": 0.76860275
+            },
+            {
+                "description": "po",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 128,
+                            "y": 192
+                        },
+                        {
+                            "x": 377,
+                            "y": 192
+                        },
+                        {
+                            "x": 377,
+                            "y": 337
+                        },
+                        {
+                            "x": 128,
+                            "y": 337
+                        }
+                    ]
+                },
+                "confidence": 0.15322342
+            },
+            {
+                "description": "]",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 336,
+                            "y": 629
+                        },
+                        {
+                            "x": 339,
+                            "y": 629
+                        },
+                        {
+                            "x": 339,
+                            "y": 654
+                        },
+                        {
+                            "x": 336,
+                            "y": 654
+                        }
+                    ]
+                },
+                "confidence": 0.56017921
+            },
+            {
+                "description": "i",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1323,
+                            "y": 638
+                        },
+                        {
+                            "x": 1326,
+                            "y": 638
+                        },
+                        {
+                            "x": 1326,
+                            "y": 649
+                        },
+                        {
+                            "x": 1323,
+                            "y": 649
+                        }
+                    ]
+                },
+                "confidence": 0.64459129
+            },
+            {
+                "description": "wi",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1596,
+                            "y": 710
+                        },
+                        {
+                            "x": 1630,
+                            "y": 710
+                        },
+                        {
+                            "x": 1630,
+                            "y": 751
+                        },
+                        {
+                            "x": 1596,
+                            "y": 751
+                        }
+                    ]
+                },
+                "confidence": 0.74302597
+            },
+            {
+                "description": "Da",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1695,
+                            "y": 716
+                        },
+                        {
+                            "x": 1735,
+                            "y": 716
+                        },
+                        {
+                            "x": 1735,
+                            "y": 742
+                        },
+                        {
+                            "x": 1695,
+                            "y": 742
+                        }
+                    ]
+                },
+                "confidence": 0.40642986000000003
+            },
+            {
+                "description": "ebb,",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1626,
+                            "y": 716
+                        },
+                        {
+                            "x": 1689,
+                            "y": 716
+                        },
+                        {
+                            "x": 1689,
+                            "y": 744
+                        },
+                        {
+                            "x": 1626,
+                            "y": 744
+                        }
+                    ]
+                },
+                "confidence": 0.5860039100000001
+            },
+            {
+                "description": "ee",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1594,
+                            "y": 748
+                        },
+                        {
+                            "x": 1724,
+                            "y": 748
+                        },
+                        {
+                            "x": 1724,
+                            "y": 804
+                        },
+                        {
+                            "x": 1594,
+                            "y": 804
+                        }
+                    ]
+                },
+                "confidence": 0.27745697
+            },
+            {
+                "description": "M26",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1833,
+                            "y": 747
+                        },
+                        {
+                            "x": 1894,
+                            "y": 747
+                        },
+                        {
+                            "x": 1894,
+                            "y": 774
+                        },
+                        {
+                            "x": 1833,
+                            "y": 774
+                        }
+                    ]
+                },
+                "confidence": 0.76212357
+            },
+            {
+                "description": "MedRec:",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1590,
+                            "y": 795
+                        },
+                        {
+                            "x": 1712,
+                            "y": 795
+                        },
+                        {
+                            "x": 1712,
+                            "y": 872
+                        },
+                        {
+                            "x": 1590,
+                            "y": 872
+                        }
+                    ]
+                },
+                "confidence": 0.29905853
+            },
+            {
+                "description": "7",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1844,
+                            "y": 843
+                        },
+                        {
+                            "x": 1878,
+                            "y": 843
+                        },
+                        {
+                            "x": 1878,
+                            "y": 869
+                        },
+                        {
+                            "x": 1844,
+                            "y": 869
+                        }
+                    ]
+                },
+                "confidence": 0.41823662
+            },
+            {
+                "description": "Complaint;",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 263,
+                            "y": 898
+                        },
+                        {
+                            "x": 440,
+                            "y": 898
+                        },
+                        {
+                            "x": 440,
+                            "y": 935
+                        },
+                        {
+                            "x": 263,
+                            "y": 935
+                        }
+                    ]
+                },
+                "confidence": 0.79403076
+            },
+            {
+                "description": "aiey",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 526,
+                            "y": 934
+                        },
+                        {
+                            "x": 592,
+                            "y": 934
+                        },
+                        {
+                            "x": 592,
+                            "y": 1006
+                        },
+                        {
+                            "x": 526,
+                            "y": 1006
+                        }
+                    ]
+                },
+                "confidence": 0.0
+            },
+            {
+                "description": "\u2014",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1424,
+                            "y": 947
+                        },
+                        {
+                            "x": 1573,
+                            "y": 947
+                        },
+                        {
+                            "x": 1573,
+                            "y": 1011
+                        },
+                        {
+                            "x": 1424,
+                            "y": 1011
+                        }
+                    ]
+                },
+                "confidence": 0.5375386
+            },
+            {
+                "description": "+",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1573,
+                            "y": 956
+                        },
+                        {
+                            "x": 1582,
+                            "y": 956
+                        },
+                        {
+                            "x": 1582,
+                            "y": 976
+                        },
+                        {
+                            "x": 1573,
+                            "y": 976
+                        }
+                    ]
+                },
+                "confidence": 0.49673115
+            },
+            {
+                "description": "irgent",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 570,
+                            "y": 980
+                        },
+                        {
+                            "x": 643,
+                            "y": 980
+                        },
+                        {
+                            "x": 643,
+                            "y": 1010
+                        },
+                        {
+                            "x": 570,
+                            "y": 1010
+                        }
+                    ]
+                },
+                "confidence": 0.28848671
+            },
+            {
+                "description": "U",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 263,
+                            "y": 969
+                        },
+                        {
+                            "x": 291,
+                            "y": 969
+                        },
+                        {
+                            "x": 291,
+                            "y": 998
+                        },
+                        {
+                            "x": 263,
+                            "y": 998
+                        }
+                    ]
+                },
+                "confidence": 0.86529366
+            },
+            {
+                "description": "+",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 398,
+                            "y": 980
+                        },
+                        {
+                            "x": 407,
+                            "y": 980
+                        },
+                        {
+                            "x": 407,
+                            "y": 1000
+                        },
+                        {
+                            "x": 398,
+                            "y": 1000
+                        }
+                    ]
+                },
+                "confidence": 0.53528778
+            },
+            {
+                "description": "4\u2014Less",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 419,
+                            "y": 967
+                        },
+                        {
+                            "x": 537,
+                            "y": 967
+                        },
+                        {
+                            "x": 537,
+                            "y": 1011
+                        },
+                        {
+                            "x": 419,
+                            "y": 1011
+                        }
+                    ]
+                },
+                "confidence": 0.45956017000000005
+            },
+            {
+                "description": "f",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1553,
+                            "y": 992
+                        },
+                        {
+                            "x": 1561,
+                            "y": 992
+                        },
+                        {
+                            "x": 1561,
+                            "y": 1011
+                        },
+                        {
+                            "x": 1553,
+                            "y": 1011
+                        }
+                    ]
+                },
+                "confidence": 0.25856422
+            },
+            {
+                "description": "ED",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 355,
+                            "y": 972
+                        },
+                        {
+                            "x": 394,
+                            "y": 972
+                        },
+                        {
+                            "x": 394,
+                            "y": 1049
+                        },
+                        {
+                            "x": 355,
+                            "y": 1049
+                        }
+                    ]
+                },
+                "confidence": 0.59576256
+            },
+            {
+                "description": "ED",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 406,
+                            "y": 972
+                        },
+                        {
+                            "x": 450,
+                            "y": 972
+                        },
+                        {
+                            "x": 450,
+                            "y": 1049
+                        },
+                        {
+                            "x": 406,
+                            "y": 1049
+                        }
+                    ]
+                },
+                "confidence": 0.59576256
+            },
+            {
+                "description": "ie",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1461,
+                            "y": 990
+                        },
+                        {
+                            "x": 1492,
+                            "y": 990
+                        },
+                        {
+                            "x": 1492,
+                            "y": 1017
+                        },
+                        {
+                            "x": 1461,
+                            "y": 1017
+                        }
+                    ]
+                },
+                "confidence": 0.39824615
+            },
+            {
+                "description": "Initial",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 260,
+                            "y": 1036
+                        },
+                        {
+                            "x": 360,
+                            "y": 1036
+                        },
+                        {
+                            "x": 360,
+                            "y": 1082
+                        },
+                        {
+                            "x": 260,
+                            "y": 1082
+                        }
+                    ]
+                },
+                "confidence": 0.76994919
+            },
+            {
+                "description": "Signe:",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 459,
+                            "y": 1036
+                        },
+                        {
+                            "x": 544,
+                            "y": 1036
+                        },
+                        {
+                            "x": 544,
+                            "y": 1082
+                        },
+                        {
+                            "x": 459,
+                            "y": 1082
+                        }
+                    ]
+                },
+                "confidence": 0.8622964500000001
+            },
+            {
+                "description": "5/30/2009",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 558,
+                            "y": 1036
+                        },
+                        {
+                            "x": 690,
+                            "y": 1036
+                        },
+                        {
+                            "x": 690,
+                            "y": 1082
+                        },
+                        {
+                            "x": 558,
+                            "y": 1082
+                        }
+                    ]
+                },
+                "confidence": 0.42413975
+            },
+            {
+                "description": "BP:",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 280,
+                            "y": 1071
+                        },
+                        {
+                            "x": 339,
+                            "y": 1071
+                        },
+                        {
+                            "x": 339,
+                            "y": 1115
+                        },
+                        {
+                            "x": 280,
+                            "y": 1115
+                        }
+                    ]
+                },
+                "confidence": 0.6830265799999999
+            },
+            {
+                "description": "115/62",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 349,
+                            "y": 1071
+                        },
+                        {
+                            "x": 442,
+                            "y": 1071
+                        },
+                        {
+                            "x": 442,
+                            "y": 1115
+                        },
+                        {
+                            "x": 349,
+                            "y": 1115
+                        }
+                    ]
+                },
+                "confidence": 0.6830265799999999
+            },
+            {
+                "description": "\u2014",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1360,
+                            "y": 1085
+                        },
+                        {
+                            "x": 1585,
+                            "y": 1085
+                        },
+                        {
+                            "x": 1585,
+                            "y": 1150
+                        },
+                        {
+                            "x": 1360,
+                            "y": 1150
+                        }
+                    ]
+                },
+                "confidence": 0.00588951
+            },
+            {
+                "description": "T:98.1",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 833,
+                            "y": 1116
+                        },
+                        {
+                            "x": 929,
+                            "y": 1116
+                        },
+                        {
+                            "x": 929,
+                            "y": 1147
+                        },
+                        {
+                            "x": 833,
+                            "y": 1147
+                        }
+                    ]
+                },
+                "confidence": 0.39267151
+            },
+            {
+                "description": "re",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 254,
+                            "y": 1157
+                        },
+                        {
+                            "x": 1246,
+                            "y": 1157
+                        },
+                        {
+                            "x": 1246,
+                            "y": 1192
+                        },
+                        {
+                            "x": 254,
+                            "y": 1192
+                        }
+                    ]
+                },
+                "confidence": 0.21836739000000002
+            },
+            {
+                "description": "Ey",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1586,
+                            "y": 1157
+                        },
+                        {
+                            "x": 2112,
+                            "y": 1157
+                        },
+                        {
+                            "x": 2112,
+                            "y": 1192
+                        },
+                        {
+                            "x": 1586,
+                            "y": 1192
+                        }
+                    ]
+                },
+                "confidence": 0.08055695
+            },
+            {
+                "description": "(su",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 445,
+                            "y": 1215
+                        },
+                        {
+                            "x": 479,
+                            "y": 1215
+                        },
+                        {
+                            "x": 479,
+                            "y": 1237
+                        },
+                        {
+                            "x": 445,
+                            "y": 1237
+                        }
+                    ]
+                },
+                "confidence": 0.24256523000000002
+            },
+            {
+                "description": "ntey",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 485,
+                            "y": 1216
+                        },
+                        {
+                            "x": 525,
+                            "y": 1216
+                        },
+                        {
+                            "x": 525,
+                            "y": 1238
+                        },
+                        {
+                            "x": 485,
+                            "y": 1238
+                        }
+                    ]
+                },
+                "confidence": 0.23281319
+            },
+            {
+                "description": "30,",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 529,
+                            "y": 1216
+                        },
+                        {
+                            "x": 556,
+                            "y": 1216
+                        },
+                        {
+                            "x": 556,
+                            "y": 1236
+                        },
+                        {
+                            "x": 529,
+                            "y": 1236
+                        }
+                    ]
+                },
+                "confidence": 0.73273026
+            },
+            {
+                "description": "2009",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 564,
+                            "y": 1196
+                        },
+                        {
+                            "x": 604,
+                            "y": 1196
+                        },
+                        {
+                            "x": 604,
+                            "y": 1248
+                        },
+                        {
+                            "x": 564,
+                            "y": 1248
+                        }
+                    ]
+                },
+                "confidence": 0.7498857099999999
+            },
+            {
+                "description": "0006",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 607,
+                            "y": 1196
+                        },
+                        {
+                            "x": 656,
+                            "y": 1196
+                        },
+                        {
+                            "x": 656,
+                            "y": 1248
+                        },
+                        {
+                            "x": 607,
+                            "y": 1248
+                        }
+                    ]
+                },
+                "confidence": 0.7745594
+            },
+            {
+                "description": "axc>",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 660,
+                            "y": 1217
+                        },
+                        {
+                            "x": 714,
+                            "y": 1217
+                        },
+                        {
+                            "x": 714,
+                            "y": 1237
+                        },
+                        {
+                            "x": 660,
+                            "y": 1237
+                        }
+                    ]
+                },
+                "confidence": 0.0
+            },
+            {
+                "description": "PATIENT;",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 277,
+                            "y": 1245
+                        },
+                        {
+                            "x": 430,
+                            "y": 1245
+                        },
+                        {
+                            "x": 430,
+                            "y": 1276
+                        },
+                        {
+                            "x": 277,
+                            "y": 1276
+                        }
+                    ]
+                },
+                "confidence": 0.82986465
+            },
+            {
+                "description": "Davarrio",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 562,
+                            "y": 1249
+                        },
+                        {
+                            "x": 687,
+                            "y": 1249
+                        },
+                        {
+                            "x": 687,
+                            "y": 1278
+                        },
+                        {
+                            "x": 562,
+                            "y": 1278
+                        }
+                    ]
+                },
+                "confidence": 0.74937477
+            },
+            {
+                "description": "AGE;",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 835,
+                            "y": 1251
+                        },
+                        {
+                            "x": 919,
+                            "y": 1251
+                        },
+                        {
+                            "x": 919,
+                            "y": 1280
+                        },
+                        {
+                            "x": 835,
+                            "y": 1280
+                        }
+                    ]
+                },
+                "confidence": 0.78045021
+            },
+            {
+                "description": "989752-6983,",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1139,
+                            "y": 1296
+                        },
+                        {
+                            "x": 1346,
+                            "y": 1296
+                        },
+                        {
+                            "x": 1346,
+                            "y": 1330
+                        },
+                        {
+                            "x": 1139,
+                            "y": 1330
+                        }
+                    ]
+                },
+                "confidence": 0.84530869
+            },
+            {
+                "description": "\u2014",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 697,
+                            "y": 1432
+                        },
+                        {
+                            "x": 718,
+                            "y": 1432
+                        },
+                        {
+                            "x": 718,
+                            "y": 1438
+                        },
+                        {
+                            "x": 697,
+                            "y": 1438
+                        }
+                    ]
+                },
+                "confidence": 0.63585403
+            },
+            {
+                "description": "Alcove,",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 310,
+                            "y": 1456
+                        },
+                        {
+                            "x": 422,
+                            "y": 1456
+                        },
+                        {
+                            "x": 422,
+                            "y": 1486
+                        },
+                        {
+                            "x": 310,
+                            "y": 1486
+                        }
+                    ]
+                },
+                "confidence": 0.84563507
+            },
+            {
+                "description": "SIGNS;",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 380,
+                            "y": 1500
+                        },
+                        {
+                            "x": 486,
+                            "y": 1500
+                        },
+                        {
+                            "x": 486,
+                            "y": 1528
+                        },
+                        {
+                            "x": 380,
+                            "y": 1528
+                        }
+                    ]
+                },
+                "confidence": 0.66778778
+            },
+            {
+                "description": "Pain",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1122,
+                            "y": 1506
+                        },
+                        {
+                            "x": 1185,
+                            "y": 1506
+                        },
+                        {
+                            "x": 1185,
+                            "y": 1533
+                        },
+                        {
+                            "x": 1122,
+                            "y": 1533
+                        }
+                    ]
+                },
+                "confidence": 0.84205246
+            },
+            {
+                "description": "O2",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1230,
+                            "y": 1507
+                        },
+                        {
+                            "x": 1273,
+                            "y": 1507
+                        },
+                        {
+                            "x": 1273,
+                            "y": 1534
+                        },
+                        {
+                            "x": 1230,
+                            "y": 1534
+                        }
+                    ]
+                },
+                "confidence": 0.81899406
+            },
+            {
+                "description": "00:34.",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1714,
+                            "y": 1505
+                        },
+                        {
+                            "x": 1805,
+                            "y": 1505
+                        },
+                        {
+                            "x": 1805,
+                            "y": 1549
+                        },
+                        {
+                            "x": 1714,
+                            "y": 1549
+                        }
+                    ]
+                },
+                "confidence": 0.86914597
+            },
+            {
+                "description": "~~",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 569,
+                            "y": 1598
+                        },
+                        {
+                            "x": 609,
+                            "y": 1598
+                        },
+                        {
+                            "x": 609,
+                            "y": 1605
+                        },
+                        {
+                            "x": 569,
+                            "y": 1605
+                        }
+                    ]
+                },
+                "confidence": 0.40125877000000004
+            },
+            {
+                "description": "~\u2014----\u2014--\u2014---\u2014--------------~+---",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 620,
+                            "y": 1598
+                        },
+                        {
+                            "x": 1451,
+                            "y": 1598
+                        },
+                        {
+                            "x": 1451,
+                            "y": 1613
+                        },
+                        {
+                            "x": 620,
+                            "y": 1613
+                        }
+                    ]
+                },
+                "confidence": 0.0
+            },
+            {
+                "description": "~\u2014\u2014-",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 624,
+                            "y": 1641
+                        },
+                        {
+                            "x": 724,
+                            "y": 1641
+                        },
+                        {
+                            "x": 724,
+                            "y": 1648
+                        },
+                        {
+                            "x": 624,
+                            "y": 1648
+                        }
+                    ]
+                },
+                "confidence": 0.37625648
+            },
+            {
+                "description": "-\u2014",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 739,
+                            "y": 1622
+                        },
+                        {
+                            "x": 759,
+                            "y": 1622
+                        },
+                        {
+                            "x": 759,
+                            "y": 1668
+                        },
+                        {
+                            "x": 739,
+                            "y": 1668
+                        }
+                    ]
+                },
+                "confidence": 0.47384613000000003
+            },
+            {
+                "description": "\u2014-\u2014-\u2014-\u2014--~--------~-~---~---\u2014",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 767,
+                            "y": 1641
+                        },
+                        {
+                            "x": 1510,
+                            "y": 1641
+                        },
+                        {
+                            "x": 1510,
+                            "y": 1656
+                        },
+                        {
+                            "x": 767,
+                            "y": 1656
+                        }
+                    ]
+                },
+                "confidence": 0.0054589799999999996
+            },
+            {
+                "description": "~~.",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1437,
+                            "y": 1622
+                        },
+                        {
+                            "x": 1514,
+                            "y": 1622
+                        },
+                        {
+                            "x": 1514,
+                            "y": 1668
+                        },
+                        {
+                            "x": 1437,
+                            "y": 1668
+                        }
+                    ]
+                },
+                "confidence": 0.28784363
+            },
+            {
+                "description": "abrasions,",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1430,
+                            "y": 1676
+                        },
+                        {
+                            "x": 1570,
+                            "y": 1676
+                        },
+                        {
+                            "x": 1570,
+                            "y": 1706
+                        },
+                        {
+                            "x": 1430,
+                            "y": 1706
+                        }
+                    ]
+                },
+                "confidence": 0.58144791
+            },
+            {
+                "description": "-\u2014",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 590,
+                            "y": 1748
+                        },
+                        {
+                            "x": 610,
+                            "y": 1748
+                        },
+                        {
+                            "x": 610,
+                            "y": 1794
+                        },
+                        {
+                            "x": 590,
+                            "y": 1794
+                        }
+                    ]
+                },
+                "confidence": 0.43254238
+            },
+            {
+                "description": "--\u2014",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 625,
+                            "y": 1748
+                        },
+                        {
+                            "x": 668,
+                            "y": 1748
+                        },
+                        {
+                            "x": 668,
+                            "y": 1794
+                        },
+                        {
+                            "x": 625,
+                            "y": 1794
+                        }
+                    ]
+                },
+                "confidence": 0.38487392
+            },
+            {
+                "description": "---~",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 682,
+                            "y": 1748
+                        },
+                        {
+                            "x": 754,
+                            "y": 1748
+                        },
+                        {
+                            "x": 754,
+                            "y": 1794
+                        },
+                        {
+                            "x": 682,
+                            "y": 1794
+                        }
+                    ]
+                },
+                "confidence": 0.27804764
+            },
+            {
+                "description": "------------~-------+----~-~",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 765,
+                            "y": 1766
+                        },
+                        {
+                            "x": 1480,
+                            "y": 1766
+                        },
+                        {
+                            "x": 1480,
+                            "y": 1782
+                        },
+                        {
+                            "x": 765,
+                            "y": 1782
+                        }
+                    ]
+                },
+                "confidence": 0.17269096
+            },
+            {
+                "description": "RECOMMENDATION:",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 364,
+                            "y": 1794
+                        },
+                        {
+                            "x": 695,
+                            "y": 1794
+                        },
+                        {
+                            "x": 695,
+                            "y": 1823
+                        },
+                        {
+                            "x": 364,
+                            "y": 1823
+                        }
+                    ]
+                },
+                "confidence": 0.8289250199999999
+            },
+            {
+                "description": "-",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 706,
+                            "y": 1810
+                        },
+                        {
+                            "x": 721,
+                            "y": 1810
+                        },
+                        {
+                            "x": 721,
+                            "y": 1815
+                        },
+                        {
+                            "x": 706,
+                            "y": 1815
+                        }
+                    ]
+                },
+                "confidence": 0.34008934
+            },
+            {
+                "description": "-",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 737,
+                            "y": 1811
+                        },
+                        {
+                            "x": 755,
+                            "y": 1811
+                        },
+                        {
+                            "x": 755,
+                            "y": 1816
+                        },
+                        {
+                            "x": 737,
+                            "y": 1816
+                        }
+                    ]
+                },
+                "confidence": 0.61545452
+            },
+            {
+                "description": "~~",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 773,
+                            "y": 1810
+                        },
+                        {
+                            "x": 816,
+                            "y": 1810
+                        },
+                        {
+                            "x": 816,
+                            "y": 1816
+                        },
+                        {
+                            "x": 773,
+                            "y": 1816
+                        }
+                    ]
+                },
+                "confidence": 0.48800334999999995
+            },
+            {
+                "description": "-",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 833,
+                            "y": 1810
+                        },
+                        {
+                            "x": 847,
+                            "y": 1810
+                        },
+                        {
+                            "x": 847,
+                            "y": 1818
+                        },
+                        {
+                            "x": 833,
+                            "y": 1818
+                        }
+                    ]
+                },
+                "confidence": 0.34717934
+            },
+            {
+                "description": "-",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 861,
+                            "y": 1810
+                        },
+                        {
+                            "x": 875,
+                            "y": 1810
+                        },
+                        {
+                            "x": 875,
+                            "y": 1817
+                        },
+                        {
+                            "x": 861,
+                            "y": 1817
+                        }
+                    ]
+                },
+                "confidence": 0.14317444000000001
+            },
+            {
+                "description": "-~~--\u2014----\u2014-~------~----~-~..",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 885,
+                            "y": 1810
+                        },
+                        {
+                            "x": 1593,
+                            "y": 1810
+                        },
+                        {
+                            "x": 1593,
+                            "y": 1826
+                        },
+                        {
+                            "x": 885,
+                            "y": 1826
+                        }
+                    ]
+                },
+                "confidence": 0.23715286
+            },
+            {
+                "description": "A04",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 684,
+                            "y": 1923
+                        },
+                        {
+                            "x": 746,
+                            "y": 1923
+                        },
+                        {
+                            "x": 746,
+                            "y": 1950
+                        },
+                        {
+                            "x": 684,
+                            "y": 1950
+                        }
+                    ]
+                },
+                "confidence": 0.82277046
+            },
+            {
+                "description": "200905292337",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 758,
+                            "y": 1916
+                        },
+                        {
+                            "x": 971,
+                            "y": 1916
+                        },
+                        {
+                            "x": 971,
+                            "y": 1969
+                        },
+                        {
+                            "x": 758,
+                            "y": 1969
+                        }
+                    ]
+                },
+                "confidence": 0.0
+            },
+            {
+                "description": "160543",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 976,
+                            "y": 1916
+                        },
+                        {
+                            "x": 1068,
+                            "y": 1916
+                        },
+                        {
+                            "x": 1068,
+                            "y": 1969
+                        },
+                        {
+                            "x": 976,
+                            "y": 1969
+                        }
+                    ]
+                },
+                "confidence": 0.0
+            },
+            {
+                "description": "(989)752~-6983,",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 844,
+                            "y": 1966
+                        },
+                        {
+                            "x": 1068,
+                            "y": 1966
+                        },
+                        {
+                            "x": 1068,
+                            "y": 2000
+                        },
+                        {
+                            "x": 844,
+                            "y": 2000
+                        }
+                    ]
+                },
+                "confidence": 0.5678972600000001
+            },
+            {
+                "description": "Jr",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1943,
+                            "y": 1979
+                        },
+                        {
+                            "x": 1971,
+                            "y": 1979
+                        },
+                        {
+                            "x": 1971,
+                            "y": 2006
+                        },
+                        {
+                            "x": 1943,
+                            "y": 2006
+                        }
+                    ]
+                },
+                "confidence": 0.85302505
+            },
+            {
+                "description": "M.D",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 300,
+                            "y": 2005
+                        },
+                        {
+                            "x": 370,
+                            "y": 2005
+                        },
+                        {
+                            "x": 370,
+                            "y": 2034
+                        },
+                        {
+                            "x": 300,
+                            "y": 2034
+                        }
+                    ]
+                },
+                "confidence": 0.6330994
+            },
+            {
+                "description": "aan",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1154,
+                            "y": 2021
+                        },
+                        {
+                            "x": 1219,
+                            "y": 2021
+                        },
+                        {
+                            "x": 1219,
+                            "y": 2041
+                        },
+                        {
+                            "x": 1154,
+                            "y": 2041
+                        }
+                    ]
+                },
+                "confidence": 0.7803006
+            },
+            {
+                "description": "A08",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 290,
+                            "y": 2048
+                        },
+                        {
+                            "x": 354,
+                            "y": 2048
+                        },
+                        {
+                            "x": 354,
+                            "y": 2075
+                        },
+                        {
+                            "x": 290,
+                            "y": 2075
+                        }
+                    ]
+                },
+                "confidence": 0.75522842
+            },
+            {
+                "description": "eos)",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1160,
+                            "y": 2064
+                        },
+                        {
+                            "x": 1224,
+                            "y": 2064
+                        },
+                        {
+                            "x": 1224,
+                            "y": 2084
+                        },
+                        {
+                            "x": 1160,
+                            "y": 2084
+                        }
+                    ]
+                },
+                "confidence": 0.2954805
+            },
+            {
+                "description": "oss",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1093,
+                            "y": 2105
+                        },
+                        {
+                            "x": 1187,
+                            "y": 2105
+                        },
+                        {
+                            "x": 1187,
+                            "y": 2126
+                        },
+                        {
+                            "x": 1093,
+                            "y": 2126
+                        }
+                    ]
+                },
+                "confidence": 0.15649216
+            },
+            {
+                "description": "A08",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 288,
+                            "y": 2133
+                        },
+                        {
+                            "x": 352,
+                            "y": 2133
+                        },
+                        {
+                            "x": 352,
+                            "y": 2162
+                        },
+                        {
+                            "x": 288,
+                            "y": 2162
+                        }
+                    ]
+                },
+                "confidence": 0.83327164
+            },
+            {
+                "description": "e107",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1158,
+                            "y": 2148
+                        },
+                        {
+                            "x": 1224,
+                            "y": 2148
+                        },
+                        {
+                            "x": 1224,
+                            "y": 2170
+                        },
+                        {
+                            "x": 1158,
+                            "y": 2170
+                        }
+                    ]
+                },
+                "confidence": 0.5253405
+            },
+            {
+                "description": "Nkda,",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 508,
+                            "y": 2261
+                        },
+                        {
+                            "x": 592,
+                            "y": 2261
+                        },
+                        {
+                            "x": 592,
+                            "y": 2290
+                        },
+                        {
+                            "x": 508,
+                            "y": 2290
+                        }
+                    ]
+                },
+                "confidence": 0.8650245700000001
+            },
+            {
+                "description": "(32",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 522,
+                            "y": 2424
+                        },
+                        {
+                            "x": 552,
+                            "y": 2424
+                        },
+                        {
+                            "x": 552,
+                            "y": 2470
+                        },
+                        {
+                            "x": 522,
+                            "y": 2470
+                        }
+                    ]
+                },
+                "confidence": 0.41058661999999996
+            },
+            {
+                "description": "vay",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 566,
+                            "y": 2424
+                        },
+                        {
+                            "x": 598,
+                            "y": 2424
+                        },
+                        {
+                            "x": 598,
+                            "y": 2470
+                        },
+                        {
+                            "x": 566,
+                            "y": 2470
+                        }
+                    ]
+                },
+                "confidence": 0.24148376
+            },
+            {
+                "description": "009",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 647,
+                            "y": 2424
+                        },
+                        {
+                            "x": 678,
+                            "y": 2424
+                        },
+                        {
+                            "x": 678,
+                            "y": 2470
+                        },
+                        {
+                            "x": 647,
+                            "y": 2470
+                        }
+                    ]
+                },
+                "confidence": 0.32798676
+            },
+            {
+                "description": "0096",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 689,
+                            "y": 2424
+                        },
+                        {
+                            "x": 732,
+                            "y": 2424
+                        },
+                        {
+                            "x": 732,
+                            "y": 2470
+                        },
+                        {
+                            "x": 689,
+                            "y": 2470
+                        }
+                    ]
+                },
+                "confidence": 0.84815361
+            },
+            {
+                "description": "axc)",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 741,
+                            "y": 2443
+                        },
+                        {
+                            "x": 794,
+                            "y": 2443
+                        },
+                        {
+                            "x": 794,
+                            "y": 2463
+                        },
+                        {
+                            "x": 741,
+                            "y": 2463
+                        }
+                    ]
+                },
+                "confidence": 0.77998543
+            },
+            {
+                "description": "115/62,",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 548,
+                            "y": 2473
+                        },
+                        {
+                            "x": 650,
+                            "y": 2473
+                        },
+                        {
+                            "x": 650,
+                            "y": 2504
+                        },
+                        {
+                            "x": 548,
+                            "y": 2504
+                        }
+                    ]
+                },
+                "confidence": 0.85211479
+            },
+            {
+                "description": "O2",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1268,
+                            "y": 2480
+                        },
+                        {
+                            "x": 1311,
+                            "y": 2480
+                        },
+                        {
+                            "x": 1311,
+                            "y": 2509
+                        },
+                        {
+                            "x": 1268,
+                            "y": 2509
+                        }
+                    ]
+                },
+                "confidence": 0.68833649
+            },
+            {
+                "description": "ra,",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1469,
+                            "y": 2492
+                        },
+                        {
+                            "x": 1506,
+                            "y": 2492
+                        },
+                        {
+                            "x": 1506,
+                            "y": 2517
+                        },
+                        {
+                            "x": 1469,
+                            "y": 2517
+                        }
+                    ]
+                },
+                "confidence": 0.83714355
+            },
+            {
+                "description": "2.",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 696,
+                            "y": 2568
+                        },
+                        {
+                            "x": 793,
+                            "y": 2568
+                        },
+                        {
+                            "x": 793,
+                            "y": 2589
+                        },
+                        {
+                            "x": 696,
+                            "y": 2589
+                        }
+                    ]
+                },
+                "confidence": 0.0
+            },
+            {
+                "description": "multiple",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 599,
+                            "y": 2602
+                        },
+                        {
+                            "x": 716,
+                            "y": 2602
+                        },
+                        {
+                            "x": 716,
+                            "y": 2636
+                        },
+                        {
+                            "x": 599,
+                            "y": 2636
+                        }
+                    ]
+                },
+                "confidence": 0.6418695099999999
+            },
+            {
+                "description": "complaints,",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 724,
+                            "y": 2603
+                        },
+                        {
+                            "x": 895,
+                            "y": 2603
+                        },
+                        {
+                            "x": 895,
+                            "y": 2637
+                        },
+                        {
+                            "x": 724,
+                            "y": 2637
+                        }
+                    ]
+                },
+                "confidence": 0.80332123
+            },
+            {
+                "description": "1",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1301,
+                            "y": 2770
+                        },
+                        {
+                            "x": 1312,
+                            "y": 2770
+                        },
+                        {
+                            "x": 1312,
+                            "y": 2814
+                        },
+                        {
+                            "x": 1301,
+                            "y": 2814
+                        }
+                    ]
+                },
+                "confidence": 0.56276131
+            },
+            {
+                "description": "}",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1607,
+                            "y": 2785
+                        },
+                        {
+                            "x": 1610,
+                            "y": 2785
+                        },
+                        {
+                            "x": 1610,
+                            "y": 2789
+                        },
+                        {
+                            "x": 1607,
+                            "y": 2789
+                        }
+                    ]
+                },
+                "confidence": 0.42602981999999995
+            },
+            {
+                "description": "Mary's",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 470,
+                            "y": 2805
+                        },
+                        {
+                            "x": 539,
+                            "y": 2805
+                        },
+                        {
+                            "x": 539,
+                            "y": 2846
+                        },
+                        {
+                            "x": 470,
+                            "y": 2846
+                        }
+                    ]
+                },
+                "confidence": 0.21947365000000002
+            },
+            {
+                "description": "Emergency",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 897,
+                            "y": 2805
+                        },
+                        {
+                            "x": 1017,
+                            "y": 2805
+                        },
+                        {
+                            "x": 1017,
+                            "y": 2846
+                        },
+                        {
+                            "x": 897,
+                            "y": 2846
+                        }
+                    ]
+                },
+                "confidence": 0.72737038
+            },
+            {
+                "description": "South",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1223,
+                            "y": 2812
+                        },
+                        {
+                            "x": 1286,
+                            "y": 2812
+                        },
+                        {
+                            "x": 1286,
+                            "y": 2854
+                        },
+                        {
+                            "x": 1223,
+                            "y": 2854
+                        }
+                    ]
+                },
+                "confidence": 0.4003611
+            },
+            {
+                "description": "Washington",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1293,
+                            "y": 2816
+                        },
+                        {
+                            "x": 1435,
+                            "y": 2816
+                        },
+                        {
+                            "x": 1435,
+                            "y": 2847
+                        },
+                        {
+                            "x": 1293,
+                            "y": 2847
+                        }
+                    ]
+                },
+                "confidence": 0.43357703999999997
+            },
+            {
+                "description": "Saginaw,",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1517,
+                            "y": 2820
+                        },
+                        {
+                            "x": 1663,
+                            "y": 2820
+                        },
+                        {
+                            "x": 1663,
+                            "y": 2850
+                        },
+                        {
+                            "x": 1517,
+                            "y": 2850
+                        }
+                    ]
+                },
+                "confidence": 0.72466255
+            },
+            {
+                "description": "Ml",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1636,
+                            "y": 2812
+                        },
+                        {
+                            "x": 1664,
+                            "y": 2812
+                        },
+                        {
+                            "x": 1664,
+                            "y": 2854
+                        },
+                        {
+                            "x": 1636,
+                            "y": 2854
+                        }
+                    ]
+                },
+                "confidence": 0.25247375
+            },
+            {
+                "description": "|",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 689,
+                            "y": 2926
+                        },
+                        {
+                            "x": 691,
+                            "y": 2926
+                        },
+                        {
+                            "x": 691,
+                            "y": 2929
+                        },
+                        {
+                            "x": 689,
+                            "y": 2929
+                        }
+                    ]
+                },
+                "confidence": 0.64237015
+            },
+            {
+                "description": "a",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 950,
+                            "y": 2929
+                        },
+                        {
+                            "x": 1056,
+                            "y": 2929
+                        },
+                        {
+                            "x": 1056,
+                            "y": 2935
+                        },
+                        {
+                            "x": 950,
+                            "y": 2935
+                        }
+                    ]
+                },
+                "confidence": 0.0
+            },
+            {
+                "description": "|",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1333,
+                            "y": 2936
+                        },
+                        {
+                            "x": 1335,
+                            "y": 2936
+                        },
+                        {
+                            "x": 1335,
+                            "y": 2938
+                        },
+                        {
+                            "x": 1333,
+                            "y": 2938
+                        }
+                    ]
+                },
+                "confidence": 0.60560707
+            },
+            {
+                "description": ":",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1607,
+                            "y": 2952
+                        },
+                        {
+                            "x": 1608,
+                            "y": 2952
+                        },
+                        {
+                            "x": 1608,
+                            "y": 2955
+                        },
+                        {
+                            "x": 1607,
+                            "y": 2955
+                        }
+                    ]
+                },
+                "confidence": 0.21221405000000002
+            },
+            {
+                "description": "smo00s\u201d",
+                "boundingPoly": {
+                    "vertices": [
+                        {
+                            "x": 1927,
+                            "y": 2950
+                        },
+                        {
+                            "x": 2119,
+                            "y": 2950
+                        },
+                        {
+                            "x": 2119,
+                            "y": 2994
+                        },
+                        {
+                            "x": 1927,
+                            "y": 2994
+                        }
+                    ]
+                },
+                "confidence": 0.28314827000000004
+            }
+        ]
+    }
+}
+
+──────────────────────────────────────────────────────────────────────
+📄  ml-model-training-ui/response.json
+──────────────────────────────────────────────────────────────────────
+{
+    "document": "a1231097la",
+    "highlights": [
+      {
+        "text": "St. Mary's of Michigan: Washington Ave.",
+        "confidence": 85,
+        "coordinates": { "x": 50, "y": 50, "width": 250, "height": 20 }
+      },
+      {
+        "text": "Patient Data",
+        "confidence": 90,
+        "coordinates": { "x": 50, "y": 100, "width": 100, "height": 20 }
+      },
+      {
+        "text": "Patient Name: Davario D Webb",
+        "confidence": 83,
+        "coordinates": { "x": 50, "y": 150, "width": 200, "height": 20 }
+      },
+      {
+        "text": "DOB: 11/16/1982",
+        "confidence": 82,
+        "coordinates": { "x": 50, "y": 200, "width": 150, "height": 20 }
+      },
+      {
+        "text": "MED Rec#: 084850",
+        "confidence": 88,
+        "coordinates": { "x": 50, "y": 250, "width": 150, "height": 20 }
+      },
+      {
+        "text": "Allergies: Milk products",
+        "confidence": 81,
+        "coordinates": { "x": 50, "y": 300, "width": 200, "height": 20 }
+      },
+      {
+        "text": "Chief Complaint: multiple complaints",
+        "confidence": 84,
+        "coordinates": { "x": 50, "y": 350, "width": 250, "height": 20 }
+      },
+      {
+        "text": "Vital Signs: BP 115/62, Pulse 107",
+        "confidence": 79,
+        "coordinates": { "x": 50, "y": 400, "width": 300, "height": 20 }
+      }
+    ]
+  }
+  
+
+──────────────────────────────────────────────────────────────────────
+📄  ml-model-training-ui/scripts.js
+──────────────────────────────────────────────────────────────────────
+const img = document.getElementById("document");
+const container = document.getElementById("container");
+const zoomControl = document.getElementById("zoom-control");
+const descriptionForm = document.getElementById("description-form");
+const submitButton = document.getElementById("submit-button");
+const overpanel = document.getElementById("overpanel");
+const toggleButton = document.getElementById("toggle");
+let currentSelectedBox = null;
+let ocrDataCache = null;
+
+const drawBoxes = (ocrData, scale) => {
+  container.querySelectorAll(".box").forEach((box) => box.remove());
+
+  ocrData.textAnnotations.forEach((item, index) => {
+    const vertices = item.boundingPoly.vertices;
+    const x = vertices[0].x * scale;
+    const y = vertices[0].y * scale;
+    const width = (vertices[1].x - vertices[0].x) * scale;
+    const height = (vertices[2].y - vertices[0].y) * scale;
+
+    const box = document.createElement("div");
+    box.className = "box";
+    box.style.left = `${x / 16}rem`;
+    box.style.top = `${y / 16}rem`;
+    box.style.width = `${width / 16}rem`;
+    box.style.height = `${height / 16}rem`;
+    box.dataset.index = index; // Added data-index attribute
+
+    box.addEventListener("click", () => {
+      selectBox(box, item.description, index);
+    });
+
+    container.appendChild(box);
+  });
+};
+
+const buildForm = (ocrData) => {
+  descriptionForm.innerHTML = "";
+
+  ocrData.textAnnotations.forEach((item, index) => {
+    const inputGroup = document.createElement("div");
+    inputGroup.className = "input-group";
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = item.description;
+    input.className = "correction";
+    input.dataset.index = index;
+    input.dataset.originalValue = item.description;
+    input.addEventListener("focus", () => {
+      const box = container.querySelector(`.box[data-index="${index}"]`);
+      if (box) selectBox(box, item.description, index);
+    });
+
+    const select = document.createElement("select");
+    select.className = "error-category";
+    select.dataset.index = index;
+    select.required = true;
+
+    const emptyOption = document.createElement("option");
+    emptyOption.value = "";
+    emptyOption.textContent = "Error type";
+    emptyOption.selected = true;
+    emptyOption.disabled = true;
+    select.appendChild(emptyOption);
+
+    const options = ["Misread", "Incomplete", "Bad format", "Other"];
+    options.forEach((optionText) => {
+      const option = document.createElement("option");
+      option.value = optionText;
+      option.textContent = optionText;
+      select.appendChild(option);
+    });
+
+    inputGroup.appendChild(input);
+    inputGroup.appendChild(select);
+
+    descriptionForm.appendChild(inputGroup);
+  });
+};
+
+const selectBox = (box, description, index) => {
+  if (currentSelectedBox) {
+    currentSelectedBox.classList.remove("selected");
+  }
+  box.classList.add("selected");
+  currentSelectedBox = box;
+
+  const input = descriptionForm.querySelector(`input[data-index="${index}"]`);
+  if (input) {
+    input.scrollIntoView({ behavior: "smooth", block: "center" });
+    input.focus();
+  } else {
+    console.error(`Input element with data-index="${index}" not found.`);
+  }
+};
+
+const handleSubmit = () => {
+  const formData = new FormData(descriptionForm);
+  const data = [];
+
+  formData.forEach((value, key) => {
+    console.log(`Key: ${key}, Value: ${value}`);
+  });
+
+  const inputs = descriptionForm.querySelectorAll("input[data-index]");
+  inputs.forEach((input) => {
+    const index = input.dataset.index;
+    const originalValue = input.dataset.originalValue;
+    const value = input.value;
+
+    const select = descriptionForm.querySelector(
+      `select[data-index="${index}"]`
+    );
+    const errorType = select ? select.value : undefined;
+
+    const item = {
+      index: index,
+      originalDescription: originalValue,
+      correctedDescription: value !== originalValue ? value : undefined,
+      errorType: errorType !== "" ? errorType : undefined,
+    };
+
+    console.log("Processing item:", item);
+    data.push(item);
+  });
+
+  console.log("Submitted data:", JSON.stringify(data, null, 2));
+};
+
+submitButton.addEventListener("click", handleSubmit);
+
+img.onload = () => {
+  const imgWidth = img.naturalWidth;
+  const imgHeight = img.naturalHeight;
+  const scaleX = img.clientWidth / imgWidth;
+
+  fetch("ocr_response.json")
+    .then((response) => response.json())
+    .then((ocrData) => {
+      console.log("OCR data loaded:", ocrData);
+      ocrDataCache = ocrData; // Cache the OCR data
+      drawBoxes(ocrData, scaleX);
+      buildForm(ocrData);
+
+      zoomControl.addEventListener("input", () => {
+        const zoomLevel = parseFloat(zoomControl.value);
+        img.style.transform = `scale(${zoomLevel})`;
+        img.style.transformOrigin = "top left";
+        drawBoxes(ocrDataCache, scaleX * zoomLevel);
+      });
+    })
+    .catch((error) => console.error("Error loading OCR data:", error));
+};
+
+toggleButton.addEventListener("click", () => {
+  const isExpanded = toggleButton.getAttribute("aria-expanded") === "true";
+  toggleButton.setAttribute("aria-expanded", !isExpanded);
+  overpanel.setAttribute("aria-hidden", isExpanded);
+  overpanel.classList.toggle("hidden");
+});
+
+──────────────────────────────────────────────────────────────────────
+📄  ml-model-training-ui/style.css
+──────────────────────────────────────────────────────────────────────
+:root {
+  --spacing-xxs: 0.125rem;
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.375rem;
+  --spacing-md: 0.75rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 4.25rem;
+  --size-full: 100%;
+  --size-overpanel: 20rem;
+  --size-thumb: 1rem;
+  --size-border-sm: 0.0625rem;
+  --size-border-md: 0.125rem;
+  --color-white: #ffffff;
+  --color-black: #000000;
+  --color-primary: #0066ff;
+  --color-secondary: rgba(255, 255, 255, 0.66);
+  --color-highlight: rgba(255, 255, 255, 1);
+  --color-border: rgba(0, 0, 0, 0.12);
+  --color-box-bg: rgba(255, 0, 0, 0.12);
+  --color-input-bg: rgba(255, 255, 0, 0.12);
+  --color-input-focus: rgba(0, 0, 0, 1);
+  --font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  --font-size-sm: 0.75rem;
+  --font-size-md: 1rem;
+  --font-weight-bold: 600;
+  --font-weight-xbold: 900;
+  --line-height-sm: 1.125rem;
+  --line-height-md: 1.5rem;
+  --transition-fast: 0.2s;
+  --z-index-control-panel: 1000;
+  --opacity-input: 0.7;
+  --opacity-input-hover: 1;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  width: var(--size-full);
+  height: var(--size-full);
+  overflow: auto;
+}
+
+.wrapper {
+  display: flex;
+  flex-direction: row;
+  justify-content: stretch;
+  align-items: stretch;
+}
+
+#container {
+  position: relative;
+  display: flex;
+  max-width: 100vw;
+  margin: 0 var(--size-overpanel) 0 0;
+}
+
+#document {
+  width: 100%;
+  display: block;
+}
+
+.box {
+  position: absolute;
+  background-color: var(--color-box-bg);
+  border: var(--size-border-sm) solid red;
+  box-sizing: border-box;
+}
+
+.box.selected {
+  border: var(--size-border-md) solid black;
+}
+
+.ui-control-panel {
+  position: fixed;
+  top: var(--spacing-lg);
+  left: var(--spacing-lg);
+  z-index: var(--z-index-control-panel);
+  background-color: var(--color-secondary);
+  border-radius: var(--spacing-xs);
+  padding: var(--spacing-xs);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-sm);
+  transition: background-color var(--transition-fast);
+}
+
+.ui-control-panel:hover {
+  background-color: var(--color-highlight);
+}
+
+.ui-control-panel span {
+  padding: var(--spacing-xs);
+  display: none;
+}
+
+.ui-control-panel:hover span {
+  display: flex;
+}
+
+#zoom-control {
+  -webkit-appearance: none;
+  width: var(--size-full);
+  height: var(--spacing-xxs);
+  background: #ddd;
+  outline: none;
+  border-radius: var(--spacing-xxs);
+}
+
+#zoom-control::-webkit-slider-thumb,
+#zoom-control::-moz-range-thumb {
+  width: var(--size-thumb);
+  height: var(--size-thumb);
+  background: var(--color-primary);
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+#overpanel {
+  position: fixed;
+  right: 0;
+  top: 0;
+  width: var(--size-overpanel);
+  height: var(--size-full);
+  background-color: rgba(255, 255, 255, 0.33);
+  backdrop-filter: blur(var(--spacing-sm));
+  -webkit-backdrop-filter: blur(var(--spacing-sm));
+  -moz-backdrop-filter: blur(var(--spacing-sm));
+  border-left: var(--size-border-sm) solid var(--color-border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  transition: background-color var(--transition-fast) width var(--transition-fast);
+}
+
+#overpanel:hover {
+  background-color: var(--color-highlight);
+}
+
+#overpanel.hidden {
+  width: var(--spacing-xl);
+}
+
+#overpanel.hidden h2,
+#overpanel.hidden form,
+#overpanel.hidden footer {
+  display: none;
+}
+
+#description-form {
+  padding: var(--spacing-md);
+}
+
+.input-group {
+  align-items: center;
+  display: flex;
+  flex-direction: row;
+  margin-bottom: var(--spacing-md);
+  position: relative;
+}
+
+.correction {
+  background-color: var(--color-input-bg);
+  color: inherit;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  width: calc(60% - var(--spacing-md) - var(--spacing-sm));
+}
+
+.correction:focus {
+  border: var(--size-border-sm) solid var(--color-input-focus);
+}
+
+.error-category {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: calc(40% - var(--spacing-sm) - var(--spacing-md));
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-md);
+  border: var(--size-border-sm) solid var(--color-border);
+  border-left: none;
+  border-radius: 0 var(--spacing-xs) var(--spacing-xs) 0;
+  margin-bottom: 0;
+  position: relative;
+}
+
+header,
+footer {
+  background-color: var(--color-white);
+  padding: var(--spacing-md);
+  position: sticky;
+  width: calc(100% - var(--spacing-lg));
+  right: 0;
+  left: auto;
+  z-index: var(--z-index-control-panel);
+}
+
+header {
+  top: 0;
+  border-bottom: var(--size-border-sm) solid var(--color-border);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+footer {
+  bottom: 0;
+  border-top: var(--size-border-sm) solid var(--color-border);
+}
+
+h2 {
+  font-family: var(--font-family);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-md);
+  outline: none;
+  margin: 0;
+}
+
+input,
+button {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  border: var(--size-border-sm) solid var(--color-border);
+  font-family: var(--font-family);
+  opacity: var(--opacity-input);
+  transition: opacity var(--transition-fast), border var(--transition-fast);
+}
+
+input:hover,
+button:hover {
+  opacity: var(--opacity-input-hover);
+}
+
+#submit-button {
+  background-color: var(--color-primary);
+  color: var(--color-white);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-xbold);
+  line-height: var(--line-height-sm);
+  padding: var(--spacing-md);
+  width: 100%;
+}
+
+#toggle {
+  height: 2.75rem;
+  width: 2.75rem;
+  text-indent: -9999rem;
+  background-color: transparent;
+  border: none;
+  position: relative;
+}
+
+#toggle::before,
+#toggle::after {
+  content: '';
+  position: absolute;
+  width: 1rem;
+  height: var(--spacing-xs);
+  background-color: #bbb;
+  transition: transform var(--transition-fast);
+}
+
+#toggle::before {
+  top: 1rem;
+  left: 0.75rem;
+  transform: rotate(45deg);
+}
+
+#toggle::after {
+  top: 1.5rem;
+  left: 0.75rem;
+  transform: rotate(-45deg);
+}
+
+#toggle[aria-expanded="false"]::before {
+  transform: rotate(-45deg);
+}
+
+#toggle[aria-expanded="false"]::after {
+  transform: rotate(45deg);
+}

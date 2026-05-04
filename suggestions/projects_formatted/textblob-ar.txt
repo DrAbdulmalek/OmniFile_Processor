@@ -1,0 +1,668 @@
+══════════════════════════════════════════════════════════════════════
+  مشروع: textblob-ar.zip
+  التصدير: 2026-05-04 00:13:30
+  الملفات البرمجية: 16
+══════════════════════════════════════════════════════════════════════
+
+──────────────────────────────────────────────────────────────────────
+📄  textblob-ar/.travis.yml
+──────────────────────────────────────────────────────────────────────
+
+# Config file for automatic testing at travis-ci.org
+
+language: python
+
+python:
+  - "3.6"
+  - "3.5"
+  - "pypy"
+
+install:
+  - pip install -U .
+
+script: python run_tests.py
+
+──────────────────────────────────────────────────────────────────────
+📄  textblob-ar/HISTORY.rst
+──────────────────────────────────────────────────────────────────────
+
+
+──────────────────────────────────────────────────────────────────────
+📄  textblob-ar/README.rst
+──────────────────────────────────────────────────────────────────────
+===========
+textblob-ar [WIP]
+===========
+
+.. image:: https://travis-ci.org/adhaamehab/textblob-ar.svg?branch=master
+    :target: https://travis-ci.org/adhaamehab/textblob-ar
+
+Arabic language support for `TextBlob`_.
+
+Features
+--------
+
+* Tokenizer
+* Sentiment analysis
+* Stanford Arabic POS
+* Spelling Correction
+* Text similarity
+* Fasttext arabic word2vec interface
+
+Usage
+-----
+
+**Tokenizer**
+  
+.. code-block:: python
+
+    >>> from textblob_ar import TextBlob
+    >>> blob = TextBlob(u"""هندسة البرمجيات هي دراسة تصميم وتنفيذ وتعديل البرمجيات بما يضمن توفر هذه البرمجيات بجودة عالية وتكلفة معقولة متاحة للجميع وقابلة للتطوير فيما بعد وسريعة للبناء. وهندسة البرمجيات تقوم على أسس ونظريات من الهندسة وعلوم الحاسب كمبدأ ال Functional Structure من الهندسة والذي يعتمد على مبدأ تصميم أجزاء صغيرة تتجانس في العمل مع بعضها لتشكل عمل الكل.""")
+    >>> blob.tokens
+    WordList(['هندسة', 'البرمجيات', 'هي', 'دراسة', 'تصميم', 'وتنفيذ', 'وتعديل', 'البرمجيات', 'بما', 'يضمن', 'توفر', 'هذه', 'البرمجيات', 'بجودة', 'عالية', 'وتكلفة', 'معقولة', 'متاحة', 'للجميع', 'وقابلة', 'للتطوير', 'فيما', 'بعد', 'وسريعة', 'للبناء', '.', 'وهندسة', 'البرمجيات', 'تقوم', 'على', 'أسس', 'ونظريات', 'من', 'الهندسة', 'وعلوم', 'الحاسب', 'كمبدأ', 'ال', 'Functional', 'Structure', 'من', 'الهندسة', 'والذي', 'يعتمد', 'على', 'مبدأ', 'تصميم', 'أجزاء', 'صغيرة', 'تتجانس', 'في', 'العمل', 'مع', 'بعضها', 'لتشكل', 'عمل', 'الكل', '.'])
+
+
+**Sentiment**
+
+.. code-block:: python
+
+    >>> from textblob_ar import TextBlob
+    >>> blob = TextBlob('اعجبني هذا الكتاب. اعترض قليلا مع بعض افكاره لكن مضمونه رائع')
+    >>> blob.sentiment
+    Sentiment(polarity=0.8, subjectivity=0.9)
+    >>> blob = TextBlob('لم يعجبني هذا الكتاب. مضمونه سئ')
+    >>> blob.sentiment
+    Sentiment(polarity=-0.6999999999999998, subjectivity=0.6666666666666666)
+
+
+**Stanford POS**
+
+Note that Stanford POS is the defualt one untill the main one is released
+.. code-block:: python
+
+    >>> from textblob_ar import TextBlob
+    >>> from textblob_ar.pos_tagger import StanfordPOSTagger
+    >>> tagg = StanfordPOSTagger()
+    >>> text = """ في أنظمة التشغيل متعددة المهام مثل اليونكس عفريت النظام هو برنامج يعمل في خلفية النظام بعيدا عن التحكم المباشر من المستحدم وغالبا ما يبدأ عمله كعملية خلفية مع بداية تشغيل النظام."""
+    >>> blob = TextBlob(text, pos_tagger=tagger)
+    >>> print(blob.tags)
+    [('', 'في/IN'), ('', 'أنظمة/NN'), ('', 'التشغيل/DTNN'), ('', 'متعددة/JJ'), ('', 'المهام/DTNN'), ('', 'مثل/NN'), ('', 'اليونكس/DTNNP'), ('', 'عفريت/NNP'), ('', 'النظام/DTNN'), ('', 'هو/PRP'), ('', 'برنامج/NN'), ('', 'يعمل/VBP'), ('', 'في/IN'), ('', 'خلفية/NN'), ('', 'النظام/DTNN'), ('', 'بعيدا/JJ'), ('', 'عن/IN'), ('', 'التحكم/DTNN'), ('', 'المباشر/DTJJ'), ('', 'من/IN'), ('', 'المستحدم/DTNN'), ('', 'وغالبا/NN'), ('', 'ما/WP'), ('', 'يبدأ/VBP'), ('', 'عمله/NN'), ('', 'كعملية/JJ'), ('', 'خلفية/NN'), ('', 'مع/NN'), ('', 'بداية/NN'), ('', 'تشغيل/NN'), ('', 'النظام/DTNN')]
+
+
+**Text Correction**
+
+Thanks for `Peter Norvig http://norvig.com/spell-correct.html`
+
+.. code-block:: python
+
+    >>> from textblob_ar import TextBlob
+    >>> from textblob_ar.correction import TextCorrection
+    >>> text = 'الاذدهاز'
+    >>> TextCorrection().correct(text)
+    {'الاذهان', 'الازدهار', 'الادهان', 'الاندهاش'}
+    >>> TextCorrection().correct(text, top=True)
+    'الازدهاز'
+
+**Text Similarity**
+
+Based on `gensim <https://radimrehurek.com/gensim>`_ and `Fasttext <https://fasttext.cc/docs/en/pretrained-vectors.html>`_  pretrained word2vec model 
+
+The procedure used in calculating similarity
+is calculating mean feature vector for each sentence.
+Then calculate the cosine distance between those two vectors.
+
+
+.. code-block:: python
+
+    >>> from textblob_ar import TextSimilarity
+    >>> sim = TextSimilarity()
+    # takes around 12 second (macbook pro 2017) to load the pretrained word2vec
+    >>> sent1 = u'الإرهابي الصالح هي رواية خيال سياسي للكاتبة دوريس ليسينج. ظهرت أول طبعة للرواية في سبتمبر من عام 1985 للناشرين جوناثان كيب في المملكة المتحدة وألفريد أ'
+    >>> sent2 = u'روايه الكاتبه دوريس ليسينج هي روايه خيال سياسي ظهرت في سبتمبر 1985 بعنوان الارهابي الصالح وتم نشرها عن طريق جوناثان كيب والفريد أ في انجلترا'
+    >>> sim.similarity(sent1, sent2)
+    0.9611366391181946
+
+
+Requirements
+------------
+
+- Python >= 3.3
+
+Installation
+------------
+* Development
+
+.. code-block:: shell
+    $ git clone https://github.com/adhaamehab/textblob-ar.git
+    $ cd textblob_ar
+    $ virtualenv -p python3 env
+    $ source env/bin/activate
+    $ pip install -Ur dev-requirements.txt
+
+for text similarity download fasttext arabic word2vec pretrained model from  `here <https://github.com/facebookresearch/fastText/blob/master/pretrained-vectors.md>`_
+
+
+TODO
+----
+
+- Part Of Speech tagger
+- Noun-phrases extraction
+- Parser
+- Classification support
+- Grammer
+
+
+License
+-------
+
+MIT licensed. See the bundled `LICENSE <https://github.com/sloria/textblob-fr/blob/master/LICENSE>`_ file for more details.
+
+.. _TextBlob: https://textblob.readthedocs.org/
+
+
+.. image:: https://badges.gitter.im/textblob-ar/community.svg
+   :alt: Join the chat at https://gitter.im/textblob-ar/community
+   :target: https://gitter.im/textblob-ar/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
+
+──────────────────────────────────────────────────────────────────────
+📄  textblob-ar/dev-requirements.txt
+──────────────────────────────────────────────────────────────────────
+nose>=1.3.0
+tox>=1.5.0
+sphinx
+wheel
+textblob
+
+──────────────────────────────────────────────────────────────────────
+📄  textblob-ar/requirements.txt
+──────────────────────────────────────────────────────────────────────
+alabaster==0.7.11
+astroid==2.1.0
+autopep8==1.4
+Babel==2.6.0
+boto==2.49.0
+boto3==1.9.66
+botocore==1.12.66
+bz2file==0.98
+certifi==2018.8.24
+chardet==3.0.4
+docutils==0.14
+flake8==3.5.0
+gensim==3.6.0
+idna==2.7
+imagesize==1.1.0
+isort==4.3.4
+Jinja2==2.10
+jmespath==0.9.3
+lazy-object-proxy==1.3.1
+MarkupSafe==1.0
+mccabe==0.6.1
+nltk==3.4.5
+nose==1.3.7
+numpy==1.15.4
+packaging==17.1
+pluggy==0.7.1
+py==1.6.0
+pycodestyle==2.3.1
+pyflakes==1.6.0
+Pygments==2.2.0
+pylint==2.2.2
+pyparsing==2.2.0
+python-bingtranslate==0.1.0
+python-dateutil==2.7.5
+pytz==2018.5
+s3transfer==0.1.13
+scipy==1.1.0
+six==1.11.0
+smart-open==1.7.1
+snowballstemmer==1.2.1
+Sphinx==1.7.9
+sphinxcontrib-websupport==1.1.0
+textblob==0.15.1
+tox==3.2.1
+typed-ast==1.1.0
+urllib3==1.23
+wrapt==1.10.11
+
+──────────────────────────────────────────────────────────────────────
+📄  textblob-ar/run_tests.py
+──────────────────────────────────────────────────────────────────────
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+'''
+The main test runner script.
+Usage: ::
+    python run_tests.py
+Skip slow tests: ::
+    python run_tests.py fast
+'''
+from __future__ import unicode_literals
+import nose
+import sys
+from textblob.compat import PY2
+
+
+def main():
+    args = get_argv()
+    success = nose.run(argv=args)
+    sys.exit(0) if success else sys.exit(1)
+
+
+def get_argv():
+    args = [sys.argv[0], ]
+    attr_conditions = []  # Use nose's attribselect plugin to filter tests
+    if "force-all" in sys.argv:
+        # Don't exclude any tests
+        return args
+
+    if not PY2:
+        # Exclude tests that only work on python2
+        attr_conditions.append("not py2_only")
+    if "fast" in sys.argv:
+        attr_conditions.append("not slow")
+
+    attr_expression = " and ".join(attr_conditions)
+    if attr_expression:
+        args.extend(["-A", attr_expression])
+    return args
+
+if __name__ == '__main__':
+    main()
+
+──────────────────────────────────────────────────────────────────────
+📄  textblob-ar/setup.cfg
+──────────────────────────────────────────────────────────────────────
+
+[wheel]
+universal = 1
+
+──────────────────────────────────────────────────────────────────────
+📄  textblob-ar/setup.py
+──────────────────────────────────────────────────────────────────────
+import sys
+import subprocess
+import re
+from setuptools import setup
+
+packages = ['textblob_ar']
+requires = ["textblob>=0.8.0", "gensim"]
+
+PUBLISH_CMD = "python setup.py register sdist bdist_wheel upload"
+TEST_PUBLISH_CMD = 'python setup.py register -r test sdist bdist_wheel upload -r test'
+TEST_CMD = 'python run_tests.py'
+
+
+def find_version(fname):
+    '''Attempts to find the version number in the file names fname.
+    Raises RuntimeError if not found.
+    '''
+    version = ''
+    with open(fname, 'r') as fp:
+        reg = re.compile(r'__version__ = [\'"]([^\'"]*)[\'"]')
+        for line in fp:
+            m = reg.match(line)
+            if m:
+                version = m.group(1)
+                break
+    if not version:
+        raise RuntimeError('Cannot find version information')
+    return version
+
+__version__ = find_version("textblob_ar/__init__.py")
+
+if 'publish' in sys.argv:
+    try:
+        __import__('wheel')
+    except ImportError:
+        print("wheel required. Run `pip install wheel`.")
+        sys.exit(1)
+    status = subprocess.call(PUBLISH_CMD, shell=True)
+    sys.exit(status)
+
+if 'publish_test' in sys.argv:
+    try:
+        __import__('wheel')
+    except ImportError:
+        print("wheel required. Run `pip install wheel`.")
+        sys.exit(1)
+    status = subprocess.call(TEST_PUBLISH_CMD, shell=True)
+    sys.exit()
+
+if 'run_tests' in sys.argv:
+    try:
+        __import__('nose')
+    except ImportError:
+        print('nose required. Run `pip install nose`.')
+        sys.exit(1)
+
+    status = subprocess.call(TEST_CMD, shell=True)
+    sys.exit(status)
+
+
+def read(fname):
+    with open(fname) as fp:
+        content = fp.read()
+    return content
+
+setup(
+    name='textblob-ar',
+    version=__version__,
+    description='Arabic language extension for TextBlob.',
+    long_description=(read("README.rst") + '\n\n' +
+                        read("HISTORY.rst")),
+    author='Adham Ehab, Ibrahim Sharaf',
+    author_email='adhaamehab7@gmail.com',
+    url='https://github.com/adhaamehab/textblob-ar',
+    packages=packages,
+    package_dir={'textblob_ar': 'textblob_ar'},
+    include_package_data=True,
+    package_data={
+        "textblob_ar": ["*.txt", "*.xml"]
+    },
+    install_requires=requires,
+    license=read("LICENSE"),
+    zip_safe=False,
+    keywords='textblob_ar',
+    classifiers=[
+        'Development Status :: 2 - Pre-Alpha',
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: MIT License',
+        'Natural Language :: English',
+        "Programming Language :: Python :: 2",
+        'Programming Language :: Python :: 2.6',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.3',
+    ],
+    test_suite='tests',
+    tests_require=['nose'],
+)
+
+──────────────────────────────────────────────────────────────────────
+📄  textblob-ar/textblob_ar/__init__.py
+──────────────────────────────────────────────────────────────────────
+from __future__ import absolute_import
+from textblob_ar.blob import TextBlob
+from textblob_ar.similarity import TextSimilarity
+from textblob_ar.correction import TextCorrection
+
+__version__ = '0.0.2'
+__author__ = 'Adham Ehab'
+__license__ = "MIT"
+
+──────────────────────────────────────────────────────────────────────
+📄  textblob-ar/textblob_ar/blob.py
+──────────────────────────────────────────────────────────────────────
+import nltk
+from nltk.stem.wordnet import WordNetLemmatizer
+from textblob.blob import BaseBlob, Word, WordList
+from textblob.compat import unicode
+from textblob.decorators import requires_nltk_corpus
+from textblob_ar.sentiment import PatternAnalyzer
+from textblob_ar.tokenizer import WordPunctTokenizer
+
+class WordAR(Word):
+    """Arabic Word representation and basic ops"""
+
+    def translate(self, to='en'):
+        """Translate the word from arabic to another language using Google's
+        Translate API.
+        :param to: string represents the language code for the target language. 
+        """
+        return Word.translate(from_lang='ar', to=to)
+
+    def spellcheck(self):
+        raise NotImplementedError
+
+    def correct(self):
+        raise NotImplementedError
+
+    @requires_nltk_corpus
+    def singularize(self):
+        """Return the singular version of the word as a Word."""
+        raise NotImplementedError
+
+    @requires_nltk_corpus
+    def pluralize(self):
+        '''Return the plural version of the word as a Word.'''
+        raise NotImplementedError
+
+    # todo
+    # word description
+    # arabic diacritics
+
+
+class WordlistAR(WordList):
+    """Wordlist Data structure
+
+    A list-like data structure to process words customized for arabic words. 
+    """
+
+    def count(self, strg,  *args, **kwargs):
+        """Get the count of a word or phrase `s` within this WordList.
+        Overrides textblob base wordlist.
+        :param strg: The string to count.
+        """
+        return self._collection.count(strg, *args, **kwargs)
+
+    def lemmatize(self):
+        """Return the lemma of each word in this WordList."""
+
+        return self.__class__([i.lemma() for i in self])
+
+
+class TextBlob(BaseBlob):
+
+    def __init__(self, text, tokenizer=None,
+                 pos_tagger=None,
+                 np_extractor=None,
+                 analyzer=None,
+                 parser=None,
+                 classifier=None, clean_html=False):
+        _tokenizer = tokenizer if tokenizer is not None else WordPunctTokenizer()
+        _analyzer = analyzer if analyzer is not None else PatternAnalyzer()
+        super().__init__(text=text, tokenizer=_tokenizer, analyzer=_analyzer, clean_html=clean_html)
+
+    def stopwords(self):
+        '''Return list of arabic stopwords'''
+        return nltk.corpus.stopwords.words("arabic")
+
+    def tag(self):
+        return self.pos_tagger.tag(self.tokens)
+
+──────────────────────────────────────────────────────────────────────
+📄  textblob-ar/textblob_ar/correction.py
+──────────────────────────────────────────────────────────────────────
+import re
+from collections import Counter
+
+
+class TextCorrection:
+
+    def __init__(self):
+        wl1 = Counter(self.words(open('data/bbc-arabic-wordlist.csv').read()))
+        wl2 = Counter(self.words(open('data/OSAc-wordlist.csv').read()))
+        self.WORDS = wl1 + wl2
+
+    def words(self, text):
+        return re.findall(r'\w+', text.lower())
+
+    def P(self, word): 
+        "Probability of `word`."
+        N = sum(self.WORDS.values())
+        return self.WORDS[word] / N
+
+    def correction(self, word, top=False):
+        "Most probable spelling correction for word."
+        if top:
+            return max(self.candidates(word), key=self.P)
+        return self.candidates(word)
+
+    def candidates(self, word):
+        "Generate possible spelling corrections for word."
+        return (self.known([word]) or self.known(self.edits1(word)) or self.known(self.edits2(word)) or [word])
+
+    def known(self, words):
+        "The subset of `words` that appear in the dictionary of WORDS."
+        return set(w for w in words if w in self.WORDS)
+
+    def edits1(self, word):
+        "All edits that are one edit away from `word`."
+        letters    = 'غظضذخثتشرقصفعسنملكيطحزوهدجبأ'
+        splits     = [(word[:i], word[i:])    for i in range(len(word) + 1)]
+        deletes    = [L + R[1:]               for L, R in splits if R]
+        transposes = [L + R[1] + R[0] + R[2:] for L, R in splits if len(R)>1]
+        replaces   = [L + c + R[1:]           for L, R in splits if R for c in letters]
+        inserts    = [L + c + R               for L, R in splits for c in letters]
+        return set(deletes + transposes + replaces + inserts)
+
+    def edits2(self, word): 
+        "All edits that are two edits away from `word`."
+        return (e2 for e1 in self.edits1(word) for e2 in self.edits1(e1))
+
+
+──────────────────────────────────────────────────────────────────────
+📄  textblob-ar/textblob_ar/sentiment.py
+──────────────────────────────────────────────────────────────────────
+from __future__ import absolute_import
+from textblob.base import BaseSentimentAnalyzer, CONTINUOUS
+from textblob.translate import Translator
+from textblob.sentiments import PatternAnalyzer as PA
+
+
+class PatternAnalyzer(BaseSentimentAnalyzer):
+
+    '''Sentiment analyzer that uses the same implementation as the
+    pattern library. Returns results as a tuple of the form:
+    ``(polarity, subjectivity)``
+    '''
+
+    kind = CONTINUOUS
+
+    def analyze(self, text):
+        """Return the sentiment as a tuple of the form:
+        ``(polarity, subjectivity)``
+
+        First the text is translated into english text
+        using base translator from textblob then
+        the sentiment is calculated by PatternAnalyzer
+        """
+        translated_text = Translator().translate(text, from_lang='ar')
+        return PA().analyze(translated_text)
+
+
+──────────────────────────────────────────────────────────────────────
+📄  textblob-ar/textblob_ar/similarity.py
+──────────────────────────────────────────────────────────────────────
+import numpy as np
+import gensim
+#from gensim.models.KeyedVectors import load_word2vec_format
+from scipy import spatial
+
+from textblob_ar.tokenizer import NLTKWordPunctTokenizer
+from textblob_ar.utils import clean_str
+
+
+class TextSimilarity:
+
+    def __init__(self):
+        try:
+            self.model = gensim.models.KeyedVectors.load_word2vec_format('wiki.ar.vec')
+            self.index2word_set = set(self.model.wv.index2word)
+        except FileNotFoundError:
+            raise FileNotFoundError
+    def avg_feature_vector(self, sentence, num_features=300):
+        words = NLTKWordPunctTokenizer().tokenize(clean_str(sentence))
+        feature_vec = np.zeros((num_features, ), dtype='float32')
+        n_words = 0
+        for word in words:
+            if word in self.index2word_set:
+                n_words += 1
+                feature_vec = np.add(feature_vec, self.model[word])
+        if (n_words > 0):
+            feature_vec = np.divide(feature_vec, n_words)
+        return feature_vec
+
+    def similarity(self, sentence1, sentence2):
+        vec1, vec2 = self.avg_feature_vector(sentence1), self.avg_feature_vector(sentence2)
+        return self.cosine_similarity(vec1, vec2)
+
+    def cosine_similarity(self, vec1, vec2):
+        return 1 - spatial.distance.cosine(vec1, vec2)
+
+──────────────────────────────────────────────────────────────────────
+📄  textblob-ar/textblob_ar/tokenizer.py
+──────────────────────────────────────────────────────────────────────
+from nltk import TreebankWordTokenizer
+from nltk import WordPunctTokenizer
+from nltk import WhitespaceTokenizer
+
+
+from textblob.base import BaseTokenizer
+
+
+
+        
+class NLTKTreebankWordTokenizer(BaseTokenizer):
+
+    def tokenize(self, text):
+
+        return TreebankWordTokenizer().tokenize(text)
+
+class NLTKWordPunctTokenizer(BaseTokenizer):
+
+    def tokenize(self, text):
+
+        return WordPunctTokenizer().tokenize(text)
+
+
+class NLTKWhitespaceTokenizer(BaseTokenizer):
+
+    def tokenize(self, text):
+        return WhitespaceTokenizer().tokenize(text)
+
+        
+
+──────────────────────────────────────────────────────────────────────
+📄  textblob-ar/textblob_ar/utils.py
+──────────────────────────────────────────────────────────────────────
+import re
+
+
+'''
+Code snippet from https://github.com/bakrianoo/aravec
+
+'''
+
+
+def clean_str(text):
+    search = ["أ", "إ", "آ", "ة", "_", "-", "/", ".", "،", " و ", " يا ",
+              '"', "ـ", "'", "ى", "\\", '\n', '\t', '&quot;', '?', '؟', '!']
+    replace = ["ا", "ا", "ا", "ه", " ", " ", "", "", "", " و",
+               " يا", "", "", "", "ي", "", ' ', ' ', ' ', ' ? ', ' ؟ ', ' ! ']
+
+    p_tashkeel = re.compile(r'[\u0617-\u061A\u064B-\u0652]')
+    text = re.sub(p_tashkeel, "", text)
+    p_longation = re.compile(r'(.)\1+')
+    subst = r"\1\1"
+    text = re.sub(p_longation, subst, text)
+    text = text.replace('وو', 'و')
+    text = text.replace('يي', 'ي')
+    text = text.replace('اا', 'ا')
+
+    for i in range(0, len(search)):
+        text = text.replace(search[i], replace[i])
+    text = text.strip()
+
+    return text
+
+──────────────────────────────────────────────────────────────────────
+📄  textblob-ar/tox.ini
+──────────────────────────────────────────────────────────────────────
+[tox]
+envlist =py26,py27,py33
+[testenv]
+deps=
+    nose
+commands=
+    python run_tests.py

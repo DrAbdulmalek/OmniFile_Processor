@@ -1,0 +1,2439 @@
+══════════════════════════════════════════════════════════════════════
+  مشروع: AHDoc.zip
+  التصدير: 2026-05-04 00:13:30
+  الملفات البرمجية: 18
+══════════════════════════════════════════════════════════════════════
+
+──────────────────────────────────────────────────────────────────────
+📄  AHDoc/OCR Engine/config.py
+──────────────────────────────────────────────────────────────────────
+class OCRConfig(object):
+    #Configuration file
+    
+    IMAGE_WIDTH = 508
+    IMAGE_HEIGHT = 64
+    
+    
+    #paths
+    TRAIN_DATA_PATH = './dataset/train/'
+    VALIDATION_DATA_PATH = './dataset/val/'
+    TEST_DATA_PATH = './dataset/test/'
+
+    PRETRAINED_MODEL_PATH = './weights/best-3.h5'
+    PRETRAINED_MODEL_DIR = './weights/'
+
+
+    #model config
+    INIT_LEARNING_RATE = 0.0005
+    DECAY_STEPS = 10000
+    DECAY_RATE = 0.9
+    PATIENCE_VALUE = 6
+ 
+    
+    #compile
+    RESTORE_BEST_WEIGHTS = True
+    SAVE_BEST_MODEL = True
+
+    # Adjust based on the dataset size after splitting
+    TOTAL_SAMPLES = 1000000
+    TRAIN_SPLIT = 0.81
+    VAL_SPLIT = 0.09
+    
+    
+    #train
+    BATCH_SIZE = 64
+    EPOCHS = 100
+    STEPS_PER_EPOCH = int(TOTAL_SAMPLES * TRAIN_SPLIT // BATCH_SIZE)
+    VALIDATION_STEPS = int(TOTAL_SAMPLES * VAL_SPLIT // BATCH_SIZE) if TOTAL_SAMPLES * VAL_SPLIT // BATCH_SIZE > 0 else 1
+    PATIENCE = 10
+    
+    #generate
+    MAX_LEN = 106
+    MAX_NUMBER_OF_WORDS = 10
+    PADDING_TOKEN = 99  
+    WORD = False
+    CLEAN_DATA_PERCENTAGE = 70
+
+    #test
+    TEST_STEPS = 32
+    MAX_NOISE_APPLIED = 60
+    DILUTE_KERNAL_FACTOR = 2
+
+
+    #augmantation
+    MAX_ROTATION_ANGLE = 4
+    
+    NUM_OF_DROPS = 200
+    DROPS_RADIUS = 1
+    DROPS_ALPHA = 0.5
+
+    POLYGON_ALPHA = 0.35
+    POLYGON_COLOR = (0, 0, 0)
+
+    BEAM_SEARCH_WIDTH = 50
+
+    
+    characters = [' ', 'ء', 'آ', 'أ', 'ؤ', 'إ', 'ئ', 'ا', 'ب', 'ة', 'ت', 'ث', 'ج', 'ح', 'خ', 'د', 'ذ'
+                  , 'ر', 'ز', 'س', 'ش', 'ص', 'ض', 'ط', 'ظ', 'ع'
+                  , 'غ', 'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'ه', 'و', 'ى', 'ي', 'ـ', '[blank]']
+
+
+──────────────────────────────────────────────────────────────────────
+📄  AHDoc/OCR Engine/evaluate.py
+──────────────────────────────────────────────────────────────────────
+import numpy as np
+from inference import decode_result, decode_batch_predictions
+import keras
+from model import CTCLayer
+from generate import generate
+import Levenshtein
+
+def calculate_crr(ground_truth_texts, predicted_texts):
+    total_chars = sum(len(gt) for gt in ground_truth_texts)
+    edit_distance_sum = sum(Levenshtein.distance(gt, pred) for gt, pred in zip(ground_truth_texts, predicted_texts))
+    crr = 1 - (edit_distance_sum / total_chars)
+    return crr
+
+def calculate_wrr(ground_truth_texts, predicted_texts):
+    total_words = sum(len(gt.split()) for gt in ground_truth_texts)
+    correctly_identified_words = 0
+    
+    for gt, pred in zip(ground_truth_texts, predicted_texts):
+        gt_words = gt.lower().strip().split()
+        pred_words = pred.lower().strip().split()
+        
+        # Compare each word in ground truth with corresponding word in prediction
+        for gt_word, pred_word in zip(gt_words, pred_words):
+            if gt_word == pred_word:
+                correctly_identified_words += 1
+    
+    wrr = correctly_identified_words / total_words if total_words > 0 else 0
+    return wrr
+
+# valid_aug = False
+# test_generator = generate(cfg, 'test',valid_aug=valid_aug, get_only_specific_charachters=0)
+
+# num_batches = 100
+# batch_images = []
+# batch_labels = []
+
+# for _ in range(num_batches):
+#     if(_%20 == 0):
+#         print(_)
+#     images, labels = next(test_generator)
+#     batch_images.extend(images)
+#     batch_labels.extend(labels)
+
+# batch_images = np.array(batch_images)
+# batch_labels = np.array(batch_labels)
+
+# decoded_labels = decode_result(batch_labels)
+# # i = 0
+# # for file in file_list:
+# inference_model = None
+# inference_model = keras.models.load_model(osp.join(cfg.PRETRAINED_MODEL_DIR,'43.8194.h5'), custom_objects={'CTCLayer': CTCLayer})
+# decoded_preds = []
+# # Use this model for predictions
+# preds = inference_model.predict([batch_images, batch_labels], verbose=0)
+# decoded_preds = decode_batch_predictions(preds)
+
+# crr = calculate_crr(decoded_labels, decoded_preds)
+# wrr = calculate_wrr(decoded_labels, decoded_preds)
+
+# print(f'scored crr:{crr}, wrr:{wrr} on {cfg.MAX_NUMBER_OF_WORDS} words, with {valid_aug} validation\n')
+
+──────────────────────────────────────────────────────────────────────
+📄  AHDoc/OCR Engine/generate.py
+──────────────────────────────────────────────────────────────────────
+import os.path as osp
+import numpy as np
+import cv2
+import matplotlib.pyplot as plt
+import tensorflow as tf
+from tensorflow.keras.layers.experimental.preprocessing import StringLookup
+import math
+from config import OCRConfig
+
+
+
+def resize_image(image, target_height, max_width, free=False):
+    # Calculate the aspect ratio
+    aspect_ratio = image.shape[1] / image.shape[0]
+    
+    # Resize the image to have a height of 64 pixels
+    new_width = int(target_height * aspect_ratio)
+    resized_image = cv2.resize(image, (new_width, target_height))
+
+    if (free):
+        return resized_image
+        
+    # If the width exceeds the max width, scale down to max width
+    if new_width > max_width:
+        resized_image = cv2.resize(resized_image, (max_width, target_height))
+    else:
+        # Otherwise, pad the image with white space to the right
+        padding_width = max_width - new_width
+        white_space = np.ones((target_height, padding_width, 3), dtype=np.uint8) * 255
+        resized_image = np.hstack((resized_image, white_space))
+    
+    return resized_image
+
+def vectorize_label(label, char_to_num, cfg):
+    label = char_to_num(tf.strings.unicode_split(label, input_encoding="UTF-8"))
+    length = tf.shape(label)[0]
+    pad_amount = cfg.MAX_LEN - length
+    label = tf.pad(label, paddings=[[0, pad_amount]], constant_values=cfg.PADDING_TOKEN)
+    return label
+
+def generate_random_polygon(image_shape, num_points=5):
+    h, w, _ = image_shape
+    points = []
+    
+    x = np.random.randint(0, w, size=num_points).tolist()
+    y = np.random.randint(0, h, size=num_points).tolist()
+    
+    return np.array([x,y], np.int32).reshape((-1, 1, 2))
+
+def draw_random_drops(image, num_drops, drop_radius, alpha):
+    h, w, _ = image.shape
+    
+    x = np.random.randint(0, w - 1, size=num_drops).tolist()
+    y = np.random.randint(0, h - 1, size=num_drops).tolist()
+    
+    overlay = image.copy()
+    
+    for i in range(num_drops):
+        cv2.circle(overlay, (x[i], y[i]), drop_radius, (0, 0, 0, int(alpha * 255)), -1)
+    
+    # Blend the overlay with the original image
+    cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0, image)
+
+
+def generate(cfg, type='train', input2=False, valid_aug=False, get_only_specific_charachters=0):
+    if type == 'train':
+        data_dir = cfg.TRAIN_DATA_PATH
+    elif type == 'val':
+        data_dir = cfg.VALIDATION_DATA_PATH
+    else:
+        data_dir = cfg.TEST_DATA_PATH
+
+    image_paths = []
+    labels = []
+
+    char_to_num = StringLookup(vocabulary=cfg.characters, mask_token=None)
+
+    with open(osp.join(data_dir, 'labels.txt'), encoding="utf-8") as f:
+        read = f.readlines()
+        for i in range(len(read)):
+            split = 1
+            while True:
+                if read[i][split] == '_':
+                    break
+                split += 1
+            
+            if get_only_specific_charachters:
+                if get_only_specific_charachters != len(str(read[i][split + 1:-1])):
+                    continue
+
+            image_paths.append(str(read[i][0:split]) + '.png')
+            labels.append(read[i][split + 1:-1])
+
+    dataset_size = len(image_paths)
+    indices = np.arange(dataset_size)
+    np.random.shuffle(indices)
+
+    def init_input():
+        batch_images = np.zeros([cfg.BATCH_SIZE, cfg.IMAGE_HEIGHT, cfg.IMAGE_WIDTH, 3], dtype=np.float32)
+        batch_labels = np.zeros((cfg.BATCH_SIZE, cfg.MAX_LEN), dtype=np.int32)
+        return batch_images, batch_labels
+
+    current_idx = 0
+    b = 0
+
+    while True:
+        if current_idx >= dataset_size:
+            np.random.shuffle(indices)
+            current_idx = 0
+        if b == 0:
+            batch_images, batch_labels = init_input()
+
+        image = cv2.imread(osp.join(data_dir, image_paths[current_idx]))
+        label = labels[current_idx]
+
+        max_height = image.shape[0]
+        random_idx = np.random.randint(0, dataset_size, size=cfg.MAX_NUMBER_OF_WORDS).tolist()
+
+        if cfg.WORD == True:
+            for i in range(1, cfg.MAX_NUMBER_OF_WORDS):
+                image2 = cv2.imread(osp.join(data_dir, image_paths[random_idx[i]]))
+
+                if max_height > image2.shape[0]:
+                    image2 = resize_image(image2, max_height, 0, True)
+                else:
+                    max_height = image2.shape[0]
+                    image = resize_image(image, max_height, 0, True)
+
+                padding_width = 5
+                white_space = np.ones((max_height, padding_width, 3), dtype=np.uint8) * 255
+                image = np.hstack((image2, white_space, image))
+                label += ' ' + labels[random_idx[i]]
+        elif cfg.WORD == False:
+            image = resize_image(image, cfg.IMAGE_HEIGHT, cfg.IMAGE_WIDTH)
+
+        if valid_aug:
+            height, width = cfg.IMAGE_HEIGHT, cfg.IMAGE_WIDTH
+            random_list = np.random.randint(0, 2, size=5).tolist()
+
+            if random_list[0]:
+                draw_random_drops(image, cfg.NUM_OF_DROPS, cfg.DROPS_RADIUS, cfg.DROPS_ALPHA)
+            if random_list[1]:
+                kernel_size = (3, 3)
+                iterations = 1
+                gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+                _, binary_image = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+                kernel = np.ones(kernel_size, np.uint8)
+                dilated_image = cv2.dilate(binary_image, kernel, iterations=iterations)
+                bold_text_image = cv2.bitwise_not(dilated_image)
+                image = cv2.cvtColor(bold_text_image, cv2.COLOR_GRAY2BGR)
+            if random_list[2]:
+                angle = np.random.uniform(-cfg.MAX_ROTATION_ANGLE, cfg.MAX_ROTATION_ANGLE)
+                center = (width // 2, height // 2)
+                rotation_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
+                image = cv2.warpAffine(image, rotation_matrix, (width, height), borderMode=cv2.BORDER_REPLICATE)
+            if random_list[3]:
+                image = cv2.GaussianBlur(image, (5, 5), 0)
+            if random_list[4]:
+                kernel = np.ones((cfg.DILUTE_KERNAL_FACTOR, cfg.DILUTE_KERNAL_FACTOR), np.uint8)
+                image = cv2.dilate(image, kernel, iterations=1)
+
+        try:
+            image = tf.cast(image, np.float32) / 255.0
+            label = vectorize_label(label, char_to_num, cfg)
+            batch_images[b] = image
+            batch_labels[b] = label
+            b += 1
+        except:
+            pass
+
+        current_idx += 1
+
+        if b == cfg.BATCH_SIZE:
+            b = 0
+            if input2:
+                yield [batch_images, batch_labels], batch_labels
+            else:
+                yield batch_images, batch_labels
+
+
+
+──────────────────────────────────────────────────────────────────────
+📄  AHDoc/OCR Engine/inference.py
+──────────────────────────────────────────────────────────────────────
+import matplotlib.pyplot as plt
+import numpy as np
+import tensorflow.keras as keras
+import tensorflow as tf
+from tensorflow.keras.layers.experimental.preprocessing import StringLookup
+from config import OCRConfig
+import arabic_reshaper
+from bidi.algorithm import get_display
+from generate import generate
+from model import OCR_Model
+
+
+
+cfg = OCRConfig()
+
+def decode_result(results):
+    output_text = []
+    for res in results:
+        res = tf.gather(res, tf.where(tf.math.not_equal(res, 99)))[:, 0]
+        res = tf.gather(res, tf.where(tf.math.not_equal(res, -1)))[:, 0]
+        res = tf.strings.reduce_join(num_to_char(res)).numpy().decode("utf-8")
+        output_text.append(res)
+    return output_text
+
+def decode_batch_predictions(pred):
+    input_len = np.ones(pred.shape[0]) * pred.shape[1]
+    results = keras.backend.ctc_decode(pred, input_length=input_len, greedy=False, beam_width=50)[0][0][
+        :, :cfg.MAX_LEN
+    ]
+    
+    output_text = decode_result(results)
+    return output_text
+
+# test_generator = generate(cfg, 'test')
+# # Define the inference model
+# inference_model = OCR_Model(cfg, 'inference')
+# # Assuming you've loaded weights and they are compatible up to the inference output layer
+# inference_model.load_weights(cfg.PRETRAINED_MODEL_PATH, by_name=True)  # by_name=True helps align the layer names and weights
+
+# # Use this model for predictions
+# batch_images, batch_labels = next(test_generator)
+
+num_to_char = StringLookup(vocabulary=cfg.characters, mask_token=None, invert=True)
+
+
+# preds = inference_model.predict(batch_images, verbose=0)
+# decoded_labels, decoded_preds = decode_result(batch_labels), decode_batch_predictions(preds)
+# print(decoded_preds[0])
+
+# fig, axes = plt.subplots(4, 4, figsize=(23, 10))
+
+# for i, ax in enumerate(axes.flatten()):
+#     label = get_display( arabic_reshaper.reshape(decoded_labels[i]))
+#     pred = get_display( arabic_reshaper.reshape(decoded_preds[i]))
+#     ax.imshow(batch_images[i])
+#     ax.axis('off')
+#     ax.set_title(f"{label}\n{pred}", fontdict=None)
+
+
+# # Adjust spacing
+# plt.subplots_adjust(wspace=0.1, hspace=0.5)  # Adjust these values as needed
+
+# plt.show()
+
+──────────────────────────────────────────────────────────────────────
+📄  AHDoc/OCR Engine/model.py
+──────────────────────────────────────────────────────────────────────
+import tensorflow as tf
+import tensorflow.keras as keras
+from tensorflow.keras import layers as KL
+from tensorflow.keras.metrics import Metric
+from config import OCRConfig
+from tensorflow.keras.layers.experimental.preprocessing import StringLookup
+import numpy as np
+
+from keras_resnet.models import ResNet50
+
+cfg = OCRConfig()
+
+# Model definition
+class SequenceAccuracy(Metric):
+    def __init__(self, name='sequence_accuracy', **kwargs):
+        super(SequenceAccuracy, self).__init__(name=name, **kwargs)
+        self.correct_predictions = self.add_weight(name='cp', initializer='zeros')
+        self.total_predictions = self.add_weight(name='tp', initializer='zeros')
+
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        input_length = tf.math.reduce_sum(tf.cast(tf.not_equal(y_pred, 0), tf.int64), axis=1)
+        decoded_preds = keras.backend.ctc_decode(y_pred, input_length=input_length, greedy=True)[0][0]
+        y_true = tf.sparse.from_dense(y_true)
+        decoded_preds = tf.sparse.from_dense(decoded_preds)
+        edit_distance = tf.edit_distance(decoded_preds, y_true, normalize=False)
+        perfect_matches = tf.cast(tf.equal(edit_distance, 0), tf.float32)
+        self.correct_predictions.assign_add(tf.reduce_sum(perfect_matches))
+        self.total_predictions.assign_add(tf.size(perfect_matches))
+
+    def result(self):
+        return self.correct_predictions / self.total_predictions
+
+    def reset_states(self):
+        self.correct_predictions.assign(0)
+        self.total_predictions.assign(0)
+
+
+class CTCLayer(KL.Layer):
+    def __init__(self, trainable=True, **kwargs):
+        super(CTCLayer, self).__init__(trainable=trainable, **kwargs)
+        self.loss_fn = keras.backend.ctc_batch_cost
+
+    def call(self, y_true, y_pred):
+    
+        batch_len = tf.cast(tf.shape(y_true)[0], dtype="int64")
+        input_length = tf.cast(tf.shape(y_pred)[1], dtype="int64")
+        label_length = tf.cast(tf.shape(y_true)[1], dtype="int64")
+        input_length = input_length * tf.ones(shape=(batch_len, 1), dtype="int64")
+        label_length = label_length * tf.ones(shape=(batch_len, 1), dtype="int64")
+        loss =  self.loss_fn(y_true, y_pred, input_length, label_length)
+        
+
+        self.add_loss(loss)
+        return y_pred
+
+    def get_config(self):
+        config = super(CTCLayer, self).get_config()
+        return config
+
+        
+
+def get_prediction_model(model):
+    prediction_model = keras.models.Model(
+        model.get_layer(name="image").input, model.get_layer(name="dense3").output)
+    return prediction_model
+
+
+
+def OCR_Model(cfg, type='-'):
+    
+    input_img = keras.Input(shape=(cfg.IMAGE_HEIGHT, cfg.IMAGE_WIDTH, 3), name="image")
+    labels = KL.Input(name="label", shape=(None,))
+
+    # conv block 1.
+    x = keras.layers.Conv2D(32,(3, 3),activation="relu",kernel_initializer="he_normal",padding="same",name="Conv1",)(input_img)
+    x = keras.layers.MaxPooling2D((2, 2), name="pool1")(x)
+    x = keras.layers.BatchNormalization()(x)
+
+    # conv block 2.
+    x = keras.layers.Conv2D(64,(3, 3),activation="relu",kernel_initializer="he_normal",padding="same",name="Conv2",)(x)
+    x = keras.layers.MaxPooling2D((2, 2), name="pool2")(x)
+    x = keras.layers.BatchNormalization()(x)
+    
+    # conv block 3.
+    x = keras.layers.Conv2D(128,(3, 3),activation="relu",kernel_initializer="he_normal",padding="same",name="Conv3",)(x)
+    # x = keras.layers.MaxPooling2D((2, 2), name="pool3")(x)
+    x = keras.layers.BatchNormalization()(x)
+
+    
+    x = tf.transpose(x, perm=[0, 2, 1, 3]) 
+    
+    #reshape depends on the last layer and max pooling values
+    new_shape = (x.shape[1], x.shape[2]*x.shape[3])
+    x = keras.layers.Reshape(target_shape=new_shape, name="reshape")(x)
+    
+    #best #.units -> 64,32
+    x = keras.layers.Dense(64, activation="relu", name="dense2")(x)
+    x = keras.layers.BatchNormalization()(x)
+    
+    
+    x = keras.layers.Bidirectional(keras.layers.LSTM(128, return_sequences=True, dropout=0.3))(x)
+    x = keras.layers.Bidirectional(keras.layers.LSTM(256, return_sequences=True, dropout=0.3))(x)
+
+    #indicates the number of vocabulary in String_lookup(cfg.charachters) + 1
+    x = keras.layers.Dense(len(cfg.characters) + 3, activation="softmax", name="dense3")(x)
+    output = CTCLayer(name="ctc_loss")(labels, x)
+
+
+    model = keras.models.Model(
+        inputs=[input_img, labels], outputs=output, name="OCR-ENGINE"
+    )
+        
+    
+    return model
+
+──────────────────────────────────────────────────────────────────────
+📄  AHDoc/OCR Engine/train.py
+──────────────────────────────────────────────────────────────────────
+from config import OCRConfig
+from generate import generate
+from model import OCR_Model, get_prediction_model
+import tensorflow as tf
+import tensorflow.keras as keras
+import numpy as np
+
+
+cfg = OCRConfig()
+
+# Callbacks
+def calculate_edit_distance(labels, predictions):
+    sparse_labels = tf.sparse.from_dense(tf.cast(labels, tf.int64))
+    input_len = np.ones(predictions.shape[0]) * predictions.shape[1]
+    
+    predictions_decoded = keras.backend.ctc_decode(
+        predictions, input_length=input_len, greedy=False, beam_width=100,
+    )[0][0][:, :cfg.MAX_LEN]
+    
+    sparse_predictions = tf.sparse.from_dense(predictions_decoded)
+    
+    edit_distances = tf.edit_distance(
+        sparse_predictions, sparse_labels, normalize=False
+    )
+    return tf.reduce_mean(edit_distances)
+
+class EditDistanceCallback(keras.callbacks.Callback):
+    def __init__(self, pred_model, val_generator):
+        super().__init__()
+        self.prediction_model = pred_model
+        self.generator = val_generator
+
+    def on_epoch_end(self, epoch, logs=None):
+        edit_distances = []
+        #global variables of edit_distance
+        total_edit_distance = 0.0
+        num_samples = 0
+        print("\n")
+        for i in range(cfg.VALIDATION_STEPS):
+            batch_images, batch_labels = next(self.generator)
+            batch_predictions = self.prediction_model.predict(batch_images, verbose=0)
+            
+            batch_edit_distance = calculate_edit_distance(batch_labels, batch_predictions).numpy()
+            total_edit_distance += batch_edit_distance
+            
+            num_samples += batch_images.shape[0]
+
+            #print checkpoint
+            if (i % 10):
+                print(f'calculating edit distance {i}/{cfg.VALIDATION_STEPS}')
+
+        mean_edit_distance = total_edit_distance / num_samples
+        print(f'avg mean edit distance: {mean_edit_distance}')
+        return mean_edit_distance
+
+# early_stopping = keras.callbacks.EarlyStopping(
+#     monitor='val_loss',
+#     patience=cfg.PATIENCE,
+#     restore_best_weights=True
+# )
+
+# model_checkpoint = keras.callbacks.ModelCheckpoint(
+#     cfg.PRETRAINED_MODEL_PATH, 
+#     monitor='val_loss', 
+#     save_best_only=True
+# )
+
+# #our model
+# model = OCR_Model(cfg)
+# model.load_weights(cfg.PRETRAINED_MODEL_PATH)
+
+# #Define generators
+# train_generator = generate(cfg, 'train', True)
+# val_generator = generate(cfg, 'val', True)
+# val_generator_edit_dis = generate(cfg, 'val')
+
+# prediction_model = get_prediction_model(model)
+
+
+# #freezing layers to dense and ctc
+# # Iterate over the layers of the model
+# value = True
+# for i in range(len(model.layers)):
+#     model.layers[i].trainable = value
+#     print(f"Freezing layer: {model.layers[i].name} : {value}")
+#     if model.layers[i].name == 'dense2': 
+#         value = False
+        
+
+# edit_distance_callback = EditDistanceCallback(prediction_model, val_generator_edit_dis)
+
+   
+# lr_schedule = keras.optimizers.schedules.ExponentialDecay(
+#     initial_learning_rate = cfg.INIT_LEARNING_RATE,
+#     decay_steps = cfg.DECAY_STEPS,
+#     decay_rate = cfg.DECAY_RATE
+# )
+
+
+# model.compile(optimizer=keras.optimizers.Adam(learning_rate=lr_schedule))
+
+##training
+# history = model.fit(
+#     x = train_generator,
+#     steps_per_epoch=cfg.STEPS_PER_EPOCH,
+#     epochs=cfg.EPOCHS,
+#     verbose=1,
+#     callbacks=[early_stopping, model_checkpoint, edit_distance_callback],
+#     validation_data=val_generator,
+#     validation_steps=cfg.VALIDATION_STEPS
+# )
+
+
+##Evaluation
+# test_generator = generate(cfg, 'test', True)
+# results = model.evaluate(x= test_generator, steps=cfg.TEST_STEPS, verbose=1)
+
+# # Print the results
+# print(results)
+
+──────────────────────────────────────────────────────────────────────
+📄  AHDoc/OCR Engine/utils.py
+──────────────────────────────────────────────────────────────────────
+import os
+import shutil
+from sklearn.model_selection import train_test_split
+
+# Paths to the dataset and labels
+BASE_DIR = './dataset/'
+LABELS_FILE = os.path.join(BASE_DIR, 'labels.txt')
+
+# Paths for split datasets
+TRAIN_DIR = os.path.join(BASE_DIR, 'train/')
+VAL_DIR = os.path.join(BASE_DIR, 'val/')
+TEST_DIR = os.path.join(BASE_DIR, 'test/')
+
+# Ensure directories exist
+for directory in [TRAIN_DIR, VAL_DIR, TEST_DIR]:
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    else:
+        shutil.rmtree(directory)  # Clear it if it exists
+        os.makedirs(directory)
+
+# Read labels file
+with open(LABELS_FILE, 'r', encoding='utf-8') as file:
+    lines = file.readlines()
+
+# Use only the first 1 million labels
+max_samples = 1000000
+lines = lines[:max_samples]
+
+# Calculate total samples
+total_samples = len(lines)
+
+# Function to print the total samples
+def print_total_samples(total_samples):
+    print(f"Total samples: {total_samples}")
+
+# Split dataset
+train_val_lines, test_lines = train_test_split(lines, test_size=0.1, random_state=42)
+train_lines, val_lines = train_test_split(train_val_lines, test_size=0.1, random_state=42)
+
+# Helper function to copy files and write labels
+def copy_files_and_write_labels(lines, target_dir):
+    labels_path = os.path.join(target_dir, 'labels.txt')
+    with open(labels_path, 'w', encoding='utf-8') as labels_file:
+        for idx, line in enumerate(lines):
+            img_filename = line.split('_')[0] + '.png'
+            img_src_path = os.path.join(BASE_DIR, img_filename)
+            img_dst_path = os.path.join(target_dir, img_filename)
+            if os.path.exists(img_src_path):
+                shutil.copy(img_src_path, img_dst_path)
+                labels_file.write(line)
+            else:
+                print(f"Warning: {img_src_path} does not exist and will not be copied.")
+            
+            # Print debug message every 1000 lines
+            if (idx + 1) % 1000 == 0:
+                print(f"Processed {idx + 1} files for {target_dir}")
+
+# Copy files and write labels for each set
+print("Copying training data...")
+copy_files_and_write_labels(train_lines, TRAIN_DIR)
+print("Copying validation data...")
+copy_files_and_write_labels(val_lines, VAL_DIR)
+print("Copying test data...")
+copy_files_and_write_labels(test_lines, TEST_DIR)
+
+print("Dataset split complete!")
+
+# Print total samples
+print_total_samples(total_samples)
+
+# Update config.py
+config_path = 'config.py'
+with open(config_path, 'r', encoding='utf-8') as file:
+    config_lines = file.readlines()
+
+with open(config_path, 'w', encoding='utf-8') as file:
+    for line in config_lines:
+        if line.strip().startswith('TOTAL_SAMPLES'):
+            file.write(f'TOTAL_SAMPLES = {total_samples}\n')
+        else:
+            file.write(line)
+
+──────────────────────────────────────────────────────────────────────
+📄  AHDoc/README.md
+──────────────────────────────────────────────────────────────────────
+# Arabic Handwritten Document Data-Listing Solution
+
+![network](imgs/visualization%20pipeline.jpg)
+
+## How To Install
+```bash
+conda create -n ahdoc python=3.10
+conda activate ahdoc
+
+conda install ipython pip
+
+# python dependencies
+pip install -r requirement.txt
+
+# clone repo
+git clone https://github.com/Hedrax/AHDoc.git
+cd AHDoc/
+
+```
+## How to use our pre-trained text detection model in ONNX format
+### Download the .onnx best weights
+* [Text Detection Model.onnx](https://drive.google.com/file/d/1ys_jcWokjk4aPqGB75dj3FRnj5IH3W2l/view?usp=sharing)  
+**Note: you will need Inference.py code to be able to turn the predictions into bounding boxes**
+  
+## Data
+### Text-Detection
+* [Arabic Documents OCR Dataset](https://www.kaggle.com/datasets/humansintheloop/arabic-documents-ocr-dataset)
+#### Evaluation
+* [Custom Data](https://drive.google.com/file/d/1J-T1G0f_v7B-77SYkw-Fm5qsc8lfUgnT/view?usp=sharing)
+### OCR ENGINE
+* [Raw Data](https://drive.google.com/drive/folders/1mRefmN4Yzy60Uh7z3B6cllyyOXaxQrgg)
+## Model Best-Weights
+* [Text Detecion](https://drive.google.com/file/d/189kiCJ6oYeW5IqtLdvW4RV90AuVgFXwN/view?usp=sharing)
+* [OCR - Model](https://drive.google.com/file/d/1Hebi3EvILLgr-g9SzfawZBropl-zGYzG/view?usp=sharing)
+  
+## Data Preparation
+### Text-Detection
+* Datasets must follow the format of the custom Data format provided above
+* ```utils.py``` has all functions needed to migrate from JSON with Pascal and txt with Yolo format
+* ```utils.py``` also has all functions needed to list image names and get corresponding label files to list in .txt file
+### OCR Engine
+
+* Datasets must follow the format all images in png in the same directory with ```labels.txt``` labels must be in the form ```imageNameWithoutExtension_groundTruth```
+* ```utils.py``` has all functions needed for dataset preparation
+## Train
+* Follow instructions in ```train.py```
+* All training configurations are saved in ```config.py```
+## Test
+* put the weights files downloaded from the above reference to ```./Text Detection/weights/``` and ```./OCR Engine/weights/```
+* Follow instructions in ```inference.py``` and ```evaluation.py``` in terms of OCR Engine
+* All test configurations are saved in ```config.py```
+
+## Results
+### Text-Detection
+We compare best-weights of universal model performance on our custom evaluation Arabic handwritten data
+<table tabindex="0">
+<thead>
+<tr>
+<th align="center">Weights</th>
+<th align="center">Precision (%)</th>
+<th align="center">Recall (%)</th>
+<th align="center">F-measure (%)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center"><a href="https://drive.google.com/file/d/1e0K1AAYECL_-ZpbVqFa65msBZoDhP0sl/view" rel="nofollow">Universal Model</a></td>
+<td align="center">61.53</td>
+<td align="center">34.60</td>
+<td align="center">41.33</td>
+</tr>
+<tr>
+<td align="center"><a href="https://drive.google.com/file/d/189kiCJ6oYeW5IqtLdvW4RV90AuVgFXwN/view?usp=sharing" rel="nofollow">Our-Model</a></td>
+<td align="center">81.66</td>
+<td align="center">78.82</td>
+<td align="center">79.07</td>
+</tr>
+</tbody>
+</table>
+
+
+
+### OCR Module Performance Results
+Our results on the TEST set of 18-fonts
+| \# | Number of Words | Solid Accuracy% |   | Salted Accuracy% |   | Bolded Accuracy% |   | Notes |
+|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+|   |   | CRR | WRR | CRR | WRR | CRR | WRR |   |
+| 1 | 1 | 94.28 | 70.05 | 91.85 | 57.08 | 77.25 | 17.81 | Tested on 7-Character Words |
+| 2 | 1 | 94.24 | 54.06 | 91.42 | 50.94 | 90.19 | 46.04 | - |
+| 3 | 2 | 89.81 | 39.38 | 87.11 | 34.84 | 86.75 | 33.85 | - |
+| 4 | 3 | 89.64 | 35.63 | 88.23 | 37.39 | 87.79 | 35.59 | - |
+| 5 | 4 | 82.23 | 28.59 | 80.41 | 24.61 | 80.25 | 24.61 | - |
+| 6 | 5 | 73.17 | 20.25 | 71.88 | 17.225 | 70.25 | 16.62 | - |
+| 7 | 6 | 66.01 | 18.78 | 64.95 | 13.48 | 63.50 | 14.39 | - |
+
+## Demo
+### Text-Detection
+<p align="center">
+  <img src="imgs/1.jpg" alt="Image 1" width="45%" style="margin-right: 10px;">
+  <img src="imgs/3-after.jpg" alt="Image 2" width="45%">
+</p>
+
+<p align="center">
+  <img src="imgs/2.jpg" alt="Image 1" width="45%" style="margin-right: 10px;">
+  <img src="imgs/1-after.jpg" alt="Image 2" width="45%">
+</p>
+
+
+<p align="center">
+  <img src="imgs/3.jpg" alt="Image 1" width="45%" style="margin-right: 10px;">
+  <img src="imgs/2-after.jpg" alt="Image 2" width="45%">
+</p>
+
+### OCR-ENGINE
+
+<p align="center">
+  <img src="imgs/ocr results.jpg" alt="Image 1" width="100%" style="margin-right: 10px;">
+</p>
+
+### reference
+1. https://arxiv.org/abs/1911.08947
+2. https://github.com/zonasw/DBNet
+3. https://github.com/MhLiao/DB
+
+## Citation
+### If you used our work in your research feel free to cite us
+```
+@inproceedings{waly2024arabic,
+  title={Arabic Handwritten Document OCR Solution with Binarization and Adaptive Scale Fusion Detection},
+  author={Waly, Alhossien and Tarek, Bassant and Feteha, Ali and Yehia, Rewan and Amr, Gasser and Fares, Ahmed},
+  booktitle={2024 6th Novel Intelligent and Leading Emerging Sciences Conference (NILES)},
+  pages={316--319},
+  year={2024},
+  organization={IEEE}
+}
+```
+
+──────────────────────────────────────────────────────────────────────
+📄  AHDoc/Text Detection/config.py
+──────────────────────────────────────────────────────────────────────
+import os
+import os.path as osp
+import datetime
+
+
+class DBConfig(object):
+
+    STEPS_PER_EPOCH = 750
+
+    # Number of validation steps to run at the end of every training epoch.
+    # A bigger number improves accuracy of validation stats, but slows
+    # down the training.
+    VALIDATION_STEPS = 80
+
+    # Backbone network architecture
+    # Supported values are: ResNet50
+    BACKBONE = "ResNet50"
+
+
+    # train
+    EPOCHS = 100
+    INITIAL_EPOCH = 0
+    PRETRAINED_MODEL_PATH = './weights/best.h5'
+    LOG_DIR = 'datasets/logs'
+    CHECKPOINT_DIR = 'checkpoints'
+    LEARNING_RATE = 1e-5
+
+
+    # dataset
+    IGNORE_TEXT = ["*", "###"]
+
+    # TRAIN_DATA_PATH = 'datasets/handwritten_text_detection_splited/'
+    # VAL_DATA_PATH = 'datasets/handwritten_text_detection_splited/'
+
+    
+    # TRAIN_DATA_PATH = 'datasets/TD500/'
+    # VAL_DATA_PATH = 'datasets/TD500/'
+
+    # #EVALUATION
+    # TRAIN_DATA_PATH = 'evaluation dataset/after/'
+    # VAL_DATA_PATH = 'evaluation dataset/after/'
+
+    #New Document dataset
+    TRAIN_DATA_PATH = 'datasets/Documents_after/'
+    VAL_DATA_PATH = 'datasets/Documents_after/'
+    
+    
+    IMAGE_SIZE = 640
+    BATCH_SIZE = 2
+
+    MIN_TEXT_SIZE = 8
+    SHRINK_RATIO = 0.4
+
+    THRESH_MIN = 0.3
+    THRESH_MAX = 0.7
+
+
+    def __init__(self):
+        """Set values of computed attributes."""
+
+        if not osp.exists(self.LOG_DIR):
+            os.makedirs(self.LOG_DIR)
+
+        self.CHECKPOINT_DIR = osp.join(self.CHECKPOINT_DIR, str(datetime.date.today()))
+        if not osp.exists(self.CHECKPOINT_DIR):
+            os.makedirs(self.CHECKPOINT_DIR)
+
+
+──────────────────────────────────────────────────────────────────────
+📄  AHDoc/Text Detection/evaluation.py
+──────────────────────────────────────────────────────────────────────
+import numpy as np
+
+
+def calculate_iou(box1, box2):
+    """
+    Calculate the IoU of two quadrilateral bounding boxes.
+    box1, box2: list of tuples, e.g., [(x1, y1), (x2, y2), (x3, y3), (x4, y4)]
+    """
+    def polygon_area(points):
+        x, y = zip(*points)
+        return 0.5 * np.abs(np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1)))
+    
+    # Convert boxes to numpy arrays
+    box1 = np.array(box1)
+    box2 = np.array(box2)
+    
+    # Calculate area of each polygon
+    area1 = polygon_area(box1)
+    area2 = polygon_area(box2)
+    
+    # Find the intersection polygon
+    from shapely.geometry import Polygon
+    poly1 = Polygon(box1)
+    poly2 = Polygon(box2)
+    
+    if not poly1.intersects(poly2):
+        return 0.0
+    
+    inter_area = poly1.intersection(poly2).area
+    union_area = area1 + area2 - inter_area
+    
+    return inter_area / union_area
+
+def evaluate_boxes(pred_boxes, true_boxes, iou_threshold=0.5):
+    TP = 0
+    FP = 0
+    FN = 0
+    iou_scores = []
+    
+    matched_true_boxes = set()
+    
+    for pred in pred_boxes:
+        best_iou = 0
+        best_true_idx = -1
+        for idx, true in enumerate(true_boxes):
+            iou = calculate_iou(pred, true)
+            if iou > best_iou:
+                best_iou = iou
+                best_true_idx = idx
+        
+        if best_iou >= iou_threshold:
+            if best_true_idx not in matched_true_boxes:
+                TP += 1
+                matched_true_boxes.add(best_true_idx)
+                iou_scores.append(best_iou)
+            else:
+                FP += 1
+        else:
+            FP += 1
+    
+    FN = len(true_boxes) - TP
+    
+    precision = TP / (TP + FP) if (TP + FP) > 0 else 0
+    recall = TP / (TP + FN) if (TP + FN) > 0 else 0
+    f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+    avg_iou = np.mean(iou_scores) if iou_scores else 0
+    
+    return precision, recall, f1, avg_iou
+    
+
+
+──────────────────────────────────────────────────────────────────────
+📄  AHDoc/Text Detection/generate.py
+──────────────────────────────────────────────────────────────────────
+import math
+import json
+import os.path as osp
+
+import cv2
+import numpy as np
+import pyclipper
+from shapely.geometry import Polygon
+import imgaug.augmenters as iaa
+
+from transform import transform, crop, resize
+from config import DBConfig
+cfg = DBConfig()
+
+
+mean = [103.939, 116.779, 123.68]
+
+def load_all_anns(gt_paths, dataset='total_text'):
+    res = []
+    for gt in gt_paths:
+        lines = []
+        reader = open(gt, 'r').readlines()
+        for line in reader:
+            item = {}
+            parts = line.strip().split(',')
+            label = parts[-1]
+            #when the last part == 1 assume it's ### ????
+            if label == '1':
+                label = '###'
+            #trimming ufeff and the other part
+            line = [i.strip('\ufeff').strip('\xef\xbb\xbf') for i in parts]
+            if 'icdar' == dataset:
+                #icdar has exactly 8 values represent 4 points and it turns them into 2d arrat (x,y) with 4 values
+                poly = np.array(list(map(float, line[:8]))).reshape((-1, 2)).tolist()
+            else:
+                #same but possibly with more than 4 points
+                num_points = math.floor((len(line) - 1) / 2) * 2
+                poly = np.array(list(map(float, line[:num_points]))).reshape((-1, 2)).tolist()
+            #if it has less than 4 points ignore "we need squares"
+            if len(poly) < 3:
+                continue
+            item['poly'] = poly
+            #label doesn't really hold a real importance in our text detection task
+            item['text'] = label
+            lines.append(item)
+        res.append(lines)
+    return res
+
+
+def show_polys(image, anns, window_name):
+    for ann in anns:
+        poly = np.array(ann['poly']).astype(np.int32)
+        cv2.drawContours(image, np.expand_dims(poly, axis=0), -1, (0, 255, 0), 2)
+
+    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+    cv2.imshow(window_name, image)
+
+
+def draw_thresh_map(polygon, canvas, mask, shrink_ratio=0.4):
+    polygon = np.array(polygon)
+    assert polygon.ndim == 2
+    assert polygon.shape[1] == 2
+
+    polygon_shape = Polygon(polygon)
+    distance = polygon_shape.area * (1 - np.power(shrink_ratio, 2)) / polygon_shape.length
+    subject = [tuple(l) for l in polygon]
+    padding = pyclipper.PyclipperOffset()
+    padding.AddPath(subject, pyclipper.JT_ROUND, pyclipper.ET_CLOSEDPOLYGON)
+    padded_polygon = np.array(padding.Execute(distance)[0])
+    cv2.fillPoly(mask, [padded_polygon.astype(np.int32)], 1.0)
+
+    xmin = padded_polygon[:, 0].min()
+    xmax = padded_polygon[:, 0].max()
+    ymin = padded_polygon[:, 1].min()
+    ymax = padded_polygon[:, 1].max()
+    width = xmax - xmin + 1
+    height = ymax - ymin + 1
+
+    polygon[:, 0] = polygon[:, 0] - xmin
+    polygon[:, 1] = polygon[:, 1] - ymin
+
+    xs = np.broadcast_to(np.linspace(0, width - 1, num=width).reshape(1, width), (height, width))
+    ys = np.broadcast_to(np.linspace(0, height - 1, num=height).reshape(height, 1), (height, width))
+
+    distance_map = np.zeros((polygon.shape[0], height, width), dtype=np.float32)
+    for i in range(polygon.shape[0]):
+        j = (i + 1) % polygon.shape[0]
+        absolute_distance = compute_distance(xs, ys, polygon[i], polygon[j])
+        distance_map[i] = np.clip(absolute_distance / distance, 0, 1)
+    distance_map = np.min(distance_map, axis=0)
+
+    xmin_valid = min(max(0, xmin), canvas.shape[1] - 1)
+    xmax_valid = min(max(0, xmax), canvas.shape[1] - 1)
+    ymin_valid = min(max(0, ymin), canvas.shape[0] - 1)
+    ymax_valid = min(max(0, ymax), canvas.shape[0] - 1)
+    canvas[ymin_valid:ymax_valid, xmin_valid:xmax_valid] = np.fmax(
+        1 - distance_map[
+            ymin_valid - ymin:ymax_valid - ymin,
+            xmin_valid - xmin:xmax_valid - xmin],
+        canvas[ymin_valid:ymax_valid, xmin_valid:xmax_valid])
+
+
+def compute_distance(xs, ys, point_1, point_2):
+    square_distance_1 = np.square(xs - point_1[0]) + np.square(ys - point_1[1])
+    square_distance_2 = np.square(xs - point_2[0]) + np.square(ys - point_2[1])
+    square_distance = np.square(point_1[0] - point_2[0]) + np.square(point_1[1] - point_2[1])
+
+    cosin = (square_distance - square_distance_1 - square_distance_2) / \
+            (2 * np.sqrt(square_distance_1 * square_distance_2) + 1e-6)
+    square_sin = 1 - np.square(cosin)
+    square_sin = np.nan_to_num(square_sin)
+    result = np.sqrt(square_distance_1 * square_distance_2 * square_sin / (square_distance + 1e-6))
+
+    result[cosin < 0] = np.sqrt(np.fmin(square_distance_1, square_distance_2))[cosin < 0]
+    return result
+
+
+def generate(cfg, train_or_val='train'):
+    data_dir = cfg.TRAIN_DATA_PATH
+    if (train_or_val == 'train'):
+        split = 'train'
+    else:
+        split = 'test'
+        
+    with open(osp.join(data_dir, f'{split}_list.txt')) as f:
+        image_fnames = f.readlines()
+        image_paths = [osp.join(data_dir, f'{split}_images', image_fname.strip()) for image_fname in image_fnames]
+        #he made paths of all images in image paths
+        
+        gt_paths = [osp.join(data_dir, f'{split}_gts', image_fname.strip() + '.txt') for image_fname in image_fnames]
+        #same for labels
+        all_anns = load_all_anns(gt_paths)
+        #all anns has the labels in 2d as (x,y)
+    transform_aug = iaa.Sequential([iaa.Affine(rotate=(-10, 10)), iaa.Resize((0.5, 3.0))])
+    """flip, rotate, resize"""
+    dataset_size = len(image_paths)
+    
+    #array of numbers from 0 to dataset_size
+    indices = np.arange(dataset_size)
+    if (train_or_val == 'train'):
+        np.random.shuffle(indices)
+    current_idx = 0
+    b = 0
+
+    def init_input():
+        batch_images = np.zeros([cfg.BATCH_SIZE, cfg.IMAGE_SIZE, cfg.IMAGE_SIZE, 3], dtype=np.float32)
+        batch_gts = np.zeros([cfg.BATCH_SIZE, cfg.IMAGE_SIZE, cfg.IMAGE_SIZE], dtype=np.float32)
+        batch_masks = np.zeros([cfg.BATCH_SIZE, cfg.IMAGE_SIZE, cfg.IMAGE_SIZE], dtype=np.float32)
+        batch_thresh_maps = np.zeros([cfg.BATCH_SIZE, cfg.IMAGE_SIZE, cfg.IMAGE_SIZE], dtype=np.float32)
+        batch_thresh_masks = np.zeros([cfg.BATCH_SIZE, cfg.IMAGE_SIZE, cfg.IMAGE_SIZE], dtype=np.float32)
+        # batch_loss = np.zeros([cfg.BATCH_SIZE, ], dtype=np.float32)
+        return [batch_images, batch_gts, batch_masks, batch_thresh_maps, batch_thresh_masks]
+
+    data_path = cfg.TRAIN_DATA_PATH if train_or_val=='train' else cfg.VAL_DATA_PATH
+
+    
+
+    while True:
+        if current_idx >= dataset_size:
+            if train_or_val=='train':
+                np.random.shuffle(indices)
+            current_idx = 0
+        if b == 0:
+            batch_images, batch_gts, batch_masks, batch_thresh_maps, batch_thresh_masks = init_input()
+        i = indices[current_idx]
+        image_path = image_paths[i]
+        anns = all_anns[i]
+        """
+        [{'text': 'chinese', 'poly': [[17.86985870232934, 29.2253341902275], [18.465581783660582, 7.2334012599376365], [525.2796724953414, 20.9621104524324], [524.6839494140104, 42.954043382722375]]},
+        {'text': 'chinese', 'poly': [[9.746362138723043, 329.1153286941807], [10.667025082598343, 295.12779598373265], [589.454714475228, 310.8061443514931], [588.5340515313526, 344.79367706194114]]}]
+        """
+        image = cv2.imread(image_path)
+        
+        # show_polys(image.copy(), anns, 'before_aug')
+        if train_or_val=='train':
+            transform_aug = transform_aug.to_deterministic()
+            image, anns = transform(transform_aug, image, anns)
+            image, anns = crop(image, anns)
+        image, anns = resize(cfg.IMAGE_SIZE, image, anns)
+        # show_polys(image.copy(), anns, 'after_aug')
+        # cv2.waitKey(0)
+        anns = [ann for ann in anns if Polygon(ann['poly']).is_valid]
+        gt = np.zeros((cfg.IMAGE_SIZE, cfg.IMAGE_SIZE), dtype=np.float32)
+        mask = np.ones((cfg.IMAGE_SIZE, cfg.IMAGE_SIZE), dtype=np.float32)
+        thresh_map = np.zeros((cfg.IMAGE_SIZE, cfg.IMAGE_SIZE), dtype=np.float32)
+        thresh_mask = np.zeros((cfg.IMAGE_SIZE, cfg.IMAGE_SIZE), dtype=np.float32)
+        for ann in anns:
+            poly = np.array(ann['poly'])
+            height = max(poly[:, 1]) - min(poly[:, 1])
+            width = max(poly[:, 0]) - min(poly[:, 0])
+            polygon = Polygon(poly)
+            # generate gt and mask
+            if polygon.area < 1 or min(height, width) < cfg.MIN_TEXT_SIZE or ann['text'] in cfg.IGNORE_TEXT:
+                cv2.fillPoly(mask, poly.astype(np.int32)[np.newaxis, :, :], 0)
+                continue
+            else:
+                distance = polygon.area * (1 - np.power(cfg.SHRINK_RATIO, 2)) / polygon.length
+                subject = [tuple(l) for l in ann['poly']]
+                padding = pyclipper.PyclipperOffset()
+                padding.AddPath(subject, pyclipper.JT_ROUND, pyclipper.ET_CLOSEDPOLYGON)
+                shrinked = padding.Execute(-distance)
+                if len(shrinked) == 0:
+                    cv2.fillPoly(mask, poly.astype(np.int32)[np.newaxis, :, :], 0)
+                    continue
+                else:
+                    shrinked = np.array(shrinked[0]).reshape(-1, 2)
+                    if shrinked.shape[0] > 2 and Polygon(shrinked).is_valid:
+                        cv2.fillPoly(gt, [shrinked.astype(np.int32)], 1)
+                    else:
+                        cv2.fillPoly(mask, poly.astype(np.int32)[np.newaxis, :, :], 0)
+                        continue
+            # generate thresh map and thresh mask
+            draw_thresh_map(ann['poly'], thresh_map, thresh_mask, shrink_ratio=cfg.SHRINK_RATIO)
+        thresh_map = thresh_map * (cfg.THRESH_MAX - cfg.THRESH_MIN) + cfg.THRESH_MIN
+
+        image = image.astype(np.float32)
+        image -= mean
+        batch_images[b] = image
+        batch_gts[b] = gt
+        batch_masks[b] = mask
+        batch_thresh_maps[b] = thresh_map
+        batch_thresh_masks[b] = thresh_mask
+
+        b += 1
+        current_idx += 1
+        if b == cfg.BATCH_SIZE:
+            inputs = [batch_images, batch_gts, batch_masks, batch_thresh_maps, batch_thresh_masks]
+            # outputs = batch_loss
+            outputs = []
+            yield inputs, outputs
+            b = 0
+
+
+──────────────────────────────────────────────────────────────────────
+📄  AHDoc/Text Detection/inference.py
+──────────────────────────────────────────────────────────────────────
+import math
+import cv2
+import os.path as osp
+import glob
+import numpy as np
+from shapely.geometry import Polygon
+import pyclipper
+import config
+
+# from model import dbnet
+
+
+def resize_image(image, image_short_side=736):
+    height, width, _ = image.shape
+    if height < width:
+        new_height = image_short_side
+        new_width = int(math.ceil(new_height / height * width / 32) * 32)
+    else:
+        new_width = image_short_side
+        new_height = int(math.ceil(new_width / width * height / 32) * 32)
+    resized_img = cv2.resize(image, (new_width, new_height))
+    return resized_img
+
+
+def box_score_fast(bitmap, _box):
+    # 计算 box 包围的区域的平均得分
+    h, w = bitmap.shape[:2]
+    box = _box.copy()
+    xmin = np.clip(np.floor(box[:, 0].min()).astype(np.int_), 0, w - 1)
+    xmax = np.clip(np.ceil(box[:, 0].max()).astype(np.int_), 0, w - 1)
+    ymin = np.clip(np.floor(box[:, 1].min()).astype(np.int_), 0, h - 1)
+    ymax = np.clip(np.ceil(box[:, 1].max()).astype(np.int_), 0, h - 1)
+
+    # #testing
+    # print("height: ", h)
+    # print("width: ", w)
+    # print("box[:, 0]: ", box[:, 0] )
+    # print("box[:, 1]: ", box[:, 1] )
+    # print("np.floor(box[:, 0].min()).astype(np.int_): ", np.floor(box[:, 0].min()).astype(np.int_))
+    # print("w-1 : ", w-1)
+    # print("np.clip(np.floor(box[:, 0].min()).astype(np.int_), 0, w - 1): ",np.clip(np.floor(box[:, 0].min()).astype(np.int_), 0, w - 1))
+
+
+    # print("x_min: ", xmin)
+    # print("x_max: ", xmax)
+    # print("y_min: ", ymin)
+    # print("y_max: ", ymax)
+
+    #creating a mask of zeros with the same shape as the contour
+    mask = np.zeros((ymax - ymin + 1, xmax - xmin + 1), dtype=np.uint8)
+
+    # #testing
+    # print("mask: ", mask)
+    # print("mask shape: ", mask.shape)
+    
+    box[:, 0] = box[:, 0] - xmin
+    box[:, 1] = box[:, 1] - ymin
+
+    # #testing
+    # print("box[:, 0] - xmin: ", box[:, 0])
+    # print("box[:, 1] - ymin: ", box[:, 1])
+
+    # print("box.shape: ", box.shape)
+    # print("box.reshape(1,-1,2): ", box.reshape(1, -1, 2).shape)
+    
+    cv2.fillPoly(mask, box.reshape(1, -1, 2).astype(np.int32), 1)
+
+    
+    # print("bitmap[ymin:ymax + 1, xmin:xmax + 1].shape: ", bitmap[ymin:ymax + 1, xmin:xmax + 1].shape)
+    # print("prediction .shape: ", bitmap.shape)
+
+    return cv2.mean(bitmap[ymin:ymax + 1, xmin:xmax + 1], mask)[0]
+
+
+def unclip(box, unclip_ratio=1.5):
+    poly = Polygon(box)
+    distance = poly.area * unclip_ratio / poly.length
+    offset = pyclipper.PyclipperOffset()
+    offset.AddPath(box, pyclipper.JT_ROUND, pyclipper.ET_CLOSEDPOLYGON)
+    expanded = np.array(offset.Execute(distance))
+    return expanded
+
+
+def get_mini_boxes(contour):
+    bounding_box = cv2.minAreaRect(contour)
+    points = sorted(list(cv2.boxPoints(bounding_box)), key=lambda x: x[0])
+
+    index_1, index_2, index_3, index_4 = 0, 1, 2, 3
+    if points[1][1] > points[0][1]:
+        index_1 = 0
+        index_4 = 1
+    else:
+        index_1 = 1
+        index_4 = 0
+    if points[3][1] > points[2][1]:
+        index_2 = 2
+        index_3 = 3
+    else:
+        index_2 = 3
+        index_3 = 2
+
+    box = [points[index_1], points[index_2],
+           points[index_3], points[index_4]]
+    return box, min(bounding_box[1])
+
+
+#testing
+# Function to check if two contours overlap
+def doContoursOverlap(cnt1, cnt2):
+    x, y, w, h = cv2.boundingRect(cnt1)
+    rect1 = np.array([[x, y], [x + w, y], [x + w, y + h], [x, y + h]])
+
+    x, y, w, h = cv2.boundingRect(cnt2)
+    rect2 = np.array([[x, y], [x + w, y], [x + w, y + h], [x, y + h]])
+
+    overlap_area = cv2.contourArea(cv2.convexHull(np.vstack((cnt1, cnt2))))
+    area1 = cv2.contourArea(cnt1)
+    area2 = cv2.contourArea(cnt2)
+
+    return overlap_area > min(area1, area2) * 0.5  # Adjust threshold as needed
+
+
+# Function to combine overlapping contours
+def combineContours(contours):
+    merged_contours = list(contours)
+    i = 0
+    while i < len(merged_contours):
+        j = i + 1
+        while j < len(merged_contours):
+            if doContoursOverlap(merged_contours[i], merged_contours[j]):
+                # Merge contours
+                merged_contours[i] = np.vstack((merged_contours[i], merged_contours[j]))
+                merged_contours.pop(j)
+            else:
+                j += 1
+        i += 1
+    return merged_contours
+
+
+def polygons_from_bitmap(pred, bitmap, dest_width, dest_height, max_candidates=10000, box_thresh=0.7, image_fname=""):
+    pred = pred[..., 0]
+    bitmap = bitmap[..., 0]
+    height, width = bitmap.shape
+    boxes = []
+    scores = []
+
+    
+    # cv2.imwrite('test/bitmap threshold experiment/' + image_fname, bitmap*255)
+
+    #testing different modes
+    #Cannot oberve any difference between the modes, 
+    #he must haven't used the hirarcal structure of the contours
+    # contours, _ = cv2.findContours((bitmap * 255).astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    # contours, _ = cv2.findContours((bitmap * 255).astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # contours, _ = cv2.findContours((bitmap * 255).astype(np.uint8), cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+    # contours, _ = cv2.findContours((bitmap * 255).astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+
+    #testing different methods
+    # contours, _ = cv2.findContours((bitmap * 255).astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+    # contours, _ = cv2.findContours((bitmap * 255).astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    # contours, _ = cv2.findContours((bitmap * 255).astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_TC89_L1)
+    # contours, _ = cv2.findContours((bitmap * 255).astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_TC89_KCOS)
+
+    # #Decided to use L1 method 
+    # gray = (bitmap * 255).astype(np.uint8)
+    
+    # Find contours in the bitmap image
+    contours, _ = cv2.findContours((bitmap).astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+
+
+    # print(len(contours))
+    
+    # contours = combineContours(contours)
+
+    # contours2 = []
+    
+    # print(len(contours))
+    
+    for contour in contours:
+        
+        
+        epsilon = 0.01 * cv2.arcLength(contour, True)
+        approx = cv2.approxPolyDP(contour, epsilon, True)
+        points = approx.reshape((-1, 2))
+        
+        
+        # #to remove any countours that has less than 4 dims
+        # if points.shape[0] < 4:
+        #     continue
+
+        # #getting the mean prediction values of the ROI we put in
+        score = box_score_fast(pred, points.reshape(-1, 2))
+        
+        # #testing
+        # print("contour ", contour.shape)
+        # #testing
+        # print("arcLength= ", cv2.arcLength(contour, True))
+        # print("epsilon: ", epsilon)
+        # print("approx: ", approx)
+        # print("before approx.reshape: ", approx.shape)
+        # print("approx.reshape: ", approx.reshape((-1, 2)).shape)
+        # #testing
+        # print("score: ", score)
+        # break;
+        
+        if box_thresh > score:
+            continue
+
+        # print("points", points)
+        
+        if points.shape[0] > 2:
+            box = unclip(points, unclip_ratio=1.5)
+            if len(box) > 1:
+                continue
+        else:
+            continue
+        box = box.reshape(-1, 2)
+        _, sside = get_mini_boxes(box.reshape((-1, 1, 2)))
+        if sside < 5:
+            continue
+
+        box[:, 0] = np.clip(np.round(box[:, 0] / width * dest_width), 0, dest_width)
+        box[:, 1] = np.clip(np.round(box[:, 1] / height * dest_height), 0, dest_height)
+        boxes.append(box.tolist())
+        scores.append(score)
+        # contours2.append(contour)
+
+    # Create a blank image to draw contours on
+    # contour_image = np.zeros((736, 1120, 3), dtype=np.uint8)  # Create a blank image with 3 channels (RGB)
+    # Draw contours on the blank image
+    # cv2.drawContours(contour_image, co, -1, (0, 255, 0), 2)
+    # cv2.imwrite('test/random/X-' + image_fname, contour_image)
+
+    return boxes, scores
+
+
+def split_image_with_overlap(image, overlap_factor = 0.6):
+    # Get dimensions of the image
+    height, width, _ = image.shape
+    
+    
+    # Calculate the dimensions for each cropped piece
+    crop_height = height // 2
+    crop_width = width // 2
+    
+    # Calculate overlap sizes
+    overlap_height = int(crop_height * overlap_factor)
+    overlap_width = int(crop_width * overlap_factor)
+    
+    cropped_pieces = []
+    
+    # Loop through rows and columns to crop the image
+    for y in range(0, height - crop_height + 1, crop_height - overlap_height):
+        for x in range(0, width - crop_width + 1, crop_width - overlap_width):
+            # Define the cropping region
+            start_x = x
+            start_y = y
+            end_x = min(x + crop_width, width)
+            end_y = min(y + crop_height, height)
+            
+            # Crop the image
+            cropped_piece = image[start_y:end_y, start_x:end_x]
+            
+            # Append the cropped piece to the list
+            cropped_pieces.append(cropped_piece)
+    print(len(cropped_pieces))
+    return cropped_pieces
+
+
+def process(image, p_model, image_path, output_path, output_bitmap, out_boxes = False, return_boxes =False):
+    
+    mean = np.array([103.939, 116.779, 123.68])
+    
+    src_image = image.copy()
+    h, w = image.shape[:2]
+    image = resize_image(image)
+    image = image.astype(np.float32)
+    image -= mean
+    image_input = np.expand_dims(image, axis=0)
+    p = p_model.predict(image_input, verbose=0)[0]
+    
+    # print(len(p[0]))
+    # print(w, h)
+
+    threshold = 0.05
+    image_fname = osp.split(image_path)[-1]
+
+
+    
+    boxes, scores = polygons_from_bitmap(p, p < threshold, w, h,box_thresh=0.3, image_fname=image_fname[0]+"-0.04-"+image_fname)
+
+
+    if (out_boxes):
+        split_image_by_boxes(cv2.cvtColor(image, cv2.COLOR_BGR2RGB), boxes, "./test/final/")
+    # print(len(boxes))
+    # print(scores)
+
+    if (return_boxes):
+        return boxes
+
+    
+    for box in boxes:
+        cv2.drawContours(src_image, [np.array(box)], -1, (0, 255, 0), 2)
+        
+    cv2.imwrite(output_path + image_fname, src_image)
+
+    if (output_bitmap == True):
+        cv2.imwrite(output_path+'bitmap-' + image_fname, (p<threshold)*255)
+
+    return src_image
+        
+        
+
+def callProcess(img, p_model, mode='default', path = 'test/random/', bitmap = False):
+    
+    process(img, "input/"+"-"+ mode +".png", path, bitmap)
+    cropped_pieces = split_image_with_overlap(img)
+    for i in range(len(cropped_pieces)):
+        process(cropped_pieces[i], p_model, "input/"+str(i)+"-"+ mode +".png", path, bitmap)
+
+
+'''
+if __name__ == '__main__':
+    cfg = DBConfig()
+    p_model = DBNet(cfg, model='inference')
+    model.load_weights(cfg.PRETRAINED_MODEL_PATH, by_name=True, skip_mismatch=True)
+
+    image = cv2.imread("input/59.JPG")
+    mode = '10-'
+    path = 'test/'
+    callProcess(image, p_model, mode, path, True)
+
+'''
+
+──────────────────────────────────────────────────────────────────────
+📄  AHDoc/Text Detection/losses.py
+──────────────────────────────────────────────────────────────────────
+import tensorflow as tf
+import tensorflow.keras as K
+
+
+def balanced_crossentropy_loss(pred, gt, mask, negative_ratio=3.):
+    pred = pred[..., 0]
+    positive_mask = (gt * mask)
+    negative_mask = ((1 - gt) * mask)
+    positive_count = tf.reduce_sum(positive_mask)
+    negative_count = tf.reduce_min([tf.reduce_sum(negative_mask), positive_count * negative_ratio])
+    # loss_fun = tf.losses.BinaryCrossentropy()
+    # loss = loss_fun(gt, pred)
+    # loss = K.losses.binary_crossentropy(gt, pred)
+    loss = K.backend.binary_crossentropy(gt, pred)
+    positive_loss = loss * positive_mask
+    negative_loss = loss * negative_mask
+    negative_loss, _ = tf.nn.top_k(tf.reshape(negative_loss, (-1,)), tf.cast(negative_count, tf.int32))
+
+    balanced_loss = (tf.reduce_sum(positive_loss) + tf.reduce_sum(negative_loss)) / (
+            positive_count + negative_count + 1e-6)
+    return balanced_loss, loss
+
+
+def dice_loss(pred, gt, mask, weights):
+    """
+    Args:
+        pred: (b, h, w, 1)
+        gt: (b, h, w)
+        mask: (b, h, w)
+        weights: (b, h, w)
+    Returns:
+    """
+    pred = pred[..., 0]
+    weights = (weights - tf.reduce_min(weights)) / (tf.reduce_max(weights) - tf.reduce_min(weights) + 1e-6) + 1.
+    mask = mask * weights
+    intersection = tf.reduce_sum(pred * gt * mask)
+    union = tf.reduce_sum(pred * mask) + tf.reduce_sum(gt * mask) + 1e-6
+    loss = 1 - 2.0 * intersection / union
+    return loss
+
+
+def l1_loss(pred, gt, mask):
+    pred = pred[..., 0]
+    mask_sum = tf.reduce_sum(mask)
+    loss = K.backend.switch(mask_sum > 0, tf.reduce_sum(tf.abs(pred - gt) * mask) / (mask_sum + 1e-6), tf.constant(0.))
+    return loss
+
+
+def compute_cls_acc(pred, gt, mask):
+
+    zero = tf.zeros_like(pred, tf.float32)
+    one = tf.ones_like(pred, tf.float32)
+
+    pred = tf.where(pred < 0.3, x=zero, y=one)
+    acc = tf.reduce_mean(tf.cast(tf.equal(pred * mask, gt * mask), tf.float32))
+
+    return acc
+
+
+def db_loss(args, alpha=1.0, beta=10.0, ohem_ratio=3.0):
+    input_gt, input_mask, input_thresh, input_thresh_mask, binarize_map, thresh_binary, threshold_map = args
+
+    threshold_loss = l1_loss(threshold_map, input_thresh, input_thresh_mask)
+    binarize_loss, dice_loss_weights = balanced_crossentropy_loss(binarize_map, input_gt, input_mask, negative_ratio=ohem_ratio)
+    thresh_binary_loss = dice_loss(thresh_binary, input_gt, input_mask, dice_loss_weights)
+
+    model_loss = alpha * binarize_loss + beta * threshold_loss + thresh_binary_loss
+    return model_loss
+
+
+def db_acc(args):
+    input_gt, input_mask, binarize_map, thresh_binary = args
+    binarize_acc = compute_cls_acc(binarize_map, input_gt, input_mask)
+    thresh_binary_acc = compute_cls_acc(thresh_binary, input_gt, input_mask)
+    return binarize_acc, thresh_binary_acc
+
+──────────────────────────────────────────────────────────────────────
+📄  AHDoc/Text Detection/model.py
+──────────────────────────────────────────────────────────────────────
+from tensorflow import keras as K
+from tensorflow.keras import layers as KL
+import tensorflow as tf
+
+from keras_resnet.models import ResNet50
+from losses import db_loss, db_acc
+
+
+def DBNet(cfg, k=50, model='training'):
+    assert model in ['training', 'inference','evaluation'], 'error'
+    
+
+    input_image = KL.Input(shape=[None, None, 3], name='input_image')
+
+    backbone = ResNet50(inputs=input_image, include_top=False, freeze_bn=True)
+    
+    C2, C3, C4, C5 = backbone.outputs
+
+    # in2
+    in2 = KL.Conv2D(256, (1, 1), padding='same', kernel_initializer='he_normal', name='in2')(C2)
+    in2 = KL.BatchNormalization()(in2)
+    in2 = KL.ReLU()(in2)
+    # in3
+    in3 = KL.Conv2D(256, (1, 1), padding='same', kernel_initializer='he_normal', name='in3')(C3)
+    in3 = KL.BatchNormalization()(in3)
+    in3 = KL.ReLU()(in3)
+    # in4
+    in4 = KL.Conv2D(256, (1, 1), padding='same', kernel_initializer='he_normal', name='in4')(C4)
+    in4 = KL.BatchNormalization()(in4)
+    in4 = KL.ReLU()(in4)
+    # in5
+    in5 = KL.Conv2D(256, (1, 1), padding='same', kernel_initializer='he_normal', name='in5')(C5)
+    in5 = KL.BatchNormalization()(in5)
+    in5 = KL.ReLU()(in5)
+
+    # P5
+    P5 = KL.Conv2D(64, (3, 3), padding='same', kernel_initializer='he_normal')(in5)
+    P5 = KL.BatchNormalization()(P5)
+    P5 = KL.ReLU()(P5)
+    P5 = KL.UpSampling2D(size=(8, 8))(P5)
+    # P4
+    out4 = KL.Add()([in4, KL.UpSampling2D(size=(2, 2))(in5)])
+    P4 = KL.Conv2D(64, (3, 3), padding='same', kernel_initializer='he_normal')(out4)
+    P4 = KL.BatchNormalization()(P4)
+    P4 = KL.ReLU()(P4)
+    P4 = KL.UpSampling2D(size=(4, 4))(P4)
+    # P3
+    out3 = KL.Add()([in3, KL.UpSampling2D(size=(2, 2))(out4)])
+    P3 = KL.Conv2D(64, (3, 3), padding='same', kernel_initializer='he_normal')(out3)
+    P3 = KL.BatchNormalization()(P3)
+    P3 = KL.ReLU()(P3)
+    P3 = KL.UpSampling2D(size=(2, 2))(P3)
+    # P2
+    out2 = KL.Add()([in2, KL.UpSampling2D(size=(2, 2))(out3)])
+    P2 = KL.Conv2D(64, (3, 3), padding='same', kernel_initializer='he_normal')(out2)
+    P2 = KL.BatchNormalization()(P2)
+    P2 = KL.ReLU()(P2)
+
+    fuse = KL.Concatenate()([P2, P3, P4, P5])
+
+    # binarize map
+    p = KL.Conv2D(64, (3, 3), padding='same', kernel_initializer='he_normal', use_bias=False)(fuse)
+    p = KL.BatchNormalization()(p)
+    p = KL.ReLU()(p)
+    p = KL.Conv2DTranspose(64, (2, 2), strides=(2, 2), kernel_initializer='he_normal', use_bias=False)(p)
+    p = KL.BatchNormalization()(p)
+    p = KL.ReLU()(p)
+    binarize_map  = KL.Conv2DTranspose(1, (2, 2), strides=(2, 2), kernel_initializer='he_normal',
+                                       activation='sigmoid', name='binarize_map')(p)
+
+    # threshold map
+    t = KL.Conv2D(64, (3, 3), padding='same', kernel_initializer='he_normal', use_bias=False)(fuse)
+    t = KL.BatchNormalization()(t)
+    t = KL.ReLU()(t)
+    t = KL.Conv2DTranspose(64, (2, 2), strides=(2, 2), kernel_initializer='he_normal', use_bias=False)(t)
+    t = KL.BatchNormalization()(t)
+    t = KL.ReLU()(t)
+    threshold_map  = KL.Conv2DTranspose(1, (2, 2), strides=(2, 2), kernel_initializer='he_normal',
+                                        activation='sigmoid', name='threshold_map')(t)
+
+    # thresh binary map
+    thresh_binary = KL.Lambda(lambda x: 1 / (1 + tf.exp(-k * (x[0] - x[1]))))([binarize_map, threshold_map])
+
+    if model == 'training':
+        input_gt = KL.Input(shape=[cfg.IMAGE_SIZE, cfg.IMAGE_SIZE], name='input_gt')
+        input_mask = KL.Input(shape=[cfg.IMAGE_SIZE, cfg.IMAGE_SIZE], name='input_mask')
+        input_thresh = KL.Input(shape=[cfg.IMAGE_SIZE, cfg.IMAGE_SIZE], name='input_thresh')
+        input_thresh_mask = KL.Input(shape=[cfg.IMAGE_SIZE, cfg.IMAGE_SIZE], name='input_thresh_mask')
+
+        loss_layer = KL.Lambda(db_loss, name='db_loss')(
+            [input_gt, input_mask, input_thresh, input_thresh_mask, binarize_map, thresh_binary, threshold_map])
+
+        db_model = K.Model(inputs=[input_image, input_gt, input_mask, input_thresh, input_thresh_mask],
+                           outputs=[loss_layer])
+
+        loss_names = ["db_loss"]
+        for layer_name in loss_names:
+            layer = db_model.get_layer(layer_name)
+            db_model.add_loss(layer.output)
+            # db_model.add_metric(layer.output, name=layer_name, aggregation="mean")
+        
+        
+    else:
+        db_model = K.Model(inputs=input_image,
+                           outputs=binarize_map)
+
+        """
+        db_model = K.Model(inputs=input_image,
+                           outputs=thresh_binary)
+        """
+    return db_model
+
+──────────────────────────────────────────────────────────────────────
+📄  AHDoc/Text Detection/train.py
+──────────────────────────────────────────────────────────────────────
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+import os.path as osp
+
+from tensorflow.keras import callbacks
+from tensorflow.keras import optimizers
+
+from generate import generate
+from models.model import DBNet
+from config import DBConfig
+cfg = DBConfig()
+
+
+train_generator = generate(cfg, 'train')
+val_generator = generate(cfg, 'val')
+
+model = DBNet(cfg, model='training')
+
+
+load_weights_path = cfg.PRETRAINED_MODEL_PATH
+if load_weights_path:
+    model.load_weights(load_weights_path, by_name=True, skip_mismatch=True)
+
+model.compile(optimizer=optimizers.Adam(learning_rate=cfg.LEARNING_RATE),
+              loss=[None] * len(model.output.shape))
+# model.compile(optimizer=optimizers.SGD(learning_rate=cfg.LEARNING_RATE, momentum=0.9),
+#                loss=[None] * len(model.output.shape))
+model.summary()
+
+# callbacks
+checkpoint_callback = callbacks.ModelCheckpoint(
+    osp.join(cfg.CHECKPOINT_DIR, 'db_{epoch:02d}_{loss:.4f}_{val_loss:.4f}.h5'))
+tensorboard_callback = callbacks.TensorBoard(log_dir=cfg.LOG_DIR,
+                                             histogram_freq=1,
+                                             write_graph=True,
+                                             write_images=True,
+                                             update_freq='epoch',   # 'batch'/'epoch'/value_of_int32
+                                             profile_batch=2,
+                                             embeddings_freq=1,
+                                             embeddings_metadata=None)
+callbacks = [checkpoint_callback, tensorboard_callback]
+
+
+model.fit(
+    x=train_generator,
+    steps_per_epoch=cfg.STEPS_PER_EPOCH,
+    initial_epoch=cfg.INITIAL_EPOCH,
+    epochs=cfg.EPOCHS,
+    verbose=1,
+    callbacks=callbacks,
+    validation_data=val_generator,
+    validation_steps=cfg.VALIDATION_STEPS
+)
+
+
+──────────────────────────────────────────────────────────────────────
+📄  AHDoc/Text Detection/transform.py
+──────────────────────────────────────────────────────────────────────
+import imgaug
+import cv2
+import numpy as np
+
+
+#in short it performs transformations on the image and returns it's corresponding transformations on it's labels poly
+def transform(aug, image, anns):
+    image_shape = image.shape
+    
+    #perform operations aug on image
+    image = aug.augment_image(image)
+    
+    new_anns = []
+    for ann in anns:
+        keypoints = [imgaug.Keypoint(p[0], p[1]) for p in ann['poly']]
+        keypoints = aug.augment_keypoints(
+            [imgaug.KeypointsOnImage(keypoints, shape=image_shape)])[0].keypoints
+        poly = [(min(max(0, p.x), image.shape[1] - 1), min(max(0, p.y), image.shape[0] - 1)) for p in keypoints]
+        new_ann = {'poly': poly, 'text': ann['text']}
+        new_anns.append(new_ann)
+    return image, new_anns
+
+
+#splitting into 1d array[arrays]
+def split_regions(axis):
+    regions = []
+    min_axis_index = 0
+    for i in range(1, axis.shape[0]):
+        if axis[i] != axis[i - 1] + 1:
+            region = axis[min_axis_index:i]
+            min_axis_index = i
+            regions.append(region)
+    return regions
+
+
+#dummy random select
+def random_select(axis):
+    xx = np.random.choice(axis, size=2)
+    xmin = np.min(xx)
+    xmax = np.max(xx)
+    return xmin, xmax
+
+#doing the 
+def region_wise_random_select(regions):
+    selected_index = list(np.random.choice(len(regions), 2))
+    selected_values = []
+    for index in selected_index:
+        axis = regions[index]
+        xx = int(np.random.choice(axis, size=1))
+        selected_values.append(xx)
+    xmin = min(selected_values)
+    xmax = max(selected_values)
+    return xmin, xmax
+
+
+#same as above crop the image and return valid anns of it
+def crop(image, anns, max_tries=10, min_crop_side_ratio=0.1):
+    h, w, _ = image.shape
+    h_array = np.zeros(h, dtype=np.int32)
+    w_array = np.zeros(w, dtype=np.int32)
+
+    for ann in anns:
+        points = np.round(ann['poly'], decimals=0).astype(np.int32)
+        minx = np.min(points[:, 0])
+        maxx = np.max(points[:, 0])
+        w_array[minx:maxx] = 1
+        miny = np.min(points[:, 1])
+        maxy = np.max(points[:, 1])
+        h_array[miny:maxy] = 1
+    # ensure the cropped area not across a text
+    h_axis = np.where(h_array == 0)[0]
+    w_axis = np.where(w_array == 0)[0]
+
+    if len(h_axis) == 0 or len(w_axis) == 0:
+        return image, anns
+
+    #returns h_axis, w_axis in a form of 1d arrays
+    h_regions = split_regions(h_axis)
+    w_regions = split_regions(w_axis)
+
+    for i in range(max_tries):
+        if len(w_regions) > 1:
+            xmin, xmax = region_wise_random_select(w_regions)
+        else:
+            xmin, xmax = random_select(w_axis)
+        if len(h_regions) > 1:
+            ymin, ymax = region_wise_random_select(h_regions)
+        else:
+            ymin, ymax = random_select(h_axis)
+
+        if xmax - xmin < min_crop_side_ratio * w or ymax - ymin < min_crop_side_ratio * h:
+            # area too small
+            continue
+        new_anns = []
+        for ann in anns:
+            poly = np.array(ann['poly'])
+            if not (poly[:, 0].min() > xmax
+                    or poly[:, 0].max() < xmin
+                    or poly[:, 1].min() > ymax
+                    or poly[:, 1].max() < ymin):
+                poly[:, 0] -= xmin
+                poly[:, 0] = np.clip(poly[:, 0], 0., (xmax - xmin - 1) * 1.)
+                poly[:, 1] -= ymin
+                poly[:, 1] = np.clip(poly[:, 1], 0., (ymax - ymin - 1) * 1.)
+                new_ann = {'poly': poly.tolist(), 'text': ann['text']}
+                new_anns.append(new_ann)
+
+        if len(new_anns) > 0:
+            return image[ymin:ymax, xmin:xmax], new_anns
+
+    return image, anns
+
+
+def resize(size, image, anns):
+    h, w, c = image.shape
+    scale_w = size / w
+    scale_h = size / h
+    scale = min(scale_w, scale_h)
+    h = int(h * scale)
+    w = int(w * scale)
+    padimg = np.zeros((size, size, c), image.dtype)
+    padimg[:h, :w] = cv2.resize(image, (w, h))
+    new_anns = []
+    for ann in anns:
+        poly = np.array(ann['poly']).astype(np.float64)
+        poly *= scale
+        new_ann = {'poly': poly.tolist(), 'text': ann['text']}
+        new_anns.append(new_ann)
+    return padimg, new_anns
+
+──────────────────────────────────────────────────────────────────────
+📄  AHDoc/Text Detection/utils.py
+──────────────────────────────────────────────────────────────────────
+#Written by Alhossien.waly@ejust.edu.eg
+
+import cv2
+import numpy as np
+import os
+
+def read_yolo_labels(file_path):
+    labels = []
+    with open(file_path, 'r') as file:
+        for line in file:
+            # Split the line into individual values
+            values = line.strip().split()
+            
+            values = values[1:] + [values[0]]
+            # Convert values to floats
+            values = [float(val) for val in values]
+            # Append to labels list
+            labels.append(values)
+    return labels
+
+def read_labels(file_path):
+    
+    coordinates = []
+
+    # Open the file
+    with open(file_path, 'r') as file:
+        # Read each line
+        lines = file.readlines()
+
+    arrays = []
+    for line in lines:
+        pairs = (line[:-3]).strip().split(',')
+        coordinates = [(int(pairs[i]), int(pairs[i+1])) for i in range(0, len(pairs), 2)]
+        arrays.append(coordinates)
+    return arrays
+
+def yolo_to_polygon(yolo_coords, image_height, image_width):
+    x, y, w, h = map(float, yolo_coords)
+    x *= image_width
+    w *= image_width
+    y *= image_height
+    h *= image_height
+    x_min = round(x - (w / 2))
+    y_min = round(y - (h / 2))
+    x_max = round(x + (w / 2))
+    y_max = round(y + (h / 2))
+    segment = [[x_min, y_min], [x_max, y_min], [x_max, y_max], [x_min, y_max]]
+    return segment
+
+
+def yolo_to_abs(labels, image_height, image_width):
+    temp_array = []
+    for label in labels:
+        temp = yolo_to_polygon(label[:4], image_height, image_width)
+        #it represents label 
+        temp.append(0)
+        temp_array.append(temp)
+    return temp_array
+
+
+def draw_on_image(image,labels):
+    img = image.copy()
+    image = None
+    boxes = []
+    for label in labels:
+        boxes.append(label[:4])
+    for box in boxes:
+        cv2.drawContours(img, [np.array(box)], -1, (0, 255, 0), 2)
+    return img
+
+
+
+def get_image_corresponding_labels(image_dir,text_dir, JPGADD = False):
+
+    # Get a list of all image files
+    image_files = [os.path.join(image_dir, f) for f in os.listdir(image_dir)]
+
+    # Get corresponding text files based on image filenames
+    text_files = []
+    for image_file in image_files:
+        # Extract the filename without extension
+        filename = os.path.splitext(os.path.basename(image_file))[0]
+        extension = os.path.splitext(os.path.basename(image_file))[1]
+        
+        if (JPGADD):
+            filename+= extension
+        # Assuming text files have the same name as image files but with a .txt extension
+        text_file = os.path.join(text_dir, filename + '.txt')
+
+        # Check if the corresponding text file exists
+        if os.path.exists(text_file):
+            text_files.append(text_file)
+        else:
+            text_files.append(None)  # If no corresponding text file found
+            
+    return image_files,text_files
+
+def load_imgs_labels(image_files,text_files, YOLO=True):
+    # Load images and corresponding text data
+    images = []
+    texts = []
+    for i in range (len(image_files)):
+        # Load image
+        image = cv2.imread(image_files[i])
+        if image is not None:
+            images.append(image)
+            # Load text data if corresponding text file exists
+            if (YOLO):
+                texts.append(read_yolo_labels(text_files[i]))
+            else:
+                
+                print(text_files[i])
+                texts.append(read_labels(text_files[i]))
+    return images, texts
+    
+def list_conversion_yolo_to_abs(images, texts):
+    temp = []
+    for i in range(len(images)):
+        temp.append(yolo_to_abs(texts[i], images[i].shape[0],images[i].shape[1]))
+    return temp
+
+def draw_list_images(images, texts):
+    drawed_images = []
+    for i in range(len(images)):
+        drawed_images.append(draw_on_image(images[i], texts[i]))
+    return drawed_images
+
+#########################################################################################
+#########################################################################################
+#########################################################################################
+
+def visualize_ground_truth(image_dir,text_dir, output_path, YOLO_FORMAT= False, StdFormat = True):
+    # Get a list of all image files
+    image_files, text_files = get_image_corresponding_labels(image_dir,text_dir,True)
+    size = len(image_files)
+    
+    print(len(text_files) , " labels files extracted")
+    # Load images and corresponding text data
+    for i in range(20, size, 20):
+        images, texts = load_imgs_labels(image_files[i-20:i],text_files[i-20:i],YOLO_FORMAT)
+    
+        if (YOLO_FORMAT):
+            temp = list_conversion_yolo_to_abs(images, texts)
+        
+        #draw on images
+        drawed_images = draw_list_images(images, texts)
+        for j in range(len(drawed_images)):
+            cv2.imwrite(output_path+str(i-20+j)+'.jpg', drawed_images[j])
+
+
+
+#that function is useful for YOLO FORMATED
+def output_list_imgs_labels(images, texts, image_out_dir, label_out_dir):
+    for i in range (1,len(images)+1):
+        # Load image
+        image = images[i-1]
+        if image is not None:
+            # Save image with incremented filename
+            image_output_path = os.path.join(image_out_dir, f'{i}.jpg')
+            cv2.imwrite(image_output_path, image)
+    
+            # Save text with incremented filename
+            temp = yolo_to_abs(texts[i-1], images[i-1].shape[0],images[i-1].shape[1])
+            output_string = ""
+            
+            text_output_path = os.path.join(label_out_dir, f'{i}.txt')
+            for j in range(len(temp)):
+                data = temp[j][:-1]
+                # Flatten the list and format coordinates
+                formatted_data = [str(coord) for point in data for coord in point]
+                # Join the coordinates with commas
+                output_string += ",".join(formatted_data)
+                output_string += ","+str(0)
+                if (i != len(temp)-1):
+                    output_string += '\n'
+            with open(text_output_path, 'w') as text_output_file:
+                text_output_file.write(output_string)
+
+
+
+#spliting functions
+def read_split_write(input_dir, out_dir):
+    img_input = input_dir+"images/"
+    lbl_input = input_dir+"labels/"
+
+    img_out = out_dir+"images/"
+    lbl_out = out_dir+"labels/"
+    
+    # Get a list of all image files
+    image_files, text_files = get_image_corresponding_labels(img_input,lbl_input)
+    
+    # Load images and corresponding text data
+    images, texts = load_imgs_labels(image_files,text_files, False)
+    
+    #doing a 1/4 split
+    sub_imgs, sub_lbls = process_images_with_labels(images, texts)
+    #doing a 1/3 split
+    sub_imgs2, sub_lbls2 = process_images_with_labels(images, texts,3)
+    #doing a 1/2 split
+    # sub_imgs3, sub_lbls3 = process_images_with_labels(images, texts,2)
+    
+    #appending into one array
+    sub_imgs.extend(sub_imgs2)
+    sub_lbls.extend(sub_lbls2)
+
+    # sub_imgs.extend(sub_imgs3)
+    # sub_lbls.extend(sub_lbls3)
+    
+    write_images_labels(sub_imgs, sub_lbls, img_out, lbl_out)
+    
+
+def write_images_labels(images, labels_list, img_out, lbl_out):
+    # Output processed images and labels
+    for i, (image, labels_list) in enumerate(zip(images, labels_list)):
+        # Write image
+        image_path = os.path.join(img_out, f'{i+1}.jpg')
+        cv2.imwrite(image_path, image)
+    
+        # Write labels
+        label_path = os.path.join(lbl_out, f'{i+1}.jpg.txt')
+        output_string = ""
+        for j in range(len(labels_list)):
+            data = labels_list[j]
+            # Flatten the list and format coordinates
+            formatted_data = [str(coord) for point in data for coord in point]
+            # Join the coordinates with commas
+            output_string += ",".join(formatted_data)
+            output_string += ","+str(0)
+            if (j != len(labels_list)-1):
+                output_string += '\n'
+        with open(label_path, 'w') as text_output_file:
+            text_output_file.write(output_string)
+
+def process_images_with_labels(images, label_lists,split_factor= 4):
+    processed_images = []
+    processed_labels = []
+
+    for i in range(len(images)):
+        # Read the image
+        image = images[i]
+        
+        # Get the labels for this image
+        labels = label_lists[i]
+
+        # Split the image into sub-images with adjusted labels
+        sub_images, sub_labels = split_image(image, labels,split_factor=split_factor)
+
+        # Append the sub-images and sub-labels to the processed lists
+        processed_images.extend(sub_images)
+        processed_labels.extend(sub_labels)
+
+    return processed_images, processed_labels
+
+
+def split_image(image, labels, num_splits=16, overlap_ratio=0.4, split_factor= 4):
+    # Calculate the dimensions of each sub-image
+    height, width = image.shape[:2]
+    split_height = height // split_factor
+    split_width = width // split_factor
+    
+    # Calculate overlap pixel count
+    overlap_height = int(split_height * overlap_ratio)
+    overlap_width = int(split_width * overlap_ratio)
+    
+    sub_images = []
+    sub_labels = []
+    
+    for row in range(split_factor):
+        for col in range(split_factor):
+            # Calculate the starting and ending coordinates for cropping
+            start_y = row * (split_height - overlap_height)
+            end_y = min(start_y + split_height, height)
+            start_x = col * (split_width - overlap_width)
+            end_x = min(start_x + split_width, width)
+            
+            # Crop the sub-image
+            sub_image = image[start_y:end_y, start_x:end_x]
+            
+            # Adjust labels for the sub-image
+            adjusted_labels = []
+            for label in labels:
+                adjusted_label = [(max(min(point[0] - start_x, split_width), 0), max(min(point[1] - start_y, split_height), 0)) for point in label]
+                # Check if the label intersects with the sub-image
+                if any(0 <= point[0] < split_width and 0 <= point[1] < split_height for point in adjusted_label):
+                    adjusted_labels.append(adjusted_label)
+            
+            # Drop labels with visible width <= 0.4 of the original label width
+            # Drop labels with visible height < 0.8 of the original label height
+            adjusted_labels = [label for label in adjusted_labels if 
+                               max(label, key=lambda x: x[0])[0] - min(label, key=lambda x: x[0])[0] >= 0.3 * (max(labels[0], key=lambda x: x[0])[0] - min(labels[0], key=lambda x: x[0])[0]) and
+                               max(label, key=lambda x: x[1])[1] - min(label, key=lambda x: x[1])[1] >= 0.5 * (max(labels[0], key=lambda x: x[1])[1] - min(labels[0], key=lambda x: x[1])[1])]
+            
+            if adjusted_labels:
+                sub_images.append(sub_image)
+                sub_labels.append(adjusted_labels)
+    
+    return sub_images, sub_labels
+
+
+def load_save_imgs_labels(image_files,text_files,  img_out, lbl_out, YOLO=False):
+    # Load images and corresponding text data
+    for i in range (len(image_files)):
+        # Load image
+        image = cv2.imread(image_files[i])
+        if image is not None:
+            # Write image
+            image_path = os.path.join(img_out, f'{i+1}.jpg')
+            cv2.imwrite(image_path, image)
+        
+            # Load text data if corresponding text file exists
+            # Write labels
+            label_path = os.path.join(lbl_out, f'{i+1}.jpg.txt')
+            output_string = ""
+            for j in range(len(text_files[i])):
+                data = text_files[i][j]
+                # Flatten the list and format coordinates
+                formatted_data = [str(coord) for point in data for coord in point]
+                # Join the coordinates with commas
+                output_string += ",".join(formatted_data)
+                output_string += ","+str(0)
+                if (j != len(text_files[i])-1):
+                    output_string += '\n'
+            with open(label_path, 'w') as text_output_file:
+                text_output_file.write(output_string)
+
+
+#Convert JSON with pascal format to the absolute format
+def convert_annotations(json_file, output_file):
+    with open(json_file, 'r') as f:
+        data = json.load(f)
+    
+    # If data is a dictionary, we need to extract the list of annotations
+    if isinstance(data, dict):
+        annotations = [data]
+    else:
+        annotations = data
+
+    with open(output_file, 'w') as f:
+        for i in data['shapes']:
+            print(i)
+            points = i["points"]
+            print(points)  # Debugging: print the points
+            x1, y1 = points[0]
+            x2, y2 = points[1]
+            
+            x_min = min(x1, x2)
+            y_min = min(y1, y2)
+            x_max = max(x1, x2)
+            y_max = max(y1, y2)
+            
+            # Define the four corners of the rectangle
+            coords = [
+                (x_min, y_min),
+                (x_max, y_min),
+                (x_max, y_max),
+                (x_min, y_max)
+            ]
+            
+            # Flatten the list of coordinates and convert to string
+            coords_flat = ','.join([f"{int(x)},{int(y)}" for x, y in coords])
+            label = i.get('label', '0')  # Default to '0' if no label is provided
+            
+            f.write(f"{coords_flat},{label}\n")
+
+def copy_and_rename_images(source_dir, target_dir, j):
+     # Ensure target directory exists, create if not
+    if not os.path.exists(target_dir):
+        os.makedirs(target_dir)
+
+    
+    source_image_dir = source_dir + "img/"
+    source_label_dir = source_dir + "ann/"
+    target_dir_train = target_dir + 'train_images/'
+    target_dir_train_gts = target_dir + 'train_gts/'
+
+    target_dir_test = target_dir + 'test_images/'
+    target_dir_test_gts = target_dir + 'test_gts/'
+
+    
+    if not os.path.exists(target_dir_train):
+        os.makedirs(target_dir_train)
+    
+    if not os.path.exists(target_dir_train_gts):
+        os.makedirs(target_dir_train_gts)
+
+    if not os.path.exists(target_dir_test):
+        os.makedirs(target_dir_test)
+
+    if not os.path.exists(target_dir_test_gts):
+        os.makedirs(target_dir_test_gts)
+    
+    
+    image_files = [f for f in os.listdir(source_image_dir)]
+    image_files.sort()  # Sort files to maintain order
+
+    k = j
+    
+    for i, image_file in enumerate(image_files):
+        src_image_path = os.path.join(source_image_dir, image_file)
+        
+        if not os.path.exists(source_label_dir+ image_file + ".txt"):
+            continue
+        src_label_path = os.path.join(source_label_dir, image_file + ".txt")
+        
+        # Generate new file names
+        new_image_name = f"{k+1}.jpg"
+        new_label_name = f"{k+1}.jpg.txt"
+
+
+        if (i < len(image_files) - 140):
+            # Copy images into train
+            shutil.copy(src_image_path, os.path.join(target_dir_train, new_image_name))
+            shutil.copy(src_label_path, os.path.join(target_dir_train_gts, new_label_name))
+            with open(os.path.join(target_dir, 'train_list.txt'), 'a') as f:
+                f.write(new_image_name+"\n")
+        else:
+            # Copy images into test
+            shutil.copy(src_image_path, os.path.join(target_dir_test, new_image_name))
+            shutil.copy(src_label_path, os.path.join(target_dir_test_gts, new_label_name))
+            with open(os.path.join(target_dir, 'test_list.txt'), 'a') as f:
+                f.write(new_image_name+"\n")
+        
+        
+        
+        print('processed: ', image_file)    
+        k += 1
+
+    return k + len(image_files)
+
+
+
+#creating main label list
+#filename without extension
+def wtite_labels_main(number, out, filename):
+    filename += '.txt'
+    label_path = os.path.join(out, filename)
+    output_string = ""
+    for j in range(1,number+1):
+        output_string += str(j)+".jpg"
+        if (j != number):
+            output_string += '\n'
+    with open(label_path, 'w') as text_output_file:
+        text_output_file.write(output_string)
+
+def get_file_names(target_path):
+    file_paths = []
+    file_names = []
+    for file_name in os.listdir(target_path):
+        if os.path.isfile(os.path.join(target_path, file_name)):
+            file_names.append(file_name)
+            file_paths.append(os.path.join(target_path, file_name))
+    return file_names
+
+──────────────────────────────────────────────────────────────────────
+📄  AHDoc/requirements.txt
+──────────────────────────────────────────────────────────────────────
+keras==2.10.0
+opencv==4.9.0
+pillow==10.3.0
+tensorflow==2.10.1
+progressbar2==4.4.2
+matplotlib==3.8.4
+numpy==1.26.4
+tesnorboard==2.10.1
+shapely==2.0.1
+keras_resnet==0.2.0
+pyclipper==1.3.0.post3
+imgaug==0.4.0
+arabic_reshaper==3.0.0
+python-bidi==0.4.2

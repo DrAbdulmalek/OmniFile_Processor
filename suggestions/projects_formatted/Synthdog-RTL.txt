@@ -1,0 +1,1860 @@
+══════════════════════════════════════════════════════════════════════
+  مشروع: Synthdog-RTL.zip
+  التصدير: 2026-05-04 00:13:30
+  الملفات البرمجية: 18
+══════════════════════════════════════════════════════════════════════
+
+──────────────────────────────────────────────────────────────────────
+📄  Synthdog-RTL/README.md
+──────────────────────────────────────────────────────────────────────
+# **SynthDog-RTL**
+
+SynthDog-RTL is a specialized tool for generating synthetic datasets tailored for RTL (Right-to-Left) languages such as **Arabic, Urdu, Persian, Hebrew, Hindi**, and other similar languages. This repository is based on the original SynthDog designed for LTR (Left-to-Right) languages, and includes modifications to support RTL text rendering for OCR applications, particularly using the **Donut OCR** model.
+
+## **Overview**
+
+SynthDog-RTL enables Machine Learning Engineers to create synthetic datasets that are crucial for training OCR models for RTL languages. This is especially useful for document analysis tasks, data extraction, and multilingual document processing using Donut OCR or similar models.
+
+### **Key Features**:
+- Full support for RTL languages.
+- Configurable synthetic data generation.
+- Adjustable parameters for dataset quality, layout, and image effects.
+- Capability to incorporate custom fonts and language-specific text corpora.
+
+## **Installation**
+
+To get started, first, clone this repository and install the required dependencies:
+
+```bash
+git clone https://github.com/aiviewz/Synthdog-RTL.git
+cd Synthdog-RTL
+pip install synthtiger Pillow==9.5.0
+```
+
+## **Project Structure**
+
+```
+/Synthdog-RTL
+  ├── resources/
+  │   ├── background/
+  │   ├── paper/
+  │   ├── font/
+  │   │   └── ur/         # Folder for Urdu fonts
+  │   └── corpus/
+  │       └── urdu_sample.txt  # Sample text for Urdu
+  └── config_ur.yaml       # Configuration file for Urdu
+```
+
+### **Explanation**:
+- **background/**: Background images for the synthetic documents.
+- **paper/**: Paper texture images.
+- **font/**: Font files for target RTL languages.
+- **corpus/**: Sample text for target languages.
+
+## **Usage**
+
+To generate synthetic datasets, follow these steps:
+
+### **Step 1: Setup Configuration**
+
+1. Create a text file (`urdu_sample.txt`) with sample paragraphs in your target language (e.g., Urdu).
+   
+2. Download fonts from **Google Fonts** that support your language and place them in the appropriate directory under `resources/font/`.
+
+   For instructions on downloading fonts from Google Fonts, check the [Google Fonts Documentation](https://fonts.google.com/).
+
+3. Modify the configuration file (e.g., `config_ur.yaml`) to specify language-specific settings, font paths, and corpus paths.
+
+### **Step 2: Generate Dataset**
+
+Run the following command to generate the dataset:
+
+```bash
+synthtiger -o ./outputs/SynthDoG_ur -c 10 -w 2 -v template.py SynthDoG config_ur.yaml
+```
+
+#### **Parameters**:
+- `-o`: Output directory for generated images.
+- `-c`: Number of samples to generate.
+- `-w`: Number of workers to use.
+- `config_ur.yaml`: Configuration file with dataset settings.
+
+For more detailed instructions on generating datasets and customizing configurations, check the [Complete Tutorial](https://www.aiviewz.com/posts/how-to-create-synthetic-dataset-for-donut-ocr-for-your-custom-language).
+
+## **Customization Guide**
+
+Below are some common attributes you might want to adjust in the configuration file (`config_ur.yaml`) for customization:
+
+- **Document Layout**:
+  - `landscape`: Adjust to `1` for landscape orientation or `0` for portrait.
+  - `fullscreen`: Set to `1` to fill the entire document background with text.
+
+- **Text Adjustments**:
+  - `font.bold`: Set to `1` to enable bold text.
+  - `align`: Modify alignment (e.g., `right` for RTL languages).
+
+- **Effects**:
+  - Elastic distortion, noise, and blur parameters can be adjusted for creating more diverse synthetic datasets.
+
+## **Adding New Languages**
+
+To extend support for other RTL languages, follow these steps:
+1. Create a new corpus file with sample text in the target language.
+2. Add relevant fonts to the `resources/font/<language-code>/` directory.
+3. Update the configuration file paths to reflect the new language resources.
+
+## **References & Acknowledgments**
+
+This repository is based on the original [SynthDoG for LTR Languages](https://github.com/clovaai/donut/tree/master/synthdog) developed by Clova AI. Any copyright-related queries should refer to the original repository.
+
+For additional information on using SynthDog-RTL and customizing configurations, see our [Complete Tutorial](https://www.aiviewz.com/posts/how-to-create-synthetic-dataset-for-donut-ocr-for-your-custom-language).
+
+## **License**
+
+Refer to the [LICENSE](LICENSE) file for detailed license information.
+
+## **Contributions**
+
+Contributions are welcome! Feel free to open an issue or submit a pull request if you have suggestions for improvement or new features.
+
+---
+
+──────────────────────────────────────────────────────────────────────
+📄  Synthdog-RTL/config_en.yaml
+──────────────────────────────────────────────────────────────────────
+quality: [90, 100]
+landscape: 0.5
+short_size: [720, 1024]
+aspect_ratio: [1, 2]
+
+background:
+  image:
+    paths: [resources/background]
+    weights: [1]
+
+  effect:
+    args:
+      # gaussian blur
+      - prob: 1
+        args:
+          sigma: [0, 10]
+
+document:
+  fullscreen: 0.5
+  landscape: 0.5
+  short_size: [480, 1024]
+  aspect_ratio: [1, 2]
+
+  paper:
+    image:
+      paths: [resources/paper]
+      weights: [1]
+      alpha: [0, 0.2]
+      grayscale: 1
+      crop: 1
+  content:
+    margin: [0, 0.1]
+    text:
+      path: resources/corpus/enwiki.txt
+    font:
+      paths: [resources/font/en]
+      weights: [1]
+      bold: 0
+    layout:
+      text_scale: [0.0334, 0.1]
+      max_row: 10
+      max_col: 2
+      fill: [0.5, 1]
+      full: 0.1
+      align: [right]
+      stack_spacing: [0.0334, 0.0334]
+      stack_fill: [0.5, 1]
+      stack_full: 0.1
+    textbox:
+      fill: [0.5, 1]
+    textbox_color:
+      prob: 0.2
+      args:
+        gray: [0, 64]
+        colorize: 1
+    content_color:
+      prob: 0.2
+      args:
+        gray: [0, 64]
+        colorize: 1
+  rtl: true  # Enable RTL language support
+  effect:
+    args:
+      # elastic distortion
+      - prob: 0.4
+        args:
+          alpha: [0, 1]
+          sigma: [0, 0.5]
+      # gaussian noise
+      - prob: 0.4
+        args:
+          scale: [0, 8]
+          per_channel: 0
+      # perspective
+      - prob: 0.5
+        args:
+          weights: [750, 50, 50, 25, 25, 25, 25, 50]
+          args:
+            - percents: [[0.75, 1], [0.75, 1], [0.75, 1], [0.75, 1]]
+            - percents: [[0.75, 1], [1, 1], [0.75, 1], [1, 1]]
+            - percents: [[1, 1], [0.75, 1], [1, 1], [0.75, 1]]
+            - percents: [[0.75, 1], [1, 1], [1, 1], [1, 1]]
+            - percents: [[1, 1], [0.75, 1], [1, 1], [1, 1]]
+            - percents: [[1, 1], [1, 1], [0.75, 1], [1, 1]]
+            - percents: [[1, 1], [1, 1], [1, 1], [0.75, 1]]
+            - percents: [[1, 1], [1, 1], [1, 1], [1, 1]]
+
+effect:
+  args:
+    # color
+    - prob: 0.2
+      args:
+        rgb: [[0, 255], [0, 255], [0, 255]]
+        alpha: [0, 0.2]
+    # shadow
+    - prob: 1
+      args:
+        intensity: [0, 160]
+        amount: [0, 1]
+        smoothing: [0.2, 1]
+        bidirectional: 0
+    # contrast
+    - prob: 1
+      args:
+        alpha: [1, 1.5]
+    # brightness
+    - prob: 1
+      args:
+        beta: [-48, 0]
+    # motion blur
+    - prob: 0.4
+      args:
+        k: [3, 5]
+        angle: [0, 360]
+    # gaussian blur
+    - prob: 0.4
+      args:
+        sigma: [0, 1.5]
+
+──────────────────────────────────────────────────────────────────────
+📄  Synthdog-RTL/config_ja.yaml
+──────────────────────────────────────────────────────────────────────
+quality: [50, 95]
+landscape: 0.5
+short_size: [720, 1024]
+aspect_ratio: [1, 2]
+
+background:
+  image:
+    paths: [resources/background]
+    weights: [1]
+
+  effect:
+    args:
+      # gaussian blur
+      - prob: 1
+        args:
+          sigma: [0, 10]
+
+document:
+  fullscreen: 0.5
+  landscape: 0.5
+  short_size: [480, 1024]
+  aspect_ratio: [1, 2]
+
+  paper:
+    image:
+      paths: [resources/paper]
+      weights: [1]
+      alpha: [0, 0.2]
+      grayscale: 1
+      crop: 1
+
+  content:
+    margin: [0, 0.1]
+    text:
+      path: resources/corpus/jawiki.txt
+    font:
+      paths: [resources/font/ja]
+      weights: [1]
+      bold: 0
+    layout:
+      text_scale: [0.0334, 0.1]
+      max_row: 10
+      max_col: 3
+      fill: [0.5, 1]
+      full: 0.1
+      align: [left, right, center]
+      stack_spacing: [0.0334, 0.0334]
+      stack_fill: [0.5, 1]
+      stack_full: 0.1
+    textbox:
+      fill: [0.5, 1]
+    textbox_color:
+      prob: 0.2
+      args:
+        gray: [0, 64]
+        colorize: 1
+    content_color:
+      prob: 0.2
+      args:
+        gray: [0, 64]
+        colorize: 1
+
+  effect:
+    args:
+      # elastic distortion
+      - prob: 1
+        args:
+          alpha: [0, 1]
+          sigma: [0, 0.5]
+      # gaussian noise
+      - prob: 1
+        args:
+          scale: [0, 8]
+          per_channel: 0
+      # perspective
+      - prob: 1
+        args:
+          weights: [750, 50, 50, 25, 25, 25, 25, 50]
+          args:
+            - percents: [[0.75, 1], [0.75, 1], [0.75, 1], [0.75, 1]]
+            - percents: [[0.75, 1], [1, 1], [0.75, 1], [1, 1]]
+            - percents: [[1, 1], [0.75, 1], [1, 1], [0.75, 1]]
+            - percents: [[0.75, 1], [1, 1], [1, 1], [1, 1]]
+            - percents: [[1, 1], [0.75, 1], [1, 1], [1, 1]]
+            - percents: [[1, 1], [1, 1], [0.75, 1], [1, 1]]
+            - percents: [[1, 1], [1, 1], [1, 1], [0.75, 1]]
+            - percents: [[1, 1], [1, 1], [1, 1], [1, 1]]
+
+effect:
+  args:
+    # color
+    - prob: 0.2
+      args:
+        rgb: [[0, 255], [0, 255], [0, 255]]
+        alpha: [0, 0.2]
+    # shadow
+    - prob: 1
+      args:
+        intensity: [0, 160]
+        amount: [0, 1]
+        smoothing: [0.5, 1]
+        bidirectional: 0
+    # contrast
+    - prob: 1
+      args:
+        alpha: [1, 1.5]
+    # brightness
+    - prob: 1
+      args:
+        beta: [-48, 0]
+    # motion blur
+    - prob: 0.5
+      args:
+        k: [3, 5]
+        angle: [0, 360]
+    # gaussian blur
+    - prob: 1
+      args:
+        sigma: [0, 1.5]
+
+──────────────────────────────────────────────────────────────────────
+📄  Synthdog-RTL/config_ko.yaml
+──────────────────────────────────────────────────────────────────────
+quality: [50, 95]
+landscape: 0.5
+short_size: [720, 1024]
+aspect_ratio: [1, 2]
+
+background:
+  image:
+    paths: [resources/background]
+    weights: [1]
+
+  effect:
+    args:
+      # gaussian blur
+      - prob: 1
+        args:
+          sigma: [0, 10]
+
+document:
+  fullscreen: 0.5
+  landscape: 0.5
+  short_size: [480, 1024]
+  aspect_ratio: [1, 2]
+
+  paper:
+    image:
+      paths: [resources/paper]
+      weights: [1]
+      alpha: [0, 0.2]
+      grayscale: 1
+      crop: 1
+
+  content:
+    margin: [0, 0.1]
+    text:
+      path: resources/corpus/kowiki.txt
+    font:
+      paths: [resources/font/ko]
+      weights: [1]
+      bold: 0
+    layout:
+      text_scale: [0.0334, 0.1]
+      max_row: 10
+      max_col: 3
+      fill: [0.5, 1]
+      full: 0.1
+      align: [left, right, center]
+      stack_spacing: [0.0334, 0.0334]
+      stack_fill: [0.5, 1]
+      stack_full: 0.1
+    textbox:
+      fill: [0.5, 1]
+    textbox_color:
+      prob: 0.2
+      args:
+        gray: [0, 64]
+        colorize: 1
+    content_color:
+      prob: 0.2
+      args:
+        gray: [0, 64]
+        colorize: 1
+
+  effect:
+    args:
+      # elastic distortion
+      - prob: 1
+        args:
+          alpha: [0, 1]
+          sigma: [0, 0.5]
+      # gaussian noise
+      - prob: 1
+        args:
+          scale: [0, 8]
+          per_channel: 0
+      # perspective
+      - prob: 1
+        args:
+          weights: [750, 50, 50, 25, 25, 25, 25, 50]
+          args:
+            - percents: [[0.75, 1], [0.75, 1], [0.75, 1], [0.75, 1]]
+            - percents: [[0.75, 1], [1, 1], [0.75, 1], [1, 1]]
+            - percents: [[1, 1], [0.75, 1], [1, 1], [0.75, 1]]
+            - percents: [[0.75, 1], [1, 1], [1, 1], [1, 1]]
+            - percents: [[1, 1], [0.75, 1], [1, 1], [1, 1]]
+            - percents: [[1, 1], [1, 1], [0.75, 1], [1, 1]]
+            - percents: [[1, 1], [1, 1], [1, 1], [0.75, 1]]
+            - percents: [[1, 1], [1, 1], [1, 1], [1, 1]]
+
+effect:
+  args:
+    # color
+    - prob: 0.2
+      args:
+        rgb: [[0, 255], [0, 255], [0, 255]]
+        alpha: [0, 0.2]
+    # shadow
+    - prob: 1
+      args:
+        intensity: [0, 160]
+        amount: [0, 1]
+        smoothing: [0.5, 1]
+        bidirectional: 0
+    # contrast
+    - prob: 1
+      args:
+        alpha: [1, 1.5]
+    # brightness
+    - prob: 1
+      args:
+        beta: [-48, 0]
+    # motion blur
+    - prob: 0.5
+      args:
+        k: [3, 5]
+        angle: [0, 360]
+    # gaussian blur
+    - prob: 1
+      args:
+        sigma: [0, 1.5]
+
+──────────────────────────────────────────────────────────────────────
+📄  Synthdog-RTL/config_ur.yaml
+──────────────────────────────────────────────────────────────────────
+quality: [95, 100]
+landscape: 0.5
+short_size: [720, 1024]
+aspect_ratio: [1, 2]
+
+background:
+  image:
+    paths: [resources/background]
+    weights: [1]
+
+  effect:
+    args:
+      # gaussian blur
+      - prob: 1
+        args:
+          sigma: [0, 10]
+
+document:
+  fullscreen: 0.5
+  landscape: 0.5
+  short_size: [480, 1024]
+  aspect_ratio: [1, 2]
+
+  paper:
+    image:
+      paths: [resources/paper]
+      weights: [1]
+      alpha: [0, 0.2]
+      grayscale: 1
+      crop: 1
+  content:
+    margin: [0, 0.1]
+    text:
+      path: resources/corpus/urdu_sample.txt
+    font:
+      paths: [resources/font/ur]
+      weights: [1]
+      bold: 0
+    layout:
+      text_scale: [0.0334, 0.1]
+      max_row: 10
+      max_col: 1
+      fill: [0.5, 1]
+      full: 0.1
+      align: [right]
+      stack_spacing: [0.0334, 0.0334]
+      stack_fill: [0.5, 1]
+      stack_full: 0.1
+    textbox:
+      fill: [0.5, 1]
+    textbox_color:
+      prob: 0.2
+      args:
+        gray: [0, 64]
+        colorize: 1
+    content_color:
+      prob: 0.2
+      args:
+        gray: [0, 64]
+        colorize: 1
+  rtl: true  # Enable RTL language support
+  effect:
+    args:
+      # elastic distortion
+      - prob: 0.3
+        args:
+          alpha: [0, 0.4]
+          sigma: [0, 0.5]
+      # gaussian noise
+      - prob: 0.3
+        args:
+          scale: [0, 3]
+          per_channel: 0
+      # perspective
+      - prob: 0.5
+        args:
+          weights: [750, 50, 50, 25, 25, 25, 25, 50]
+          args:
+            - percents: [[0.75, 1], [0.75, 1], [0.75, 1], [0.75, 1]]
+            - percents: [[0.75, 1], [1, 1], [0.75, 1], [1, 1]]
+            - percents: [[1, 1], [0.75, 1], [1, 1], [0.75, 1]]
+            - percents: [[0.75, 1], [1, 1], [1, 1], [1, 1]]
+            - percents: [[1, 1], [0.75, 1], [1, 1], [1, 1]]
+            - percents: [[1, 1], [1, 1], [0.75, 1], [1, 1]]
+            - percents: [[1, 1], [1, 1], [1, 1], [0.75, 1]]
+            - percents: [[1, 1], [1, 1], [1, 1], [1, 1]]
+
+effect:
+  args:
+    # color
+    - prob: 0.2
+      args:
+        rgb: [[0, 255], [0, 255], [0, 255]]
+        alpha: [0, 0.2]
+    # shadow
+    - prob: 0.3
+      args:
+        intensity: [0, 160]
+        amount: [0, 1]
+        smoothing: [0.2, 0.4]
+        bidirectional: 0
+    # contrast
+    - prob: 1
+      args:
+        alpha: [1, 1.5]
+    # brightness
+    - prob: 1
+      args:
+        beta: [-48, 0]
+    # motion blur
+    - prob: 0.4
+      args:
+        k: [3, 5]
+        angle: [0, 360]
+    # gaussian blur
+    - prob: 0.2
+      args:
+        sigma: [0, 1.5]
+
+──────────────────────────────────────────────────────────────────────
+📄  Synthdog-RTL/config_zh.yaml
+──────────────────────────────────────────────────────────────────────
+quality: [50, 95]
+landscape: 0.5
+short_size: [720, 1024]
+aspect_ratio: [1, 2]
+
+background:
+  image:
+    paths: [resources/background]
+    weights: [1]
+
+  effect:
+    args:
+      # gaussian blur
+      - prob: 1
+        args:
+          sigma: [0, 10]
+
+document:
+  fullscreen: 0.5
+  landscape: 0.5
+  short_size: [480, 1024]
+  aspect_ratio: [1, 2]
+
+  paper:
+    image:
+      paths: [resources/paper]
+      weights: [1]
+      alpha: [0, 0.2]
+      grayscale: 1
+      crop: 1
+
+  content:
+    margin: [0, 0.1]
+    text:
+      path: resources/corpus/zhwiki.txt
+    font:
+      paths: [resources/font/zh]
+      weights: [1]
+      bold: 0
+    layout:
+      text_scale: [0.0334, 0.1]
+      max_row: 10
+      max_col: 3
+      fill: [0.5, 1]
+      full: 0.1
+      align: [left, right, center]
+      stack_spacing: [0.0334, 0.0334]
+      stack_fill: [0.5, 1]
+      stack_full: 0.1
+    textbox:
+      fill: [0.5, 1]
+    textbox_color:
+      prob: 0.2
+      args:
+        gray: [0, 64]
+        colorize: 1
+    content_color:
+      prob: 0.2
+      args:
+        gray: [0, 64]
+        colorize: 1
+
+  effect:
+    args:
+      # elastic distortion
+      - prob: 1
+        args:
+          alpha: [0, 1]
+          sigma: [0, 0.5]
+      # gaussian noise
+      - prob: 1
+        args:
+          scale: [0, 8]
+          per_channel: 0
+      # perspective
+      - prob: 1
+        args:
+          weights: [750, 50, 50, 25, 25, 25, 25, 50]
+          args:
+            - percents: [[0.75, 1], [0.75, 1], [0.75, 1], [0.75, 1]]
+            - percents: [[0.75, 1], [1, 1], [0.75, 1], [1, 1]]
+            - percents: [[1, 1], [0.75, 1], [1, 1], [0.75, 1]]
+            - percents: [[0.75, 1], [1, 1], [1, 1], [1, 1]]
+            - percents: [[1, 1], [0.75, 1], [1, 1], [1, 1]]
+            - percents: [[1, 1], [1, 1], [0.75, 1], [1, 1]]
+            - percents: [[1, 1], [1, 1], [1, 1], [0.75, 1]]
+            - percents: [[1, 1], [1, 1], [1, 1], [1, 1]]
+
+effect:
+  args:
+    # color
+    - prob: 0.2
+      args:
+        rgb: [[0, 255], [0, 255], [0, 255]]
+        alpha: [0, 0.2]
+    # shadow
+    - prob: 1
+      args:
+        intensity: [0, 160]
+        amount: [0, 1]
+        smoothing: [0.5, 1]
+        bidirectional: 0
+    # contrast
+    - prob: 1
+      args:
+        alpha: [1, 1.5]
+    # brightness
+    - prob: 1
+      args:
+        beta: [-48, 0]
+    # motion blur
+    - prob: 0.5
+      args:
+        k: [3, 5]
+        angle: [0, 360]
+    # gaussian blur
+    - prob: 1
+      args:
+        sigma: [0, 1.5]
+
+──────────────────────────────────────────────────────────────────────
+📄  Synthdog-RTL/elements/__init__.py
+──────────────────────────────────────────────────────────────────────
+"""
+Donut
+Copyright (c) 2022-present NAVER Corp.
+MIT License
+"""
+from elements.background import Background
+from elements.content import Content
+from elements.document import Document
+from elements.paper import Paper
+from elements.textbox import TextBox
+
+__all__ = ["Background", "Content", "Document", "Paper", "TextBox"]
+
+──────────────────────────────────────────────────────────────────────
+📄  Synthdog-RTL/elements/background.py
+──────────────────────────────────────────────────────────────────────
+"""
+Donut
+Copyright (c) 2022-present NAVER Corp.
+MIT License
+"""
+# background.py
+from synthtiger import components, layers
+
+
+class Background:
+    def __init__(self, config):
+        self.image = components.BaseTexture(**config.get("image", {}))
+        self.effect = components.Iterator(
+            [
+                components.Switch(components.GaussianBlur()),
+            ],
+            **config.get("effect", {})
+        )
+
+    def generate(self, size):
+        bg_layer = layers.RectLayer(size, (255, 255, 255, 255))
+        self.image.apply([bg_layer])
+        self.effect.apply([bg_layer])
+
+        return bg_layer
+
+──────────────────────────────────────────────────────────────────────
+📄  Synthdog-RTL/elements/content.py
+──────────────────────────────────────────────────────────────────────
+"""
+Donut
+Copyright (c) 2022-present NAVER Corp.
+MIT License
+"""
+from collections import OrderedDict
+
+import numpy as np
+from synthtiger import components
+
+from elements.textbox import TextBox
+from layouts import GridStack
+
+class TextReader:
+    def __init__(self, path):
+        self.fp = open(path, "r", encoding="utf-8")
+        self.lines = self.fp.readlines()  # Read all lines at once
+        self.length = len(self.lines)
+        self.idx = 0  # Track the current line index
+
+    def __len__(self):
+        return self.length
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.idx < self.length:
+            line = self.lines[self.idx].strip('\n')  # Return the current line without the newline character
+            self.idx += 1  # Move to the next line
+            return line
+        else:
+            self.idx=0
+            line = self.lines[self.idx].strip('\n')
+            self.idx += 1  # Move to the next line
+            return line
+    def reset(self):
+        self.idx = 0  # Reset to the first line
+
+class Content:
+    def __init__(self, config):
+        self.margin = config.get("margin", [0, 0.1])
+        self.reader = TextReader(**config.get("text", {}))
+        self.font = components.BaseFont(**config.get("font", {}))
+        self.layout = GridStack(config.get("layout", {}))
+        self.textbox = TextBox(config.get("textbox", {}))
+        self.textbox_color = components.Switch(components.Gray(), **config.get("textbox_color", {}))
+        self.content_color = components.Switch(components.Gray(), **config.get("content_color", {}))
+        self.rtl = config.get("rtl", False)  # RTL flag
+
+    def generate(self, size):
+        width, height = size
+
+        layout_left = width * np.random.uniform(self.margin[0], self.margin[1])
+        layout_top = height * np.random.uniform(self.margin[0], self.margin[1])
+        layout_width = max(width - layout_left * 2, 0)
+        layout_height = max(height - layout_top * 2, 0)
+        layout_bbox = [layout_left, layout_top, layout_width, layout_height]
+
+        text_layers, texts = [], []
+        layouts = self.layout.generate(layout_bbox)
+        
+
+        for layout in layouts:
+            font = self.font.sample()
+
+            for bbox, align in layout:
+                x, y, w, h = bbox
+                text = next(self.reader, None)
+                if text is None:
+                  break
+                text_layer, label_text = self.textbox.generate((w, h), text, font)
+
+                if text_layer is None:
+                    continue
+
+                text_layer.center = (x + w / 2, y + h / 2)
+                
+                if self.rtl:
+                    text_layer.right = x + w
+                elif align == "left":
+                    text_layer.left = x
+                elif align == "right":
+                    text_layer.right = x + w
+
+                self.textbox_color.apply([text_layer])
+                text_layers.append(text_layer)
+                texts.append(label_text)
+
+        self.content_color.apply(text_layers)
+
+        return text_layers, texts
+
+──────────────────────────────────────────────────────────────────────
+📄  Synthdog-RTL/elements/document.py
+──────────────────────────────────────────────────────────────────────
+"""
+Donut
+Copyright (c) 2022-present NAVER Corp.
+MIT License
+"""
+import numpy as np
+from synthtiger import components
+
+from elements.content import Content
+from elements.paper import Paper
+
+class Document:
+    def __init__(self, config):
+        self.fullscreen = config.get("fullscreen", 0.5)
+        self.landscape = config.get("landscape", 0.5)
+        self.short_size = config.get("short_size", [480, 1024])
+        self.aspect_ratio = config.get("aspect_ratio", [1, 2])
+        self.paper = Paper(config.get("paper", {}))
+        self.content = Content(config.get("content", {}))
+        self.effect = components.Iterator(
+            [
+                components.Switch(components.ElasticDistortion()),
+                components.Switch(components.AdditiveGaussianNoise()),
+                components.Switch(
+                    components.Selector(
+                        [
+                            components.Perspective(),
+                            components.Perspective(),
+                            components.Perspective(),
+                            components.Perspective(),
+                            components.Perspective(),
+                            components.Perspective(),
+                            components.Perspective(),
+                            components.Perspective(),
+                        ]
+                    )
+                ),
+            ],
+            **config.get("effect", {}),
+        )
+        self.rtl = config.get("rtl", False)  # RTL flag
+
+    def generate(self, size):
+        width, height = size
+        fullscreen = np.random.rand() < self.fullscreen
+
+        if not fullscreen:
+            landscape = np.random.rand() < self.landscape
+            max_size = width if landscape else height
+            short_size = np.random.randint(
+                min(width, height, self.short_size[0]),
+                min(width, height, self.short_size[1]) + 1,
+            )
+            aspect_ratio = np.random.uniform(
+                min(max_size / short_size, self.aspect_ratio[0]),
+                min(max_size / short_size, self.aspect_ratio[1]),
+            )
+            long_size = int(short_size * aspect_ratio)
+            size = (long_size, short_size) if landscape else (short_size, long_size)
+
+        # Pass RTL flag to content generation
+        text_layers, texts = self.content.generate(size)
+        paper_layer = self.paper.generate(size)
+        self.effect.apply([*text_layers, paper_layer])
+
+        return paper_layer, text_layers, texts
+
+──────────────────────────────────────────────────────────────────────
+📄  Synthdog-RTL/elements/paper.py
+──────────────────────────────────────────────────────────────────────
+"""
+Donut
+Copyright (c) 2022-present NAVER Corp.
+MIT License
+"""
+from synthtiger import components, layers
+
+
+class Paper:
+    def __init__(self, config):
+        self.image = components.BaseTexture(**config.get("image", {}))
+
+    def generate(self, size):
+        paper_layer = layers.RectLayer(size, (255, 255, 255, 255))
+        self.image.apply([paper_layer])
+
+        return paper_layer
+
+──────────────────────────────────────────────────────────────────────
+📄  Synthdog-RTL/elements/textbox.py
+──────────────────────────────────────────────────────────────────────
+import numpy as np
+from synthtiger import layers
+
+class TextBox:
+    def __init__(self, config):
+        self.fill = config.get("fill", [1, 1])
+        self.rtl = config.get("rtl", True)  # Add RTL option
+
+    def generate(self, size, text, font):
+        width, height = size
+
+        line_layers = []
+        fill = np.random.uniform(self.fill[0], self.fill[1])
+        adjusted_width = np.clip(width * fill, height, width)  # Adjust width for fill
+        font = {**font, "size": int(height)}
+        left = adjusted_width if self.rtl else 0
+        top = 0
+        lines=[]
+        
+        for i,line in enumerate(text.split(" ")):
+            if not line.strip():
+                continue
+            
+            line_layer = layers.TextLayer(line, **font)
+            line_scale = height / line_layer.height
+            line_layer.bbox = [left, top, *(line_layer.size*line_scale)]
+            
+            left=left-line_layer.width
+            line_layer = layers.TextLayer(line, **font)
+            line_scale = height / line_layer.height
+            line_layer.bbox = [left, top, *(line_layer.size*line_scale)]
+            left = line_layer.left-2
+     
+            if left < 0:
+                break
+            line_layers.append(line_layer)
+            lines.append(line)
+
+        if len(line_layers) == 0:
+            return None, None
+
+        text_layer = layers.Group(line_layers).merge()
+        return text_layer, " ".join(lines)
+
+──────────────────────────────────────────────────────────────────────
+📄  Synthdog-RTL/layouts/__init__.py
+──────────────────────────────────────────────────────────────────────
+"""
+Donut
+Copyright (c) 2022-present NAVER Corp.
+MIT License
+"""
+from layouts.grid import Grid
+from layouts.grid_stack import GridStack
+
+__all__ = ["Grid", "GridStack"]
+
+──────────────────────────────────────────────────────────────────────
+📄  Synthdog-RTL/layouts/grid.py
+──────────────────────────────────────────────────────────────────────
+"""
+Donut
+Copyright (c) 2022-present NAVER Corp.
+MIT License
+"""
+import numpy as np
+
+
+class Grid:
+    def __init__(self, config):
+        self.text_scale = config.get("text_scale", [0.05, 0.1])
+        self.max_row = config.get("max_row", 5)
+        self.max_col = config.get("max_col", 3)
+        self.fill = config.get("fill", [0, 1])
+        self.full = config.get("full", 0)
+        self.align = config.get("align", ["left", "right", "center"])
+
+    def generate(self, bbox):
+        left, top, width, height = bbox
+
+        text_scale = np.random.uniform(self.text_scale[0], self.text_scale[1])
+        text_size = min(width, height) * text_scale
+        grids = np.random.permutation(self.max_row * self.max_col)
+
+        for grid in grids:
+            row = grid // self.max_col + 1
+            col = grid % self.max_col + 1
+            if text_size * (col * 2 - 1) <= width and text_size * row <= height:
+                break
+        else:
+            return None
+
+        bound = max(1 - text_size / width * (col - 1), 0)
+        full = np.random.rand() < self.full
+        fill = np.random.uniform(self.fill[0], self.fill[1])
+        fill = 1 if full else fill
+        fill = np.clip(fill, 0, bound)
+
+        padding = np.random.randint(4) if col > 1 else np.random.randint(1, 4)
+        padding = (bool(padding // 2), bool(padding % 2))
+
+        weights = np.zeros(col * 2 + 1)
+        weights[1:-1] = text_size / width
+        probs = 1 - np.random.rand(col * 2 + 1)
+        probs[0] = 0 if not padding[0] else probs[0]
+        probs[-1] = 0 if not padding[-1] else probs[-1]
+        probs[1::2] *= max(fill - sum(weights[1::2]), 0) / sum(probs[1::2])
+        probs[::2] *= max(1 - fill - sum(weights[::2]), 0) / sum(probs[::2])
+        weights += probs
+
+        widths = [width * weights[c] for c in range(col * 2 + 1)]
+        heights = [text_size for _ in range(row)]
+
+        xs = np.cumsum([0] + widths)
+        ys = np.cumsum([0] + heights)
+
+        layout = []
+
+        for c in range(col):
+            align = self.align[np.random.randint(len(self.align))]
+
+            for r in range(row):
+                x, y = xs[c * 2 + 1], ys[r]
+                w, h = xs[c * 2 + 2] - x, ys[r + 1] - y
+                bbox = [left + x, top + y, w, h]
+                layout.append((bbox, align))
+
+        return layout
+
+──────────────────────────────────────────────────────────────────────
+📄  Synthdog-RTL/layouts/grid_stack.py
+──────────────────────────────────────────────────────────────────────
+"""
+Donut
+Copyright (c) 2022-present NAVER Corp.
+MIT License
+"""
+import numpy as np
+
+from layouts import Grid
+
+
+class GridStack:
+    def __init__(self, config):
+        self.text_scale = config.get("text_scale", [0.05, 0.1])
+        self.max_row = config.get("max_row", 5)
+        self.max_col = config.get("max_col", 3)
+        self.fill = config.get("fill", [0, 1])
+        self.full = config.get("full", 0)
+        self.align = config.get("align", ["left", "right", "center"])
+        self.stack_spacing = config.get("stack_spacing", [0, 0.05])
+        self.stack_fill = config.get("stack_fill", [1, 1])
+        self.stack_full = config.get("stack_full", 0)
+        self._grid = Grid(
+            {
+                "text_scale": self.text_scale,
+                "max_row": self.max_row,
+                "max_col": self.max_col,
+                "align": self.align,
+            }
+        )
+
+    def generate(self, bbox):
+        left, top, width, height = bbox
+
+        stack_spacing = np.random.uniform(self.stack_spacing[0], self.stack_spacing[1])
+        stack_spacing *= min(width, height)
+
+        stack_full = np.random.rand() < self.stack_full
+        stack_fill = np.random.uniform(self.stack_fill[0], self.stack_fill[1])
+        stack_fill = 1 if stack_full else stack_fill
+
+        full = np.random.rand() < self.full
+        fill = np.random.uniform(self.fill[0], self.fill[1])
+        fill = 1 if full else fill
+        self._grid.fill = [fill, fill]
+
+        layouts = []
+        line = 0
+
+        while True:
+            grid_size = (width, height * stack_fill - line)
+            text_scale = np.random.uniform(self.text_scale[0], self.text_scale[1])
+            text_size = min(width, height) * text_scale
+            text_scale = text_size / min(grid_size)
+            self._grid.text_scale = [text_scale, text_scale]
+
+            layout = self._grid.generate([left, top + line, *grid_size])
+            if layout is None:
+                break
+
+            line = max(y + h - top for (_, y, _, h), _ in layout) + stack_spacing
+            layouts.append(layout)
+
+        line = max(line - stack_spacing, 0)
+        space = max(height - line, 0)
+        spaces = np.random.rand(len(layouts) + 1)
+        spaces *= space / sum(spaces) if sum(spaces) > 0 else 0
+        spaces = np.cumsum(spaces)
+
+        for layout, space in zip(layouts, spaces):
+            for bbox, _ in layout:
+                x, y, w, h = bbox
+                bbox[:] = [x, y + space, w, h]
+
+        return layouts
+
+──────────────────────────────────────────────────────────────────────
+📄  Synthdog-RTL/resources/corpus/enwiki.txt
+──────────────────────────────────────────────────────────────────────
+محمد علی جناح: ایک عہد ساز
+شخصیت محمد علی جناح، جو
+برصغیر کے مسلمانوں کے
+لیے "قائداعظم" کے نام سے
+مشہور ہیں، ایک عظیم
+رہنما، وکیل، اور سیاستدان
+تھے جنہوں نے مسلمانوں کے
+لیے ایک علیحدہ وطن
+پاکستان کی تشکیل میں
+کلیدی کردار ادا کیا۔ ان
+کی دور اندیشی، عزم اور
+سیاسی بصیرت نے انہیں
+برصغیر کی تاریخ میں ایک
+منفرد مقام دیا، اور آج
+بھی وہ مسلمانوں کے
+دلوں میں زندہ ہیں۔
+محمد علی جناح کی زندگی،
+جدوجہد اور نظریات کا
+تفصیلی جائزہ پیش کیا
+جا رہا ہے تاکہ ان کی
+شخصیت اور کارناموں کو
+بہتر طور پر سمجھا جا
+سکے۔ آغاز زندگی اور
+تعلیم محمد علی جناح 25
+دسمبر 1876 کو کراچی کے
+ایک تاجر خاندان میں
+پیدا ہوئے۔ ان کے والد،
+جناح پونجا، ایک کامیاب
+تاجر تھے، اور محمد علی
+جناح کی ابتدائی تعلیم
+کراچی میں ہوئی۔ بچپن
+سے ہی ان کی شخصیت
+میں وقار، اصول پسندی
+اور مستقل مزاجی کے
+آثار نظر آتے تھے۔
+1887 میں، جناح اعلیٰ
+تعلیم کے لیے انگلستان
+چلے گئے جہاں انہوں
+نے لنکنز ان میں قانون
+کی تعلیم حاصل کی اور
+صرف 19 سال کی عمر
+میں بیرسٹر بن گئے۔ یہ
+وہ وقت تھا جب برطانوی
+سماج اور اس کی قانونی
+نظام کا گہرا مطالعہ
+جناح کی شخصیت میں
+سیاسی شعور کو پروان
+چڑھانے کا باعث بنا۔
+ابتدائی سیاسی زندگی
+1906 میں، جناح نے
+کانگریس میں شمولیت
+اختیار کی اور ان کی
+کوششیں ہندوستان کی
+سیاست میں مسلمانوں اور
+ہندوؤں کو یکجا کرنے
+کے لیے وقف تھیں۔ وہ
+ابتدا میں "ہندو مسلم
+اتحاد" کے زبردست حامی
+تھے اور ایک ایسے
+ہندوستان کا خواب دیکھتے
+تھے جہاں دونوں قومیں
+ایک ساتھ ترقی کریں۔
+ان کی شمولیت کا مقصد
+کانگریس کے ذریعے
+ہندوستان کی آزادی کی
+تحریک کو آگے بڑھانا
+تھا۔ تاہم، 1906 میں
+آل انڈیا مسلم لیگ
+کے قیام اور وقت کے
+ساتھ ساتھ ہندو قوم
+پرستی کے بڑھتے ہوئے
+رجحانات نے جناح کو
+اس بات کا احساس
+دلایا کہ مسلمانوں کے
+سیاسی اور سماجی حقوق
+کے تحفظ کے لیے ایک
+علیحدہ سیاسی پلیٹ
+فارم ضروری ہے۔ 1913
+میں جناح مسلم لیگ میں
+شامل ہو گئے اور جلد
+ہی لیگ کے اہم رہنما
+کے طور پر ابھرے۔
+دو قومی نظریہ اور
+قیامِ پاکستان کی
+بنیاد 1920 کی دہائی
+میں جناح نے اس
+حقیقت کو تسلیم کیا
+کہ ہندوؤں اور مسلمانوں
+کے درمیان سیاسی اور
+ثقافتی اختلافات اس
+قدر گہرے ہیں کہ انہیں
+ایک ملک میں رہنے کا
+تصور غیر ممکن ہو
+گیا ہے۔ اس احساس
+کے ساتھ انہوں نے "دو
+قومی نظریہ" کو
+اپنایا جس کے تحت یہ
+کہا گیا کہ ہندو اور
+مسلمان دو الگ قومیں
+ہیں، اور ان کے لیے
+علیحدہ وطن کی ضرورت
+ہے۔ 1930 میں، علامہ
+اقبال کی تاریخی
+خطبہ الہ آباد میں
+پیش کی گئی تجویز کہ
+مسلمانوں کو شمال
+مغربی ہندوستان میں
+اپنا ایک خودمختار
+ریاست قائم کرنی
+چاہیے، جناح کے لیے
+ایک نقطہ آغاز تھا۔
+انہوں نے اس نظریے
+کو عملی شکل دی
+اور آل انڈیا مسلم
+لیگ کے پلیٹ فارم
+سے "پاکستان" کا
+مطالبہ کیا۔
+قائداعظم کی حیثیت
+سے کردار 1937 کے
+انتخابات کے بعد
+مسلم لیگ نے جناح
+کی قیادت میں اپنی
+سیاسی قوت کو
+مضبوط کیا۔ ان
+انتخابات میں جناح
+نے محسوس کیا کہ
+ہندو کانگریس
+مسلمانوں کے مفادات
+کی نمائندگی نہیں
+کر سکتی، اور اس
+کے بعد سے وہ پوری
+تندہی کے ساتھ
+مسلمانوں کے لیے
+ایک علیحدہ ملک کی
+تحریک چلانے میں
+مصروف ہو گئے۔
+1940 میں لاہور کے
+تاریخی اجلاس میں
+"قرارداد پاکستان"
+پیش کی گئی، جس
+میں واضح طور پر
+کہا گیا کہ ہندوستان
+کے مسلمان ایک
+علیحدہ قوم ہیں اور
+انہیں اپنے سیاسی
+حقوق کے تحفظ کے
+لیے ایک علیحدہ
+ریاست کی ضرورت
+ہے۔ جناح کی قیادت
+میں مسلم لیگ نے
+اس موقف کو پوری
+دنیا کے سامنے پیش
+کیا، اور برطانوی
+حکومت کے ساتھ
+مسلسل مذاکرات کے
+بعد 1947 میں
+پاکستان کا قیام
+ممکن ہوا۔ قیام
+پاکستان اور جناح
+کا وژن 14 اگست
+1947 کو پاکستان
+کا قیام عمل میں
+آیا، اور محمد علی
+جناح کو پاکستان
+کا پہلا گورنر
+جنرل مقرر کیا
+گیا۔ جناح کا
+وژن ایک اسلامی
+جمہوری ریاست
+کا تھا جہاں
+مسلمانوں کے ساتھ
+ساتھ غیر مسلم
+اقلیتوں کو بھی
+برابری کے حقوق
+حاصل ہوں۔
+انہوں نے اپنی
+تقاریر میں بارہا
+اس بات کا اعادہ
+کیا کہ پاکستان
+میں ہر مذہب
+کے پیروکار کو
+اپنی عبادت اور
+مذہبی رسوم کی
+آزادی حاصل
+ہوگی۔ جناح
+کا یہ کہنا
+تھا کہ: "آپ
+آزاد ہیں۔ آپ
+آزاد ہیں اپنے
+مندروں میں جانے
+کے لیے۔ آپ
+آزاد ہیں اپنی
+مساجد میں جانے
+کے لیے یا
+پاکستان کی
+ریاست میں کسی
+بھی اور عبادت
+گاہ میں جانے
+کے لیے۔"
+یہ قول جناح
+کے ان اعلیٰ
+اصولوں کی
+عکاسی کرتا
+ہے جن پر وہ
+پاکستان کو
+قائم کرنا
+چاہتے تھے۔
+زندگی کے
+آخری ایام
+پاکستان کا
+قیام جناح
+کے لیے ایک
+عظیم کامیابی
+تھا، لیکن
+یہ کامیابی
+ان کی صحت
+پر بھاری
+ثابت ہوئی۔
+وہ طویل
+مدت سے ٹی
+بی کے مریض
+تھے، اور قیام
+پاکستان کے
+بعد مسلسل
+سیاسی دباؤ
+اور کام کے
+بوجھ نے ان
+کی صحت کو
+مزید بگاڑ
+دیا۔ 11
+ستمبر 1948
+کو، قائداعظم
+محمد علی
+جناح کا
+انتقال ہو
+گیا۔ ان کا
+انتقال پاکستان
+کے لیے ایک
+عظیم سانحہ
+تھا، لیکن
+ان کی
+جدوجہد اور
+قربانیوں
+نے انہیں
+ہمیشہ کے
+لیے پاکستانی
+قوم کے
+دلوں میں
+زندہ رکھا۔
+جناح کی
+شخصیت کے
+اہم پہلو
+محمد علی
+جناح کی
+شخصیت کے
+کئی پہلو
+ہیں جو
+انہیں ایک
+عظیم لیڈر
+بناتے ہیں:
+
+قانونی
+مہارت: جناح
+ایک نہایت
+کامیاب وکیل
+تھے، اور
+ان کی
+قانونی بصیرت
+نے انہیں
+ہندوستانی
+سیاست میں
+نمایاں مقام
+دلایا۔
+عزم
+اور
+استقامت:
+جناح کبھی
+بھی اپنے
+اصولوں سے
+پیچھے نہیں
+ہٹے اور
+ہمیشہ
+مسلمانوں
+کے حقوق
+کی حفاظت
+کے لیے
+ڈٹے رہے۔
+سیاسی
+بصیرت:
+جناح نے
+بروقت یہ
+پہچان لیا
+کہ ہندوستان
+کے مسلمانوں
+کے حقوق
+کا تحفظ
+علیحدہ
+ریاست کے
+قیام کے
+بغیر ممکن
+نہیں، اور
+انہوں نے
+اس مقصد
+کے لیے
+انتھک محنت
+کی۔
+غیر
+متعصبانہ
+رویہ:
+جناح ہمیشہ
+اس بات
+کے قائل
+رہے کہ
+پاکستان میں
+ہر مذہب
+اور فرقے
+کو برابر
+کا درجہ
+حاصل ہوگا،
+اور انہوں
+نے کبھی
+بھی فرقہ
+واریت کو
+فروغ
+نہیں دیا۔
+اختتام
+محمد علی
+جناح کی
+زندگی کا
+ہر پہلو
+عظمت،
+قربانی
+اور اصول
+پسندی
+کی مثال
+ہے۔ وہ
+ایک ایسے
+رہنما
+تھے جنہوں
+نے نہ
+صرف
+برصغیر
+کے مسلمانوں
+کو سیاسی
+شعور
+دیا بلکہ
+انہیں ایک
+علیحدہ
+وطن بھی
+فراہم
+کیا جہاں
+وہ آزادی
+سے اپنی
+زندگی
+گزار سکیں۔
+ان کی
+بے مثال
+قیادت اور
+جدوجہد
+نے انہیں
+تاریخ کا
+ایک عظیم
+رہنما
+بنا دیا،
+اور آج
+بھی ان
+کا نام
+احترام
+اور فخر
+کے ساتھ
+لیا جاتا
+ہے۔ جناح
+کا وژن
+اور ان
+کی تعلیمات
+پاکستان کے
+لیے ہمیشہ
+مشعل راہ
+رہیں گی،
+اور ان
+کی یاد
+ہمیشہ
+پاکستانی
+قوم کے
+دلوں میں
+زندہ
+رہے گی۔
+عمران خان: ایک عظیم رہنما
+عمران خان، پاکستان کے سابق
+وزیر اعظم، ایک عظیم
+کھیلوں کے ستارے، فلاحی
+کاموں کے علمبردار، اور
+سیاستدان ہیں جنہوں نے
+پاکستان کو نئی راہوں
+پر گامزن کرنے کی
+کوشش کی۔ ان کی زندگی
+کامیابیوں، چیلنجوں،
+اور عزم کی مثال ہے۔
+آغاز زندگی اور تعلیم
+عمران خان 5 اکتوبر
+1952 کو لاہور میں
+پیدا ہوئے۔ ان کے والد
+نظام الدین خان ایک
+مڈل کلاس خاندان سے
+تعلق رکھتے تھے۔
+عمران نے اپنی ابتدائی
+تعلیم لاہور کے
+سکولوں سے حاصل کی
+اور بعد میں اعلیٰ
+تعلیم کے لیے انگلینڈ
+چلے گئے۔
+کھیلوں میں شاندار کیریئر
+عمران خان نے کرکٹ
+کے میدان میں شاندار
+کیریئر بنایا۔ انہوں نے
+پاکستان کی قومی کرکٹ
+ٹیم کی قیادت کی اور
+1992 کے کرکٹ ورلڈ
+کپ میں پاکستان
+کو فتح دلا کر قوم
+کا سر فخر سے بلند
+کیا۔ ان کی قائدانہ
+صلاحیتوں نے انہیں
+ایک لیڈر کے طور پر
+مقبول کیا۔
+فلاحی کاموں کی بنیاد
+کھیلوں میں کامیابی کے
+بعد عمران خان نے
+فلاحی کاموں کا آغاز
+کیا۔ انہوں نے
+"شوکات خانم میموریل
+کینسر ہسپتال" قائم
+کیا، جہاں غریب مریضوں
+کا مفت علاج ہوتا
+ہے۔ یہ ہسپتال ان کی
+فلاحی خدمات کی مثال
+ہے۔
+سیاست میں داخلہ
+عمران خان نے 1996
+میں پاکستان تحریک
+انصاف (PTI) کی بنیاد
+رکھی۔ انہوں نے اپنے
+نظریات کو پھیلانے
+اور عوام میں سیاسی
+شعور پیدا کرنے کے
+لیے مسلسل محنت
+کی۔ ان کی کوششوں
+نے انہیں ملک کی
+سیاست میں اہم مقام
+دلا دیا۔
+وزیر اعظم کی حیثیت
+2018 کے عام انتخابات
+میں کامیابی کے بعد
+عمران خان پاکستان کے
+وزیر اعظم بنے۔ ان کا
+نعرہ "نیا پاکستان"
+تھا، جو بدعنوانی
+کے خلاف جدوجہد اور
+معاشی اصلاحات
+کی عکاسی کرتا تھا۔
+انہوں نے عوامی
+خدمات کو بہتر بنانے
+کے لیے کئی
+اصلاحات متعارف
+کرائیں۔
+چیلنجز اور کامیابیاں
+وزیر اعظم کی حیثیت
+میں عمران خان کو
+بہت سے چیلنجز کا
+سامنا کرنا پڑا،
+جس میں معیشت،
+بے روزگاری، اور
+تعلیم کی کمی شامل
+تھے۔ انہوں نے
+صحت کے شعبے میں
+اصلاحات کیں اور
+تعلیم کو بہتر بنانے
+کے لیے اقدامات
+کیے۔ ان کی
+کوششیں ملک کو
+آگے بڑھانے میں
+مددگار ثابت ہوئیں۔
+اختتام
+عمران خان کی زندگی
+عزم، محنت، اور
+خدمت کی مثال ہے۔
+وہ ایک ایسے رہنما
+ہیں جنہوں نے
+اپنے ملک کے
+لیے قربانیاں دی
+اور اسے بہتر
+بنانے کی کوشش کی۔
+ان کی قیادت اور
+نظریات پاکستان
+کے مستقبل کے
+لیے مشعل راہ
+رہیں گے۔
+
+──────────────────────────────────────────────────────────────────────
+📄  Synthdog-RTL/resources/corpus/urdu_sample.txt
+──────────────────────────────────────────────────────────────────────
+محمد علی جناح: ایک عہد ساز شخصیت
+
+محمد علی جناح، جو برصغیر کے مسلمانوں کے لیے "قائداعظم" کے نام سے مشہور ہیں، ایک عظیم رہنما، وکیل، اور سیاستدان تھے جنہوں نے مسلمانوں کے لیے ایک علیحدہ وطن پاکستان کی تشکیل میں کلیدی کردار ادا کیا۔ ان کی دور اندیشی، عزم، اور سیاسی بصیرت نے انہیں برصغیر کی تاریخ میں ایک منفرد مقام دیا، اور آج بھی وہ مسلمانوں کے دلوں میں زندہ ہیں۔
+
+محمد علی جناح کی زندگی، جدوجہد اور نظریات کا تفصیلی جائزہ پیش کیا جا رہا ہے تاکہ ان کی شخصیت اور کارناموں کو بہتر طور پر سمجھا جا سکے۔
+
+آغاز زندگی اور تعلیم
+
+محمد علی جناح 25 دسمبر 1876 کو کراچی کے ایک تاجر خاندان میں پیدا ہوئے۔ ان کے والد، جناح پونجا، ایک کامیاب تاجر تھے، اور محمد علی جناح کی ابتدائی تعلیم کراچی میں ہوئی۔ بچپن سے ہی ان کی شخصیت میں وقار، اصول پسندی، اور مستقل مزاجی کے آثار نظر آتے تھے۔
+
+1887 میں، جناح اعلیٰ تعلیم کے لیے انگلستان چلے گئے، جہاں انہوں نے لنکنز ان میں قانون کی تعلیم حاصل کی اور صرف 19 سال کی عمر میں بیرسٹر بن گئے۔ یہ وہ وقت تھا جب برطانوی سماج اور اس کے قانونی نظام کا گہرا مطالعہ جناح کی شخصیت میں سیاسی شعور کو پروان چڑھانے کا باعث بنا۔
+
+ابتدائی سیاسی زندگی
+
+1906 میں، جناح نے کانگریس میں شمولیت اختیار کی اور ان کی کوششیں ہندوستان کی سیاست میں مسلمانوں اور ہندوؤں کو یکجا کرنے کے لیے وقف تھیں۔ وہ ابتدا میں "ہندو مسلم اتحاد" کے زبردست حامی تھے اور ایک ایسے ہندوستان کا خواب دیکھتے تھے جہاں دونوں قومیں ایک ساتھ ترقی کریں۔
+
+ان کی شمولیت کا مقصد کانگریس کے ذریعے ہندوستان کی آزادی کی تحریک کو آگے بڑھانا تھا۔ تاہم، 1906 میں آل انڈیا مسلم لیگ کے قیام اور وقت کے ساتھ ساتھ ہندو قوم پرستی کے بڑھتے ہوئے رجحانات نے جناح کو اس بات کا احساس دلایا کہ مسلمانوں کے سیاسی اور سماجی حقوق کے تحفظ کے لیے ایک علیحدہ سیاسی پلیٹ فارم ضروری ہے۔ 1913 میں جناح مسلم لیگ میں شامل ہو گئے اور جلد ہی لیگ کے اہم رہنما کے طور پر ابھرے۔
+
+دو قومی نظریہ اور قیامِ پاکستان کی بنیاد
+
+1920 کی دہائی میں جناح نے اس حقیقت کو تسلیم کیا کہ ہندوؤں اور مسلمانوں کے درمیان سیاسی اور ثقافتی اختلافات اس قدر گہرے ہیں کہ انہیں ایک ملک میں رہنے کا تصور غیر ممکن ہو گیا ہے۔ اس احساس کے ساتھ انہوں نے "دو قومی نظریہ" کو اپنایا، جس کے تحت یہ کہا گیا کہ ہندو اور مسلمان دو الگ قومیں ہیں، اور ان کے لیے علیحدہ وطن کی ضرورت ہے۔
+
+1930 میں علامہ اقبال کی تاریخی خطبہ الہ آباد میں پیش کی گئی تجویز کہ مسلمانوں کو شمال مغربی ہندوستان میں اپنا ایک خودمختار ریاست قائم کرنی چاہیے، جناح کے لیے ایک نقطہ آغاز تھا۔ انہوں نے اس نظریے کو عملی شکل دی اور آل انڈیا مسلم لیگ کے پلیٹ فارم سے "پاکستان" کا مطالبہ کیا۔
+
+قائداعظم کی حیثیت سے کردار
+
+1937 کے انتخابات کے بعد مسلم لیگ نے جناح کی قیادت میں اپنی سیاسی قوت کو مضبوط کیا۔ ان انتخابات میں جناح نے محسوس کیا کہ ہندو کانگریس مسلمانوں کے مفادات کی نمائندگی نہیں کر سکتی۔ اس کے بعد سے وہ پوری تندہی کے ساتھ مسلمانوں کے لیے ایک علیحدہ ملک کی تحریک چلانے میں مصروف ہو گئے۔
+
+1940 میں لاہور کے تاریخی اجلاس میں "قرارداد پاکستان" پیش کی گئی، جس میں واضح طور پر کہا گیا کہ ہندوستان کے مسلمان ایک علیحدہ قوم ہیں اور انہیں اپنے سیاسی حقوق کے تحفظ کے لیے ایک علیحدہ ریاست کی ضرورت ہے۔ جناح کی قیادت میں مسلم لیگ نے اس موقف کو پوری دنیا کے سامنے پیش کیا، اور برطانوی حکومت کے ساتھ مسلسل مذاکرات کے بعد 1947 میں پاکستان کا قیام ممکن ہوا۔
+
+قیام پاکستان اور جناح کا وژن
+
+14 اگست 1947 کو پاکستان کا قیام عمل میں آیا، اور محمد علی جناح کو پاکستان کا پہلا گورنر جنرل مقرر کیا گیا۔ جناح کا وژن ایک اسلامی جمہوری ریاست کا تھا، جہاں مسلمانوں کے ساتھ ساتھ غیر مسلم اقلیتوں کو بھی برابری کے حقوق حاصل ہوں۔
+
+انہوں نے اپنی تقاریر میں بارہا اس بات کا اعادہ کیا کہ پاکستان میں ہر مذہب کے پیروکار کو اپنی عبادت اور مذہبی رسوم کی آزادی حاصل ہوگی۔ جناح کا یہ کہنا تھا کہ: "آپ آزاد ہیں۔ آپ آزاد ہیں اپنے مندروں میں جانے کے لیے۔ آپ آزاد ہیں اپنی مساجد میں جانے کے لیے یا پاکستان کی ریاست میں کسی بھی اور عبادت گاہ میں جانے کے لیے۔" یہ قول جناح کے ان اعلیٰ اصولوں کی عکاسی کرتا ہے جن پر وہ پاکستان کو قائم کرنا چاہتے تھے۔
+
+زندگی کے آخری ایام
+
+پاکستان کا قیام جناح کے لیے ایک عظیم کامیابی تھا، لیکن یہ کامیابی ان کی صحت پر بھاری ثابت ہوئی۔ وہ طویل مدت سے ٹی بی کے مریض تھے، اور قیام پاکستان کے بعد مسلسل سیاسی دباؤ اور کام کے بوجھ نے ان کی صحت کو مزید بگاڑ دیا۔ 11 ستمبر 1948 کو قائداعظم محمد علی جناح کا انتقال ہو گیا۔
+
+ان کا انتقال پاکستان کے لیے ایک عظیم سانحہ تھا، لیکن ان کی جدوجہد اور قربانیوں نے انہیں ہمیشہ کے لیے پاکستانی قوم کے دلوں میں زندہ رکھا۔
+
+جناح کی شخصیت کے اہم پہلو
+
+محمد علی جناح کی شخصیت کے کئی پہلو ہیں جو انہیں ایک عظیم لیڈر بناتے ہیں:
+
+قانونی مہارت: جناح ایک نہایت کامیاب وکیل تھے، اور ان کی قانونی بصیرت نے انہیں ہندوستانی سیاست میں نمایاں مقام دلایا۔
+عزم اور استقامت: جناح کبھی بھی اپنے اصولوں سے پیچھے نہیں ہٹے اور ہمیشہ مسلمانوں کے حقوق کی حفاظت کے لیے ڈٹے رہے۔
+سیاسی بصیرت: جناح نے بروقت یہ پہچان لیا کہ ہندوستان کے مسلمانوں کے حقوق کا تحفظ علیحدہ ریاست کے قیام کے بغیر ممکن نہیں، اور انہوں نے اس مقصد کے لیے انتھک محنت کی۔
+غیر متعصبانہ رویہ: جناح ہمیشہ اس بات کے قائل رہے کہ پاکستان میں ہر مذہب اور فرقے کو برابر کا درجہ حاصل ہوگا، اور انہوں نے کبھی بھی فرقہ واریت کو فروغ نہیں دیا۔
+اختتام
+
+محمد علی جناح کی زندگی کا ہر پہلو عظمت، قربانی، اور اصول پسندی کی مثال ہے۔ وہ ایک ایسے رہنما تھے جنہوں نے نہ صرف برصغیر کے مسلمانوں کو سیاسی شعور دیا، بلکہ انہیں ایک علیحدہ وطن بھی فراہم کیا، جہاں وہ آزادی سے اپنی زندگی گزار سکیں۔ ان کی بے مثال قیادت اور جدوجہد نے انہیں تاریخ کا ایک عظیم رہنما بنا دیا، اور آج بھی ان کا نام احترام اور فخر کے ساتھ لیا جاتا ہے۔ جناح کا وژن اور ان کی تعلیمات پاکستان کے لیے ہمیشہ مشعل راہ رہیں گی، اور ان کی یاد ہمیشہ پاکستانی قوم کے دلوں میں زندہ رہے گی۔
+
+──────────────────────────────────────────────────────────────────────
+📄  Synthdog-RTL/template.py
+──────────────────────────────────────────────────────────────────────
+"""
+Donut
+Copyright (c) 2022-present NAVER Corp.
+MIT License
+"""
+import json
+import os
+import re
+from typing import Any, List
+
+import numpy as np
+from elements import Background, Document
+from PIL import Image
+from synthtiger import components, layers, templates
+from bidi.algorithm import get_display
+class SynthDoG(templates.Template):
+    def __init__(self, config=None, split_ratio: List[float] = [0.8, 0.1, 0.1]):
+        super().__init__(config)
+        if config is None:
+            config = {}
+
+        self.quality = config.get("quality", [50, 95])
+        self.landscape = config.get("landscape", 0.5)
+        self.short_size = config.get("short_size", [720, 1024])
+        self.aspect_ratio = config.get("aspect_ratio", [1, 2])
+        self.background = Background(config.get("background", {}))
+        self.document = Document(config.get("document", {}))
+        self.effect = components.Iterator(
+            [
+                components.Switch(components.RGB()),
+                components.Switch(components.Shadow()),
+                components.Switch(components.Contrast()),
+                components.Switch(components.Brightness()),
+                components.Switch(components.MotionBlur()),
+                components.Switch(components.GaussianBlur()),
+            ],
+            **config.get("effect", {}),
+        )
+        self.splits = ["train", "validation", "test"]
+        self.split_ratio = split_ratio
+        self.split_indexes = np.random.choice(3, size=10000, p=split_ratio)
+        self.rtl = config.get("rtl", False)  # Add RTL flag
+
+    def generate(self):
+        landscape = np.random.rand() < self.landscape
+        short_size = np.random.randint(self.short_size[0], self.short_size[1] + 1)
+        aspect_ratio = np.random.uniform(self.aspect_ratio[0], self.aspect_ratio[1])
+        long_size = int(short_size * aspect_ratio)
+        size = (long_size, short_size) if landscape else (short_size, long_size)
+
+        bg_layer = self.background.generate(size)
+        paper_layer, text_layers, texts = self.document.generate(size)
+
+        document_group = layers.Group([*text_layers, paper_layer])
+        document_space = np.clip(size - document_group.size, 0, None)
+        document_group.left = np.random.randint(document_space[0] + 1)
+        document_group.top = np.random.randint(document_space[1] + 1)
+
+        layer = layers.Group([*document_group.layers, bg_layer]).merge()
+        self.effect.apply([layer])
+
+        image = layer.output(bbox=[0, 0, *size])
+        label = " ".join(texts).strip()
+        quality = np.random.randint(self.quality[0], self.quality[1] + 1)
+
+        return {
+            "image": image,
+            "label": label,
+            "quality": quality,
+            "roi": np.array(paper_layer.quad, dtype=int),
+        }
+        
+    def init_save(self, root):
+        if not os.path.exists(root):
+            os.makedirs(root, exist_ok=True)
+
+    def save(self, root, data, idx):
+        image = data["image"]
+        label = data["label"]
+        quality = data["quality"]
+        roi = data["roi"]
+
+        # split
+        split_idx = self.split_indexes[idx % len(self.split_indexes)]
+        output_dirpath = os.path.join(root, self.splits[split_idx])
+
+        # save image
+        image_filename = f"image_{idx}.jpg"
+        image_filepath = os.path.join(output_dirpath, image_filename)
+        os.makedirs(os.path.dirname(image_filepath), exist_ok=True)
+        image = Image.fromarray(image[..., :3].astype(np.uint8))
+        image.save(image_filepath, quality=quality)
+
+        # save metadata (gt_json)
+        metadata_filename = "metadata.jsonl"
+        metadata_filepath = os.path.join(output_dirpath, metadata_filename)
+        os.makedirs(os.path.dirname(metadata_filepath), exist_ok=True)
+
+        metadata = self.format_metadata(image_filename=image_filename, keys=["text_sequence"], values=[label])
+        with open(metadata_filepath, "a") as fp:
+            json.dump(metadata, fp, ensure_ascii=False)
+            fp.write("\n")
+
+    def end_save(self, root):
+        pass
+
+    def format_metadata(self, image_filename: str, keys: List[str], values: List[Any]):
+        """
+        Fit gt_parse contents to huggingface dataset's format
+        keys and values, whose lengths are equal, are used to constrcut 'gt_parse' field in 'ground_truth' field
+        Args:
+            keys: List of task_name
+            values: List of actual gt data corresponding to each task_name
+        """
+        assert len(keys) == len(values), "Length does not match: keys({}), values({})".format(len(keys), len(values))
+
+        _gt_parse_v = dict()
+        for k, v in zip(keys, values):
+            _gt_parse_v[k] = v
+        gt_parse = {"gt_parse": _gt_parse_v}
+        gt_parse_str = json.dumps(gt_parse, ensure_ascii=False)
+        metadata = {"file_name": image_filename, "ground_truth": gt_parse_str}
+        return metadata

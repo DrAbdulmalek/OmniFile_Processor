@@ -1,0 +1,719 @@
+══════════════════════════════════════════════════════════════════════
+  مشروع: arabic-nougat.zip
+  التصدير: 2026-05-04 00:13:30
+  الملفات البرمجية: 6
+══════════════════════════════════════════════════════════════════════
+
+──────────────────────────────────────────────────────────────────────
+📄  arabic-nougat/README.md
+──────────────────────────────────────────────────────────────────────
+# Arabic-Nougat: Fine-Tuning Vision Transformers for Arabic OCR and Markdown Extraction
+
+<h4 align="center">
+
+<div align="center">
+<img src="https://img.shields.io/badge/Version-1.0.0-blue.svg" alt="Version"> 
+<img src="https://img.shields.io/badge/License-Apache%202.0-green.svg" alt="License">
+<img src="https://img.shields.io/github/stars/MohamedAliRashad/arabic-nougat?color=yellow" alt="Stars">
+<img src="https://img.shields.io/github/issues/MohamedAliRashad/arabic-nougat?color=red" alt="Issues">
+<img src="https://img.shields.io/badge/python-3.8-purple.svg" alt="Python">
+
+</h4>
+
+
+<div align="center">
+<!-- **Affiliations:** -->
+
+:octocat: [**Github**](https://github.com/MohamedAliRashad/arabic-nougat)  🤗  [**Hugging Face**](https://huggingface.co/collections/MohamedRashad/arabic-nougat-673a3f540bd92904c9b92a8e) 📝  [**Paper**](https://arxiv.org/abs/2411.17835) 🗂️  [**Data**](https://huggingface.co/datasets/MohamedRashad/arabic-img2md) 📽️  [**Demo**](https://huggingface.co/spaces/MohamedRashad/Arabic-Nougat)
+
+</div>
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/028a77b4-8ca3-4e21-a3f9-84b1999550e6" width="60%">
+</p>
+
+Arabic-Nougat is a suite of Optical Character Recognition (OCR) models designed to extract structured text in Markdown format from Arabic book pages. This repository provides tools for fine-tuning, evaluation, dataset preparation, and tokenizer analysis for the Arabic-Nougat models, which build on Meta’s Nougat architecture.
+
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Repository Structure](#repository-structure)
+- [Installation](#installation)
+- [Usage](#usage)
+  - [Evaluate Models](#evaluate-models)
+  - [Fine-Tune Models](#fine-tune-models)
+  - [Generate Synthetic PDFs and Markdown](#generate-synthetic-pdfs-and-markdown)
+  - [Tokenizer Analysis](#tokenizer-analysis)
+  - [Quick Test](#quick-test)
+- [Models](#models)
+- [Dataset](#dataset)
+- [License](#license)
+
+---
+
+## Overview
+
+Arabic-Nougat is tailored to process Arabic text, handling the unique challenges of the script, such as its cursive nature and contextual letter forms. It extends Meta’s Nougat OCR model with custom enhancements:
+- **Advanced Tokenization**: Includes the `Aranizer-PBE-86k` tokenizer, optimized for Arabic text.
+- **Extended Context Length**: Supports up to 8192 tokens, suitable for processing lengthy documents.
+- **Dataset**: Uses the synthetic `arabic-img2md` dataset, designed to train models for Markdown extraction.
+
+---
+
+## Features
+
+- Fine-tune the model on custom datasets.
+- Evaluate models using standard metrics like BLEU, CER, and WER.
+- Generate synthetic PDFs and Markdown from HTML for dataset creation.
+- Analyze tokenizer performance and efficiency.
+- Pretrained models: `arabic-small-nougat`, `arabic-base-nougat`, and `arabic-large-nougat`.
+
+---
+
+## Repository Structure
+
+```
+├── eval_model.py          # Evaluate Arabic-Nougat models
+├── finetune_nougat.py     # Fine-tune the Nougat model
+├── pdf_generation.py      # Generate synthetic PDFs and Markdown
+├── tokenizer_ratios.py    # Analyze tokenizer performance
+├── try_nougat.py          # Test the model on a sample image
+```
+
+---
+
+## Installation
+
+### Prerequisites
+1. Python 3.8 or higher.
+2. A machine with multiple GPUs for fine-tuning and evaluation.
+3. Install the required Python libraries:
+   ```bash
+   pip install transformers datasets evaluate weasyprint html2text pdf2image pillow tabulate bidi arabic-reshaper colorama filelock tqdm
+   ```
+
+4. Install system dependencies for `weasyprint`:
+   ```bash
+   sudo apt install libpango1.0-dev libpangocairo-1.0-0
+   ```
+
+5. Ensure that you have `huggingface-cli` installed and logged in:
+   ```bash
+   pip install huggingface-hub
+   huggingface-cli login
+   ```
+
+---
+
+## Usage
+
+### Evaluate Models
+
+Evaluate the performance of Arabic-Nougat models on a dataset
+```bash
+python eval_model.py
+```
+- Metrics calculated:
+  - BLEU
+  - Character Error Rate (CER)
+  - Word Error Rate (WER)
+  - Markdown Structure Accuracy (custom metric, check the paper to learn more)
+
+**Note:** Won't produce the same numbers present in the paper as the eval dataset is not open.
+
+### Fine-Tune Models
+
+Fine-tune the Nougat model on the `arabic-img2md` dataset:
+```bash
+accelerate launch --multi_gpu --num_processes 4 finetune_nougat.py
+```
+- Configurations:
+  - Context length: 8192 tokens.
+  - Data collators and efficient gradient accumulation.
+
+### Generate Synthetic PDFs and Markdown
+
+Create synthetic datasets from HTML content:
+```bash
+python pdf_generation.py
+```
+- Converts HTML to PDFs and Markdown for training datasets.
+- Configurable fonts, sizes, and page layouts for diversity.
+
+### Tokenizer Analysis
+
+Compare tokenization efficiency between different tokenizers:
+```bash
+python tokenizer_ratios.py
+```
+- Outputs the average tokenization ratio between models like `arabic-large-nougat` and `arabic-base-nougat`.
+
+### Quick Test
+
+Test the model on a sample image:
+```bash
+python try_nougat.py
+```
+- Input: Path to an image of a book page (there is a default value in the script).
+- Output: Extracted Markdown text.
+
+---
+
+## Models
+
+The following pretrained models are available:
+1. [arabic-small-nougat](https://huggingface.co/MohamedRashad/arabic-small-nougat)
+   - Fine-tuned from `facebook/nougat-small`.
+   - Smaller context length (2048 tokens).
+2. [arabic-base-nougat](https://huggingface.co/MohamedRashad/arabic-base-nougat)
+   - Fine-tuned from `facebook/nougat-base`.
+   - Context length: 4096 tokens.
+3. [arabic-large-nougat](https://huggingface.co/MohamedRashad/arabic-large-nougat)
+   - Built with `Aranizer-PBE-86k` tokenizer.
+   - Extended context length: 8192 tokens.
+
+Access the models on [Hugging Face](https://huggingface.co/collections/MohamedRashad/arabic-nougat-673a3f540bd92904c9b92a8e).
+
+---
+
+## Dataset
+
+### Arabic-Img2MD
+- A synthetic dataset of 13.7k samples containing:
+  - **Input**: Images of Arabic book pages.
+  - **Output**: Corresponding Markdown text.
+
+Dataset available on [Hugging Face](https://huggingface.co/datasets/MohamedRashad/arabic-img2md).
+
+---
+
+## License
+
+This project is released under the [Creative Commons Attribution-ShareAlike (CC BY-SA)](https://creativecommons.org/licenses/by-sa/4.0/) license. Feel free to use, share, and adapt the work, provided proper attribution is given and adaptations are shared under the same terms.
+
+──────────────────────────────────────────────────────────────────────
+📄  arabic-nougat/eval_model.py
+──────────────────────────────────────────────────────────────────────
+# Requires a machine with multiple GPUs to run efficiently
+
+from transformers import NougatProcessor, VisionEncoderDecoderModel
+import torch
+from datasets import load_dataset, Dataset, features
+from pathlib import Path
+from tqdm import tqdm
+import evaluate
+import re
+from tabulate import tabulate
+
+models_supported = {
+    "nougat-small": [
+        NougatProcessor.from_pretrained("facebook/nougat-small"),
+        VisionEncoderDecoderModel.from_pretrained("facebook/nougat-small").to("cuda"),
+    ],
+    "nougat-base": [
+        NougatProcessor.from_pretrained("facebook/nougat-base"),
+        VisionEncoderDecoderModel.from_pretrained("facebook/nougat-base").to("cuda"),
+    ],
+    "arabic-small-nougat": [
+        NougatProcessor.from_pretrained("MohamedRashad/arabic-small-nougat"),
+        VisionEncoderDecoderModel.from_pretrained("MohamedRashad/arabic-small-nougat").to("cuda"),
+    ],
+    "arabic-base-nougat": [
+        NougatProcessor.from_pretrained("MohamedRashad/arabic-base-nougat"),
+        VisionEncoderDecoderModel.from_pretrained(
+            "MohamedRashad/arabic-base-nougat",
+            torch_dtype=torch.bfloat16,
+            attn_implementation={"decoder": "flash_attention_2", "encoder": "eager"},
+        ).to("cuda"),
+    ],
+    "arabic-large-nougat": [
+        NougatProcessor.from_pretrained("MohamedRashad/arabic-large-nougat"),
+        VisionEncoderDecoderModel.from_pretrained(
+            "MohamedRashad/arabic-large-nougat",
+            torch_dtype=torch.bfloat16,
+            attn_implementation={"decoder": "flash_attention_2", "encoder": "eager"},
+        ).to("cuda"),
+    ],
+}
+
+
+# Load dataset
+test_dataset = load_dataset("MohamedRashad/arabic-img2md")
+test_dataset = test_dataset.shuffle(seed=42).select(range(100 * 16))
+
+def process_batch(batch, model_name):
+    processor = models_supported[model_name][0]
+    model = models_supported[model_name][1]
+    context_length = model.decoder.config.max_position_embeddings
+
+    pixel_values = processor(batch['image'], return_tensors="pt").pixel_values.to(model.dtype).to(model.device)
+    with torch.no_grad():
+        generated_ids = model.generate(pixel_values, max_new_tokens=context_length, bad_words_ids=[[processor.tokenizer.unk_token_id]], repetition_penalty=1.5)
+    predictions = processor.batch_decode(generated_ids, skip_special_tokens=True)
+    return predictions
+
+# Generate predictions
+results = []
+for model_name in models_supported.keys():
+    batch_size = 16  # Increase batch size to utilize all GPUs
+    predictions = []
+    references = []
+    for i in tqdm(range(0, len(test_dataset), batch_size)):
+        batch = test_dataset[i:i+batch_size]
+        predictions.extend(process_batch(batch, model_name))
+        references.extend(batch['markdown'])
+
+    # Calculate metrics
+    bleu = evaluate.load("bleu")
+    cer = evaluate.load("cer")
+    wer = evaluate.load("wer")
+
+    bleu_score = bleu.compute(predictions=predictions, references=[[r] for r in references])['bleu']
+    cer_score = cer.compute(predictions=predictions, references=references)
+    wer_score = wer.compute(predictions=predictions, references=references)
+
+    # Calculate exact match accuracy
+    exact_matches = sum(pred == ref for pred, ref in zip(predictions, references))
+    exact_match_accuracy = exact_matches / len(predictions)
+
+    # Markdown structure accuracy
+    def markdown_structure_accuracy(pred, ref):
+        # Simple function to compare basic markdown elements
+        pred_headers = len(re.findall(r'^#+\s', pred, re.MULTILINE))
+        ref_headers = len(re.findall(r'^#+\s', ref, re.MULTILINE))
+        pred_lists = len(re.findall(r'^\s*[-*+]\s', pred, re.MULTILINE))
+        ref_lists = len(re.findall(r'^\s*[-*+]\s', ref, re.MULTILINE))
+        
+        header_accuracy = 1 - abs(pred_headers - ref_headers) / max(ref_headers, 1)
+        list_accuracy = 1 - abs(pred_lists - ref_lists) / max(ref_lists, 1)
+        
+        return (header_accuracy + list_accuracy) / 2
+
+    structure_scores = [markdown_structure_accuracy(p, r) for p, r in zip(predictions, references)]
+    avg_structure_score = sum(structure_scores) / len(structure_scores)
+
+    # # Optional: Weighted Composite Score
+    # composite_score = (
+    #     0.25 * bleu_score +
+    #     0.25 * (1 - cer_score) +  # CER is better when lower
+    #     0.25 * (1 - wer_score) +  # WER is better when lower
+    #     0.15 * exact_match_accuracy +
+    #     0.10 * avg_structure_score
+    # )
+
+    # Inside your model loop, replace the print statements with:
+    model_results = {
+        "Model": model_name,
+        "BLEU Score": f"{bleu_score:.4f}",
+        "CER": f"{cer_score:.4f}",
+        "WER": f"{wer_score:.4f}",
+        # "Exact Match": f"{exact_match_accuracy:.4f}",
+        "Structure Accuracy": f"{avg_structure_score:.4f}",
+        # "Composite Score": f"{composite_score:.4f}"
+    }
+    results.append(model_results)
+
+# After the model loop, print the combined table:
+headers = list(results[0].keys())
+table_data = [[result[col] for col in headers] for result in results]
+print("\nComparative Results:")
+print(tabulate(table_data, headers=headers, tablefmt="grid"))
+print()
+
+──────────────────────────────────────────────────────────────────────
+📄  arabic-nougat/finetune_nougat.py
+──────────────────────────────────────────────────────────────────────
+# This script is used to fine-tune the Nougat model on the Arabic image to markdown dataset.
+# The dataset is loaded using the datasets library and split into training and testing datasets.
+# The model is then fine-tuned using the Seq2SeqTrainer class.
+# The model is saved after training.
+# The script will benefit from a machine with multiple GPUs to run efficiently.
+
+from transformers import (
+    NougatProcessor,
+    VisionEncoderDecoderModel,
+    Seq2SeqTrainingArguments,
+    Seq2SeqTrainer,
+    EarlyStoppingCallback,
+)
+from datasets import load_dataset
+import torch
+from pathlib import Path
+from PIL import Image
+
+Image.MAX_IMAGE_PIXELS = None
+import warnings
+
+warnings.filterwarnings("ignore")
+
+# accelerate launch --multi_gpu --num_processes 4 finetune_nougat.py
+
+processor = NougatProcessor.from_pretrained("facebook/nougat-base")
+model = VisionEncoderDecoderModel.from_pretrained(
+    "facebook/nougat-base",
+    torch_dtype=torch.bfloat16,
+    attn_implementation={"decoder": "flash_attention_2", "encoder": "eager"},
+)
+context_length = model.decoder.config.max_position_embeddings
+torch_dtype = model.dtype
+print(f"Context length: {context_length}")
+print(f"Model dtype: {torch_dtype}")
+print(model.decoder)
+
+# Measure model size and number of parameters
+model_size = sum(p.numel() for p in model.parameters()) / 1e9
+print(f"Model size: {model_size}")
+
+dataset = load_dataset("MohamedRashad/arabic-img2md")
+dataset = dataset.train_test_split(test_size=0.1)
+print(dataset)
+
+
+class DataCollatorVisionSeq2SeqWithPadding:
+    def __init__(self, processor):
+        self.processor = processor
+
+    def __call__(self, samples):
+        batch = {}
+        pil_images = [sample["image"] for sample in samples]
+        batch["pixel_values"] = self.processor.image_processor(
+            pil_images, return_tensors="pt"
+        ).pixel_values.to(torch_dtype)
+
+        markdowns = [sample["markdown"] for sample in samples]
+        tokenized_inputs = self.processor.tokenizer(
+            markdowns,
+            return_tensors="pt",
+            padding="max_length",
+            max_length=context_length,
+            truncation=True,
+        )
+
+        labels = tokenized_inputs["input_ids"]
+        labels[labels == self.processor.tokenizer.pad_token_id] = -100
+
+        batch["labels"] = labels
+        batch["decoder_attention_mask"] = tokenized_inputs["attention_mask"]
+
+        return batch
+
+
+data_collator = DataCollatorVisionSeq2SeqWithPadding(processor)
+model.config.decoder_start_token_id = processor.tokenizer.bos_token_id
+model.config.pad_token_id = processor.tokenizer.pad_token_id
+
+training_args = Seq2SeqTrainingArguments(
+    output_dir=str(Path(__file__).parent / "arabic_base_nougat_logs"),
+    num_train_epochs=100,
+    predict_with_generate=True,
+    eval_strategy="steps",
+    save_strategy="steps",
+    learning_rate=1e-4,
+    report_to="none",
+    save_steps=100,
+    eval_steps=100,
+    gradient_checkpointing=True,  # Great for memory saving
+    gradient_checkpointing_kwargs={"use_reentrant": False},  # To remove the warning
+    per_device_train_batch_size=3,
+    gradient_accumulation_steps=6,
+    per_device_eval_batch_size=3,
+    overwrite_output_dir=True,
+    save_total_limit=1,
+    bf16=True,
+    logging_steps=5,
+    dataloader_num_workers=8,  # Use multiple processes for data loading
+    dataloader_pin_memory=True,
+    load_best_model_at_end=True,
+    metric_for_best_model="eval_loss",
+    ddp_find_unused_parameters=False,  # Don't know what this does
+    remove_unused_columns=False,  # Gave me warnings so I set it to False
+)
+
+trainer = Seq2SeqTrainer(
+    model=model,
+    tokenizer=processor.image_processor,
+    args=training_args,
+    train_dataset=dataset["train"],
+    eval_dataset=dataset["test"],
+    data_collator=data_collator,
+    callbacks=[EarlyStoppingCallback(early_stopping_patience=3)],
+)
+
+# Train the model
+trainer.train(resume_from_checkpoint=False)
+
+# Save model
+trainer.save_model(str(Path(__file__).parent / "arabic-base-nougat3"))
+processor.save_pretrained(str(Path(__file__).parent / "arabic-base-nougat3"))
+print("Model saved!")
+
+──────────────────────────────────────────────────────────────────────
+📄  arabic-nougat/pdf_generation.py
+──────────────────────────────────────────────────────────────────────
+from datasets import load_dataset
+import multiprocessing
+from bs4 import BeautifulSoup
+import weasyprint
+import html2text
+from pathlib import Path
+import random
+import pandas as pd
+import shutil
+from tqdm.auto import tqdm
+from pdf2image import convert_from_bytes
+from transformers import AutoTokenizer
+import csv
+from filelock import FileLock
+import os
+import io
+from colorama import Fore
+
+def remove_lock_file(file_path):
+    lock_file = f"{file_path}.lock"
+    if os.path.exists(lock_file):
+        os.remove(lock_file)
+
+def html_to_markdown(html_content):
+    soup = BeautifulSoup(html_content, 'lxml')
+    
+    tag_to_token = {'img': '[IMAGE]'}
+    tags_to_ignore = ['svg', 'defs', 'g', 'symbol', 'path', 'use', 'eqsvg', 
+                      'svg:svg', 'svg:metadata', 'svg:defs', 'svg:g', 'svg:path']
+
+    for tag in soup.find_all(list(tag_to_token.keys()) + tags_to_ignore):
+        if tag.name in tag_to_token:
+            tag.replace_with(tag_to_token[tag.name])
+        else:
+            tag.decompose()
+
+    h = html2text.HTML2Text()
+    h.ignore_links = True
+    h.ignore_emphasis = True
+    h.body_width = 0
+    
+    return h.handle(str(soup))
+
+def process_html(args):
+    idx, html_content = args
+
+    soup = BeautifulSoup(html_content, 'lxml')
+    all_elements = soup.find_all(recursive=True)
+    num_elements = int(0.2*len(all_elements))
+    all_elements = random.sample(all_elements, num_elements)
+
+    for jdx, element in enumerate(all_elements):
+        random_width, random_height = random.choice(available_target_size)
+        if random.random() < 0.05:
+            random_width, random_height = random_height, random_width
+        
+        html_to_render = html_text.format(
+            html_content_ar=str(element),
+            font=random.choice(available_fonts),
+            font_size=random.choice(available_font_sizes),
+            font_weight=random.choice(available_font_weights),
+            width=random_width,
+            height=random_height,
+            num_columns = 2 if random.random() < 0.05 else 1
+        )
+        
+        try:
+            html = weasyprint.HTML(string=html_to_render)
+            document = html.render()
+        except ZeroDivisionError as e:
+            print(f"Error processing HTML at index {idx}, skipping...")
+            continue
+
+        if len(document.pages) > 1:
+            # print(f"Document has more than one page, skipping...")
+            continue
+
+        # Instead of writing to disk, we'll use BytesIO
+        pdf_bytes = io.BytesIO()
+        document.write_pdf(pdf_bytes)
+        pdf_bytes.seek(0)
+
+        markdown = html_to_markdown(str(element)).strip()
+        num_tokens = len(tokenizer.tokenize(markdown, add_special_tokens=False))
+        if num_tokens > 8192 or num_tokens < 1024:
+            # print(f"Markdown content is too short, skipping...")
+            continue
+
+        # Convert PDF bytes to image
+        images = convert_from_bytes(pdf_bytes.getvalue())
+        image_path = dataset_output_path / f"{str(idx).zfill(5)}_{jdx}.png"
+        images[0].save(image_path, 'PNG')
+
+        # Append to metadata.csv with lock
+        metadata = [image_path.name, markdown]
+        with FileLock(f"{metadata_file}.lock"):
+            with open(metadata_file, "a", newline='', encoding='utf-8') as f:
+                csv_writer = csv.writer(f)
+                csv_writer.writerow(metadata)
+
+    print(f"Processed book number {Fore.GREEN}{idx}{Fore.RESET}")
+
+if __name__ == "__main__":
+    tokenizer = AutoTokenizer.from_pretrained("MohamedRashad/arabic-large-nougat")
+    # tokenizer = AutoTokenizer.from_pretrained("facebook/nougat-base")
+
+    available_target_size = [
+        (672, 896),   # Base Nougat model size
+        (595, 842),   # A4 (most common for Arabic books)
+        (612, 792),   # US Letter
+        (516, 729),   # B5 (common for books)
+        (672, 896),   # Base Nougat model size
+    ]
+    available_fonts = [
+        "Amiri",              # Very common in academic books
+        "Noto Naskh Arabic",  # Excellent readability
+        "Cairo",             # Modern and clear
+        "IBM Plex Sans Arabic", # Professional looking
+        "Almarai",           # Clear and modern
+        "Tajawal",           # Good readability
+        "Noto Kufi Arabic",  # Good for headers
+    ]
+
+    available_font_sizes = [14, 16, 18, 20]  # More reasonable sizes for Arabic text
+    available_font_weights = [400, 500, 600]  # Reduced weights for better clarity
+    dataset_output_path = Path(__file__).parent / "hindawi_dataset_eval"
+    if dataset_output_path.exists():
+        shutil.rmtree(dataset_output_path)
+    dataset_output_path.mkdir(exist_ok=True)
+
+    metadata_file = dataset_output_path / "metadata.csv"
+
+    # Write CSV header
+    with open(metadata_file, "w", newline='', encoding='utf-8') as f:
+        csv_writer = csv.writer(f)
+        csv_writer.writerow(["file_name", "markdown"])
+
+    html_text = """<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {{
+            font-family: '{font}', sans-serif;
+            font-size: {font_size}px;
+            column-count: {num_columns};
+            column-gap: 20px;
+            column-fill: auto;
+            height: 100%;
+            line-height: 1.6;
+        }}
+        h1 {{
+            column-span: all;
+            page-break-before: avoid;
+            page-break-after: avoid;
+            margin-bottom: 12px;
+        }}
+        p {{
+            text-align: justify;
+            page-break-inside: avoid;
+            margin-bottom: 12px;
+        }}
+        .center {{
+            text-align: center;
+        }}
+        .align_left {{
+            text-align: left;
+        }}
+        .no-page-break {{
+            page-break-inside: avoid;
+        }}
+        @page {{
+            size: {width}px {height}px;
+            margin: 1in;
+        }}
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family={font}:wght@{font_weight}&display=swap" rel="stylesheet">
+</head>
+
+<body>
+{html_content_ar}
+</body>
+</html>
+"""
+
+    # Login using e.g. `huggingface-cli login` to access this dataset
+    ds = load_dataset("MohamedRashad/hindawi-dataset", split="train")
+    df = pd.DataFrame(ds)
+    df = df.sample(10)
+    print(f"Total records: {len(df)}")
+
+    # Use multiprocessing to parallelize the processing with a progress bar
+    with multiprocessing.Pool(128) as pool:
+        list(tqdm(pool.imap(process_html, enumerate(df["html_content"])), total=len(df)))
+
+    # Remove lock file
+    remove_lock_file(metadata_file)
+    
+    print("Processing complete!")
+
+──────────────────────────────────────────────────────────────────────
+📄  arabic-nougat/tokenizer_ratios.py
+──────────────────────────────────────────────────────────────────────
+from transformers import AutoTokenizer
+from datasets import load_dataset
+from pathlib import Path
+
+tokenizer1 = AutoTokenizer.from_pretrained("MohamedRashad/arabic-large-nougat")
+tokenizer2 = AutoTokenizer.from_pretrained("MohamedRashad/arabic-base-nougat")
+
+dataset_path1 = Path(__file__).parent / "hindawi_dataset_large"
+dataset = load_dataset("imagefolder", data_dir=dataset_path1, split="train")
+prompts = dataset["markdown"][:5000]
+
+ratios = []
+for prompt in prompts:
+    tokens1 = tokenizer1.tokenize(prompt)
+    tokens2 = tokenizer2.tokenize(prompt)
+    ratios += [len(tokens2) / len(tokens1)]
+    
+print(sum(ratios) / len(ratios))
+
+──────────────────────────────────────────────────────────────────────
+📄  arabic-nougat/try_nougat.py
+──────────────────────────────────────────────────────────────────────
+# Usage: python try_nougat.py
+# To try the model on a sample image
+# Make sure you are on tha latest version of transformers
+
+from PIL import Image
+import torch
+from transformers import NougatProcessor, VisionEncoderDecoderModel
+from pathlib import Path
+from bidi.algorithm import get_display
+import arabic_reshaper
+
+# Load the model and processor
+processor = NougatProcessor.from_pretrained("MohamedRashad/arabic-large-nougat")
+model = VisionEncoderDecoderModel.from_pretrained("MohamedRashad/arabic-large-nougat", torch_dtype=torch.bfloat16, attn_implementation={"decoder": "flash_attention_2", "encoder": "eager"})
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+model.to(device)
+
+context_length = 8192
+
+def predict(img_path):
+    # prepare PDF image for the model
+    image = Image.open(img_path)
+    pixel_values = processor(image, return_tensors="pt").pixel_values.to(torch.bfloat16)
+
+    # generate transcription
+    outputs = model.generate(
+        pixel_values.to(device),
+        min_length=1,
+        max_new_tokens=context_length,
+        repetition_penalty=1.5,
+        bad_words_ids=[[processor.tokenizer.unk_token_id]],
+        eos_token_id=processor.tokenizer.eos_token_id,
+    )
+
+    page_sequence = processor.batch_decode(outputs, skip_special_tokens=True)[0]
+    page_sequence = get_display(arabic_reshaper.reshape(page_sequence))
+    return page_sequence
+
+print(predict(Path(__file__).parent / "book_page.jpeg"))

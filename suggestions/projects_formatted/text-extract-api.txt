@@ -1,0 +1,3919 @@
+══════════════════════════════════════════════════════════════════════
+  مشروع: text-extract-api.zip
+  التصدير: 2026-05-04 00:13:30
+  الملفات البرمجية: 52
+══════════════════════════════════════════════════════════════════════
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/.vscode/settings.json
+──────────────────────────────────────────────────────────────────────
+{
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/*.egg-info": true
+    }
+}
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/README.md
+──────────────────────────────────────────────────────────────────────
+# text-extract-api
+
+Convert any image, PDF or Office document to Markdown *text* or JSON structured document with super-high accuracy, including tabular data, numbers or math formulas.
+
+The API is built with FastAPI and uses Celery for asynchronous task processing. Redis is used for caching OCR results.
+
+![hero doc extract](ocr-hero.webp)
+
+## Features:
+- **No Cloud/external dependencies** all you need: PyTorch based OCR (EasyOCR) + Ollama are shipped and configured via `docker-compose` no data is sent outside your dev/server environment,
+- **PDF/Office to Markdown** conversion with very high accuracy using different OCR strategies including [llama3.2-vision](https://ai.meta.com/blog/llama-3-2-connect-2024-vision-edge-mobile-devices/), [easyOCR](https://github.com/JaidedAI/EasyOCR), [minicpm-v](https://github.com/OpenBMB/MiniCPM-o?tab=readme-ov-file#minicpm-v-26), remote URL strategies including [marker-pdf](https://github.com/VikParuchuri/marker)
+- **PDF/Office to JSON** conversion using Ollama supported models (eg. LLama 3.1)
+- **LLM Improving OCR results** LLama is pretty good with fixing spelling and text issues in the OCR text
+- **Removing PII** This tool can be used for removing Personally Identifiable Information out of document - see `examples`
+- **Distributed queue processing** using [Celery](https://docs.celeryq.dev/en/stable/getting-started/introduction.html)
+- **Caching** using Redis - the OCR results can be easily cached prior to LLM processing,
+- **Storage Strategies** switchable storage strategies (Google Drive, Local File System ...)
+- **CLI tool** for sending tasks and processing results 
+
+## Screenshots
+
+Converting MRI report to Markdown + JSON.
+
+```bash 
+python client/cli.py ocr_upload --file examples/example-mri.pdf --prompt_file examples/example-mri-2-json-prompt.txt
+```
+
+Before running the example see [getting started](#getting-started)
+
+![Converting MRI report to Markdown](./screenshots/example-1.png)
+
+Converting Invoice to JSON and remove PII
+
+```bash 
+python client/cli.py ocr_upload --file examples/example-invoice.pdf --prompt_file examples/example-invoice-remove-pii.txt 
+```
+
+Before running the example see [getting started](#getting-started)
+
+![Converting Invoice to JSON](./screenshots/example-2.png)
+
+## Getting started
+
+You might want to run the app directly on your machine for development purposes OR to use for example Apple GPUs (which are not supported by Docker at the moment).
+
+### Prerequisites
+
+To have it up and running please execute the following steps:
+
+[Download and install Ollama](https://ollama.com/download)
+[Download and install Docker](https://www.docker.com/products/docker-desktop/)
+
+
+> ### Setting Up Ollama on a Remote Host
+> 
+> To connect to an external Ollama instance, set the environment variable: `OLLAMA_HOST=http://address:port`, e.g.:
+> ```bash
+> OLLAMA_HOST=http(s)://127.0.0.1:5000
+> ```
+> 
+> If you want to disable the local Ollama model, use env `DISABLE_LOCAL_OLLAMA=1`, e.g.
+> ```bash
+> DISABLE_LOCAL_OLLAMA=1 make install
+> ```
+> **Note**: When local Ollama is disabled, ensure the required model is downloaded on the external instance.  
+> 
+> Currently, the `DISABLE_LOCAL_OLLAMA` variable cannot be used to disable Ollama in Docker. As a workaround, remove the `ollama` service from `docker-compose.yml` or `docker-compose.gpu.yml`.  
+>
+> Support for using the variable in Docker environments will be added in a future release.
+
+
+### Clone the Repository
+
+First, clone the repository and change current directory to it:
+
+```sh
+git clone https://github.com/CatchTheTornado/text-extract-api.git
+cd text-extract-api
+```
+
+### Setup with `Makefile`
+
+Be default application create [virtual python env](https://docs.python.org/3/library/venv.html): `.venv`. You can disable this functionality on local setup by adding `DISABLE_VENV=1` before running script:
+
+```bash
+DISABLE_VENV=1 make install 
+```
+
+```bash
+DISABLE_VENV=1 make run 
+```
+
+### Manual setup
+
+Configure environment variables:
+
+```bash
+cp .env.localhost.example .env.localhost
+```
+
+You might want to just use the defaults - should be fine. After ENV variables are set, just execute:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+chmod +x run.sh
+run.sh
+```
+
+This command will install all the dependencies - including Redis (via Docker, so it is not entirely docker free method of running `text-extract-api` anyways :)
+
+(MAC) - Dependencies
+```
+brew update && brew install libmagic poppler pkg-config ghostscript ffmpeg automake autoconf
+```
+
+(Mac) - You need to startup the celery worker
+```
+source .venv/bin/activate && celery -A text_extract_api.celery_app worker --loglevel=info --pool=solo
+```
+
+Then you're good to go with running some CLI commands like:
+
+```bash
+python client/cli.py ocr_upload --file examples/example-mri.pdf --ocr_cache --prompt_file=examples/example-mri-remove-pii.txt
+```
+
+### Scaling the parallell processing
+
+To have multiple tasks running at once - for concurrent processing please run the following command to start single worker process:
+
+```bash
+celery -A text_extract_api.tasks worker --loglevel=info --pool=solo & # to scale by concurrent processing please run this line as many times as many concurrent processess you want to have running
+```
+
+
+## Join us on Discord
+
+In case of any questions, help requests or just feedback - please [join us on Discord](https://discord.gg/NJzu47Ye3a)!
+
+
+## Text extract strategies
+
+### `easyocr`
+
+Easy OCR is available on Apache based license. It's general purpose OCR with support for more than 30 languages, probably with the best performance for English.
+
+Enabled by default. Please do use the `strategy=easyocr` CLI and URL parameters to use it.
+
+
+### `minicpm-v` 
+
+MiniCPM-V is an Apache based licensed OCR strategy.
+
+The usage of MiniCPM-o/V model weights must strictly follow [MiniCPM Model License.md](https://github.com/OpenBMB/MiniCPM/blob/main/MiniCPM%20Model%20License.md).
+
+The models and weights of MiniCPM are completely free for academic research. After filling out a ["questionnaire"](https://modelbest.feishu.cn/share/base/form/shrcnpV5ZT9EJ6xYjh3Kx0J6v8g) for registration, are also available for free commercial use.
+
+Enabled by default. Please do use the `strategy=minicpm_v` CLI and URL parameters to use it.
+
+| ⚠️ **Remember to pull the model in Ollama first**       |
+|---------------------------------------------------------|
+| You need to pull the model in Ollama - use the command: |
+| `python client/cli.py llm_pull --model minicpm-v`       |
+| Or, if you have Ollama locally: `ollama pull minicpm-v` |
+
+
+
+### `llama_vision` 
+
+LLama 3.2 Vision Strategy is licensed on [Meta Community License Agreement](https://ollama.com/library/llama3.2-vision/blobs/0b4284c1f870). Works great for many languages, although due to the number of parameters (90b) this model is probably **the slowest** one.
+
+Enabled by default. Please do use the `strategy=llama_vision` CLI and URL parameters to use it. It's by the way the default strategy
+
+
+### `remote`
+
+Some OCR's - like [Marker, state of the art PDF OCR](https://github.com/VikParuchuri/marker) - works really great for more than 50 languages, including great accuracy for Polish and other languages - let's say that are "diffult" to read for standard OCR.
+
+The `marker-pdf` is however licensed on GPL3 license and **therefore it's not included** by default in this application (as we're bound to MIT). 
+
+The weights for the models are licensed cc-by-nc-sa-4.0, but I will waive that for any organization under $5M USD in gross revenue in the most recent 12-month period AND under $5M in lifetime VC/angel funding raised. You also must not be competitive with the Datalab API. If you want to remove the GPL license requirements (dual-license) and/or use the weights commercially over the revenue limit, check out the options here.
+
+To have it up and running you can execute the following steps:
+
+```bash
+mkdir marker-distribution # this should be outside of the `text-extract-api` folder!
+cd marker-distribution
+pip install marker-pdf
+pip install -U uvicorn fastapi python-multipart
+marker_server --port 8002
+```
+
+Set the Remote API Url:
+
+**Note: *** you might run `marker_server` on different port or server - then just make sure you export a proper env setting beffore starting off `text-extract-api` server:
+
+```bash
+export REMOTE_API_URL=http://localhost:8002/marker/upload
+```
+
+**Note: *** the URL might be also set via `/config/strategies.yaml` file
+
+Run the `text-extract-api`:
+
+```bash
+make run
+```
+
+Please do use the `strategy=remote` CLI and URL parameters to use it. For example:
+
+```bash
+curl -X POST -H "Content-Type: multipart/form-data" -F "file=@examples/example-mri.pdf" -F "strategy=remote" -F "ocr_cache=true" -F "prompt=" -F "model=" "http://localhost:8000/ocr/upload" 
+```
+
+We are connecting to remote OCR via it's API to not share the same license (GPL3) by having it all linked on the source code level.
+
+## Getting started with Docker
+
+### Prerequisites
+
+- Docker
+- Docker Compose
+
+### Clone the Repository
+
+```sh
+git clone https://github.com/CatchTheTornado/text-extract-api.git
+cd text-extract-api
+```
+
+### Using `Makefile`
+You can use the `make install` and `make run` commands to set up the Docker environment for `text-extract-api`. You can find the manual steps required to do so described below.
+
+
+### Manual setup
+
+Create `.env` file in the root directory and set the necessary environment variables. You can use the `.env.example` file as a template:
+
+```bash
+# defaults for docker instances
+cp .env.example .env
+```
+
+or 
+
+```bash
+# defaults for local run
+cp .env.example.localhost .env
+```
+
+Then modify the variables inside the file:
+
+```bash
+#APP_ENV=production # sets the app into prod mode, otherwise dev mode with auto-reload on code changes
+REDIS_CACHE_URL=redis://localhost:6379/1
+STORAGE_PROFILE_PATH=./storage_profiles
+LLAMA_VISION_PROMPT="You are OCR. Convert image to markdown."
+
+# CLI settings
+OCR_URL=http://localhost:8000/ocr/upload
+OCR_UPLOAD_URL=http://localhost:8000/ocr/upload
+OCR_REQUEST_URL=http://localhost:8000/ocr/request
+RESULT_URL=http://localhost:8000/ocr/result/
+CLEAR_CACHE_URL=http://localhost:8000/ocr/clear_cache
+LLM_PULL_API_URL=http://localhost:8000/llm_pull
+LLM_GENERATE_API_URL=http://localhost:8000/llm_generate
+
+CELERY_BROKER_URL=redis://localhost:6379/0
+CELERY_RESULT_BACKEND=redis://localhost:6379/0
+OLLAMA_HOST=http://localhost:11434
+APP_ENV=development  # Default to development mode
+```
+
+
+**Note:** In order to properly save the output files, you might need to modify `storage_profiles/default.yaml` to change the default storage path according to the volumes path defined in the `docker-compose.yml`
+
+### Build and Run the Docker Containers
+
+Build and run the Docker containers using Docker Compose:
+
+```bash
+docker-compose up --build
+```
+
+... for GPU support run:
+
+```bash
+docker-compose -f docker-compose.gpu.yml -p text-extract-api-gpu up --build
+```
+
+**Note:** While on Mac - Docker does not support Apple GPUs. In this case you might want to run the application natively without the Docker Compose please check [how to run it natively with GPU support](#getting-started)
+
+
+This will start the following services:
+ - **FastAPI App**: Runs the FastAPI application.
+ - **Celery Worker**: Processes asynchronous OCR tasks.
+ - **Redis**: Caches OCR results.
+ - **Ollama**: Runs the Ollama model.
+
+## Cloud - paid edition
+
+If the on-prem is too much hassle [ask us about the hosted/cloud edition](mailto:info@catchthetornado.com?subject=text-extract-api%20but%20hosted) of text-extract-api, we can setup it you, billed just for the usage.
+
+## CLI tool
+
+**Note**: While on Mac, you may need to create a virtual Python environment first:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+# now you've got access to `python` and `pip` within your virutal env.
+pip install -e . # install main project requirements
+```
+
+
+The project includes a CLI for interacting with the API. To make it work, first run:
+
+```bash
+cd client
+pip install -e .
+```
+
+
+### Pull the LLama3.1 and LLama3.2-vision models
+
+You might want to test out [different models supported by LLama](https://ollama.com/library)
+
+```bash
+python client/cli.py llm_pull --model llama3.1
+python client/cli.py llm_pull --model llama3.2-vision
+```
+
+These models are required for most features supported by `text-extract-api`.
+
+
+### Upload a File for OCR (converting to Markdown)
+
+```bash
+python client/cli.py ocr_upload --file examples/example-mri.pdf --ocr_cache
+```
+
+or alternatively
+
+```bash
+python client/cli.py ocr_request --file examples/example-mri.pdf --ocr_cache
+```
+
+The difference is just that the first call uses `ocr/upload` - multipart form data upload, and the second one is a request to `ocr/request` sending the file via base64 encoded JSON property - probable a better suit for smaller files.
+
+
+### Upload a File for OCR (processing by LLM)
+
+**Important note:** To use LLM you must first run the **llm_pull** to get the specific model required by your requests.
+
+For example, you must run:
+
+```bash
+python client/cli.py llm_pull --model llama3.1
+python client/cli.py llm_pull --model llama3.2-vision
+```
+
+and only after to run this specific prompt query:
+
+```bash
+python client/cli.py ocr_upload --file examples/example-mri.pdf --ocr_cache --prompt_file=examples/example-mri-remove-pii.txt --language en
+```
+
+**Note:** The language argument is used for the OCR strategy to load the model weights for the selected language. You can specify multiple languages as a list: `en,de,pl` etc.
+
+The `ocr` command can store the results using the `storage_profiles`:
+  - **storage_profile**: Used to save the result - the `default` profile (`./storage_profiles/default.yaml`) is used by default; if empty file is not saved
+  - **storage_filename**: Outputting filename - relative path of the `root_path` set in the storage profile - by default a relative path to `/storage` folder; can use placeholders for dynamic formatting: `{file_name}`, `{file_extension}`, `{Y}`, `{mm}`, `{dd}` - for date formatting, `{HH}`, `{MM}`, `{SS}` - for time formatting
+
+
+### Upload a File for OCR (processing by LLM), store result on disk
+
+```bash
+python client/cli.py ocr_upload --file examples/example-mri.pdf --ocr_cache --prompt_file=examples/example-mri-remove-pii.txt  --storage_filename "invoices/{Y}/{file_name}-{Y}-{mm}-{dd}.md"
+```
+
+### Get OCR Result by Task ID
+
+```bash
+python client/cli.py result --task_id {your_task_id_from_upload_step}
+```
+
+### List file results archived by `storage_profile`
+
+```bash
+python client/cli.py list_files 
+```
+
+to use specific (in this case `google drive`) storage profile run:
+
+```bash
+python client/cli.py list_files  --storage_profile gdrive
+```
+
+### Load file result archived by `storage_profile`
+
+```bash
+python client/cli.py load_file --file_name "invoices/2024/example-invoice-2024-10-31-16-33.md"
+```
+
+### Delete file result archived by `storage_profile`
+
+```bash
+python client/cli.py delete_file --file_name "invoices/2024/example-invoice-2024-10-31-16-33.md" --storage_profile gdrive
+```
+
+or for default profile (local file system):
+
+```bash
+python client/cli.py delete_file --file_name "invoices/2024/example-invoice-2024-10-31-16-33.md" 
+```
+
+### Clear OCR Cache
+
+```bash
+python client/cli.py clear_cache
+```
+
+### Test LLama
+
+```bash
+python llm_generate --prompt "Your prompt here"
+```
+
+## API Clients
+
+You might want to use the dedicated API clients to use `text-extract-api`.
+
+### Typescript
+
+There's a dedicated API client for Typescript - [text-extract-api-client](https://github.com/CatchTheTornado/text-extract-api-client) and the `npm` package by the same name:
+
+```bash
+npm install text-extract-api-client
+```
+
+Usage:
+
+```js
+import { ApiClient, OcrRequest } from 'text-extract-api-client';
+const apiClient = new ApiClient('https://api.doctractor.com/', 'doctractor', 'Aekie2ao');
+const formData = new FormData();
+formData.append('file', fileInput.files[0]);
+formData.append('prompt', 'Convert file to JSON and return only JSON'); // if not provided, no LLM transformation will gonna happen - just the OCR
+formData.append('strategy', 'llama_vision');
+formData.append('model', 'llama3.1');
+formData.append('ocr_cache', 'true');
+
+apiClient.uploadFile(formData).then(response => {
+    console.log(response);
+});
+```
+
+## Endpoints
+
+### OCR Endpoint via File Upload / multiform data
+- **URL**: /ocr/upload
+- **Method**: POST
+- **Parameters**:
+  - **file**: PDF, image or Office file to be processed.
+  - **strategy**: OCR strategy to use (`llama_vision`, `minicpm_v`, `remote` or `easyocr`). See the [available strategies](#text-extract-stratgies)
+  - **ocr_cache**: Whether to cache the OCR result (true or false).
+  - **prompt**: When provided, will be used for Ollama processing the OCR result
+  - **model**: When provided along with the prompt - this model will be used for LLM processing
+  - **storage_profile**: Used to save the result - the `default` profile (`./storage_profiles/default.yaml`) is used by default; if empty file is not saved
+  - **storage_filename**: Outputting filename - relative path of the `root_path` set in the storage profile - by default a relative path to `/storage` folder; can use placeholders for dynamic formatting: `{file_name}`, `{file_extension}`, `{Y}`, `{mm}`, `{dd}` - for date formatting, `{HH}`, `{MM}`, `{SS}` - for time formatting
+  - **language**: One or many (`en` or `en,pl,de`) language codes for the OCR to load the language weights
+
+Example:
+
+```bash
+curl -X POST -H "Content-Type: multipart/form-data" -F "file=@examples/example-mri.pdf" -F "strategy=easyocr" -F "ocr_cache=true" -F "prompt=" -F "model=" "http://localhost:8000/ocr/upload" 
+```
+
+### OCR Endpoint via JSON request
+- **URL**: /ocr/request
+- **Method**: POST
+- **Parameters** (JSON body):
+  - **file**: Base64 encoded PDF file content.
+  - **strategy**: OCR strategy to use (`llama_vision`, `minicpm_v`, `remote` or `easyocr`). See the [available strategies](#text-extract-stratgies)
+  - **ocr_cache**: Whether to cache the OCR result (true or false).
+  - **prompt**: When provided, will be used for Ollama processing the OCR result.
+  - **model**: When provided along with the prompt - this model will be used for LLM processing.
+  - **storage_profile**: Used to save the result - the `default` profile (`/storage_profiles/default.yaml`) is used by default; if empty file is not saved.
+  - **storage_filename**: Outputting filename - relative path of the `root_path` set in the storage profile - by default a relative path to `/storage` folder; can use placeholders for dynamic formatting: `{file_name}`, `{file_extension}`, `{Y}`, `{mm}`, `{dd}` - for date formatting, `{HH}`, `{MM}`, `{SS}` - for time formatting.
+  - **language**: One or many (`en` or `en,pl,de`) language codes for the OCR to load the language weights
+
+Example:
+
+```bash
+curl -X POST "http://localhost:8000/ocr/request" -H "Content-Type: application/json" -d '{
+  "file": "<base64-encoded-file-content>",
+  "strategy": "easyocr",
+  "ocr_cache": true,
+  "prompt": "",
+  "model": "llama3.1",
+  "storage_profile": "default",
+  "storage_filename": "example.md"
+}'
+```
+
+### OCR Result Endpoint
+- **URL**: /ocr/result/{task_id}
+- **Method**: GET
+- **Parameters**:
+  - **task_id**: Task ID returned by the OCR endpoint.
+
+Example:
+
+```bash
+curl -X GET "http://localhost:8000/ocr/result/{task_id}"
+```
+
+### Clear OCR Cache Endpoint
+ - **URL**: /ocr/clear_cache
+ - **Method**: POST
+
+Example:
+```bash
+curl -X POST "http://localhost:8000/ocr/clear_cache"
+```
+
+
+### Ollama Pull Endpoint
+- **URL**: /llm/pull
+- **Method**: POST
+- **Parameters**:
+  - **model**: Pull the model you are to use first
+
+Example:
+
+```bash
+curl -X POST "http://localhost:8000/llm/pull" -H "Content-Type: application/json" -d '{"model": "llama3.1"}'
+```
+
+### Ollama Endpoint
+- **URL**: /llm/generate
+- **Method**: POST
+- **Parameters**:
+  - **prompt**: Prompt for the Ollama model.
+  - **model**: Model you like to query
+
+Example:
+
+```bash
+curl -X POST "http://localhost:8000/llm/generate" -H "Content-Type: application/json" -d '{"prompt": "Your prompt here", "model":"llama3.1"}'
+```
+
+### List storage files:
+ 
+- **URL:** /storage/list
+- **Method:** GET
+- **Parameters**:
+  - **storage_profile**: Name of the storage profile to use for listing files (default: `default`).
+
+### Download storage file:
+ 
+- **URL:** /storage/load
+- **Method:** GET
+- **Parameters**:
+  - **file_name**: File name to load from the storage
+  - **storage_profile**: Name of the storage profile to use for listing files (default: `default`).
+
+### Delete storage file:
+ 
+- **URL:** /storage/delete
+- **Method:** DELETE
+- **Parameters**:
+  - **file_name**: File name to load from the storage
+  - **storage_profile**: Name of the storage profile to use for listing files (default: `default`).
+
+
+## Storage profiles
+
+The tool can automatically save the results using different storage strategies and storage profiles. Storage profiles are set in the `/storage_profiles` by a yaml configuration files.
+
+### Local File System
+
+```yaml
+strategy: local_filesystem
+settings:
+  root_path: /storage # The root path where the files will be stored - mount a proper folder in the docker file to match it
+  subfolder_names_format: "" # eg: by_months/{Y}-{mm}/
+  create_subfolders: true
+```
+
+### Google Drive
+
+```yaml
+strategy: google_drive
+settings:
+## how to enable GDrive API: https://developers.google.com/drive/api/quickstart/python?hl=pl
+
+  service_account_file: /storage/client_secret_269403342997-290pbjjlb06nbof78sjaj7qrqeakp3t0.apps.googleusercontent.com.json
+  folder_id:
+```
+
+Where the `service_account_file` is a `json` file with authorization credentials. Please read on how to enable Google Drive API and prepare this authorization file [here](https://developers.google.com/drive/api/quickstart/python?hl=pl).
+
+Note: Service Account is different account that the one you're using for Google workspace (files will not be visible in the UI)
+
+### Amazon S3 - Cloud Object Storage
+
+```yaml
+strategy: aws_s3
+settings:
+  bucket_name: ${AWS_S3_BUCKET_NAME}
+  region: ${AWS_REGION}
+  access_key: ${AWS_ACCESS_KEY_ID}
+  secret_access_key: ${AWS_SECRET_ACCESS_KEY}
+```
+
+#### Requirements for AWS S3 Access Key
+
+1. **Access Key Ownership**  
+   The access key must belong to an IAM user or role with permissions for S3 operations.
+
+2. **IAM Policy Example**  
+   The IAM policy attached to the user or role must allow the necessary actions. Below is an example of a policy granting access to an S3 bucket:
+   ```json
+   {
+       "Version": "2012-10-17",
+       "Statement": [
+           {
+               "Effect": "Allow",
+               "Action": [
+                   "s3:PutObject",
+                   "s3:GetObject",
+                   "s3:ListBucket",
+                   "s3:DeleteObject"
+               ],
+               "Resource": [
+                   "arn:aws:s3:::your-bucket-name",
+                   "arn:aws:s3:::your-bucket-name/*"
+               ]
+           }
+       ]
+   }
+   ```
+
+Next, populate the appropriate `.env` file (e.g., .env, .env.localhost) with the required AWS credentials:
+
+```bash
+AWS_ACCESS_KEY_ID=your-access-key-id
+AWS_SECRET_ACCESS_KEY=your-secret-access-key
+AWS_REGION=your-region
+AWS_S3_BUCKET_NAME=your-bucket-name
+```
+
+## License
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Contact
+In case of any questions please contact us at: info@catchthetornado.com
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/client/cli.py
+──────────────────────────────────────────────────────────────────────
+import argparse
+import base64
+import requests
+import time
+import os
+import math
+from ollama import pull
+
+def ocr_upload(file_path, ocr_cache, prompt, prompt_file=None, model='llama3.1', strategy='llama_vision', storage_profile='default', storage_filename=None, language='en'):
+    ocr_url = os.getenv('OCR_UPLOAD_URL', 'http://localhost:8000/ocr/upload')
+    files = {'file': open(file_path, 'rb')}
+    if not ocr_cache:
+        print("OCR cache disabled.")
+
+    data = {'ocr_cache': ocr_cache, 'model': model, 'strategy': strategy, 'storage_profile': storage_profile, 'language': language}
+
+    if storage_filename:
+        data['storage_filename'] = storage_filename
+    
+    print(data) # @todo change to log debug in the future
+
+    try:
+        if prompt_file:
+            prompt = open(prompt_file, 'r').read()
+    except FileNotFoundError:
+        print(f"Prompt file not found: {prompt_file}")
+        return None
+    
+    if prompt:
+        data['prompt'] = prompt
+
+    response = requests.post(ocr_url, files=files, data=data)
+    if response.status_code == 200:
+        respObject = response.json()
+        if respObject.get('task_id'):
+            return {
+                "task_id": respObject.get('task_id')
+            }
+        else:
+            return {
+                "text": respObject.get('text') # sync mode support
+            }
+    else:
+        print(f"Failed to upload file: {response.text}")
+        return None
+
+def ocr_request(file_path, ocr_cache, prompt, prompt_file=None, model='llama3.1', strategy='llama_vision', storage_profile='default', storage_filename=None, language='en'):
+    ocr_url = os.getenv('OCR_REQUEST_URL', 'http://localhost:8000/ocr/request')
+    with open(file_path, 'rb') as f:
+        file_content = base64.b64encode(f.read()).decode('utf-8')
+    
+    data = {
+        'ocr_cache': ocr_cache,
+        'model': model,
+        'strategy': strategy,
+        'storage_profile': storage_profile,
+        'file': file_content,
+        'language': language
+    }
+
+    if storage_filename:
+        data['storage_filename'] = storage_filename
+    
+    if prompt_file:
+        try:
+            prompt = open(prompt_file, 'r').read()
+        except FileNotFoundError:
+            print(f"Prompt file not found: {prompt_file}")
+            return None
+    
+    if prompt:
+        data['prompt'] = prompt
+    
+    response = requests.post(ocr_url, json=data)
+    if response.status_code == 200:
+        respObject = response.json()
+        if respObject.get('task_id'):
+            return {
+                "task_id": respObject.get('task_id')
+            }
+        else:
+            return {
+                "text": respObject.get('text') # sync mode support
+            }
+    else:
+        print(f"Error: {response.status_code} - {response.text}")
+        return None
+
+def get_result(task_id, print_progress = False):
+    extracted_text_printed_once = False
+    result_url = os.getenv('RESULT_URL', f'http://localhost:8000/ocr/result/')
+    while True:
+        response = requests.get(result_url + task_id)
+        result = response.json()
+        if result['state'] != 'SUCCESS' and print_progress:
+            task_info = result.get('info')
+            if task_info is not None:
+                if task_info.get('extracted_text'):
+                    if not extracted_text_printed_once:
+                        extracted_text_printed_once = True
+                        print("Extracted text: " + task_info.get('extracted_text'))
+                    else:
+                        del task_info['extracted_text']
+                del task_info['start_time']
+            print(result)
+        if response.status_code == 200:
+            if result['state'] == 'SUCCESS':
+                return result['result']
+            elif result['state'] == 'FAILURE':
+                print("OCR task failed.")
+                return None
+        time.sleep(2)  # Wait for 2 seconds before checking again
+
+def clear_cache():
+    clear_cache_url = os.getenv('CLEAR_CACHE_URL', 'http://localhost:8000/ocr/clear_cache')
+    response = requests.post(clear_cache_url)
+    if response.status_code == 200:
+        print("OCR cache cleared successfully.")
+    else:
+        print(f"Failed to clear OCR cache: {response.text}")
+
+def llm_pull(model = 'llama3.1'):   
+    response = pull(model, stream=True)
+    for chunk in response:
+      if chunk.completed and chunk.total:
+        print(f'Please wait .... {model} - {chunk.status} - {math.floor((chunk.completed / chunk.total) * 100)}% completed')
+      else:
+        print(f'Pulling {model} - {chunk.status}')    
+
+def llm_generate(prompt, model = 'llama3.1'):
+    ollama_url = os.getenv('LLM_GENERATE_API_URL', 'http://localhost:8000/llm/generate')
+    response = requests.post(ollama_url, json={"model": model, "prompt": prompt})
+    if response.status_code == 200:
+        print(response.json().get('generated_text'))
+    else:
+        print(f"Failed to generate text: {response.text}")
+
+def list_files(storage_profile):
+    list_files_url = os.getenv('LIST_FILES_URL', 'http://localhost:8000/storage/list')
+    response = requests.get(list_files_url, params={'storage_profile': storage_profile})
+    if response.status_code == 200:
+        files = response.json().get('files', [])
+        for file in files:
+            print(file)
+    else:
+        print(f"Failed to list files: {response.text}")        
+
+def load_file(file_name, storage_profile):
+    load_file_url = os.getenv('LOAD_FILE_URL', 'http://localhost:8000/storage/load')
+    response = requests.get(load_file_url, params={'file_name': file_name, 'storage_profile': storage_profile})
+    if response.status_code == 200:
+        content = response.json().get('content', '')
+        print(content)
+    else:
+        print(f"Failed to load file: {response.text}")
+
+def delete_file(file_name, storage_profile):
+    delete_file_url = os.getenv('DELETE_FILE_URL', 'http://localhost:8000/storage/delete')
+    response = requests.delete(delete_file_url, params={'file_name': file_name, 'storage_profile': storage_profile})
+    if response.status_code == 200:
+        print(f"File {file_name} deleted successfully.")
+    else:
+        print(f"Failed to delete file: {response.text}")
+
+def main():
+    parser = argparse.ArgumentParser(description="CLI for OCR and Ollama operations.")
+    subparsers = parser.add_subparsers(dest='command', help='Sub-command help')
+
+    # Sub-command for uploading a file via file upload
+    ocr_parser = subparsers.add_parser('ocr_upload', help='Upload a file to the OCR endpoint and get the result.')
+    ocr_parser.add_argument('--file', type=str, default='examples/rmi-example.pdf', help='Path to the file to upload')
+    ocr_parser.add_argument('--ocr_cache', default=True, action='store_true', help='Enable OCR result caching')
+    ocr_parser.add_argument('--disable_ocr_cache', default=False, action='store_true', help='Disable OCR result caching')
+    ocr_parser.add_argument('--prompt', type=str, default=None, help='Prompt used for the Ollama model to fix or transform the file')
+    ocr_parser.add_argument('--prompt_file', default=None, type=str, help='Prompt file name used for the Ollama model to fix or transform the file')
+    ocr_parser.add_argument('--model', type=str, default='llama3.1', help='Model to use for the Ollama endpoint')
+    ocr_parser.add_argument('--strategy', type=str, default='llama_vision', help='OCR strategy to use for the file')
+    ocr_parser.add_argument('--print_progress', default=True, action='store_true', help='Print the progress of the OCR task')
+    ocr_parser.add_argument('--storage_profile', type=str, default='default', help='Storage profile to use for the file')
+    ocr_parser.add_argument('--storage_filename', type=str, default=None, help='Storage filename to use for the file. You may use some formatting - see the docs')
+    ocr_parser.add_argument('--language', type=str, default='en', help='Language to use for the OCR task')
+    #ocr_parser.add_argument('--async_mode', action='store_true', help='Enable async mode for the OCR task')
+
+    # Sub-command for uploading a file via file upload - @deprecated - it's a backward compatibility gimmick
+    ocr_parser = subparsers.add_parser('ocr', help='Upload a file to the OCR endpoint and get the result.')
+    ocr_parser.add_argument('--file', type=str, default='examples/rmi-example.pdf', help='Path to the file to upload')
+    ocr_parser.add_argument('--ocr_cache', default=True, action='store_true', help='Enable OCR result caching')
+    ocr_parser.add_argument('--disable_ocr_cache', default=False, action='store_true', help='Disable OCR result caching')    
+    ocr_parser.add_argument('--prompt', type=str, default=None, help='Prompt used for the Ollama model to fix or transform the file')
+    ocr_parser.add_argument('--prompt_file', default=None, type=str, help='Prompt file name used for the Ollama model to fix or transform the file')
+    ocr_parser.add_argument('--model', type=str, default='llama3.1', help='Model to use for the Ollama endpoint')
+    ocr_parser.add_argument('--strategy', type=str, default='llama_vision', help='OCR strategy to use for the file')
+    ocr_parser.add_argument('--print_progress', default=True, action='store_true', help='Print the progress of the OCR task')
+    ocr_parser.add_argument('--storage_profile', type=str, default='default', help='Storage profile to use for the file')
+    ocr_parser.add_argument('--storage_filename', type=str, default=None, help='Storage filename to use for the file. You may use some formatting - see the docs')
+    ocr_parser.add_argument('--language', type=str, default='en', help='Language to use for the OCR task')
+    #ocr_parser.add_argument('--async_mode', action='store_true', help='Enable async mode for the OCR task')
+
+
+    # Sub-command for uploading a file via request JSON
+    ocr_request_parser = subparsers.add_parser('ocr_request', help='Upload a file to the OCR endpoint via JSON and get the result.')
+    ocr_request_parser.add_argument('--file', type=str, default='examples/rmi-example.pdf', help='Path to the file to upload')
+    ocr_request_parser.add_argument('--ocr_cache', default=True, action='store_true', help='Enable OCR result caching')
+    ocr_request_parser.add_argument('--disable_ocr_cache', default=False, action='store_true', help='Disable OCR result caching')
+    ocr_request_parser.add_argument('--prompt', type=str, default=None, help='Prompt used for the Ollama model to fix or transform the file')
+    ocr_request_parser.add_argument('--prompt_file', default=None, type=str, help='Prompt file name used for the Ollama model to fix or transform the file')
+    ocr_request_parser.add_argument('--model', type=str, default='llama3.1', help='Model to use for the Ollama endpoint')
+    ocr_request_parser.add_argument('--strategy', type=str, default='llama_vision', help='OCR strategy to use')
+    ocr_request_parser.add_argument('--print_progress', default=True, action='store_true', help='Print the progress of the OCR task')
+    ocr_request_parser.add_argument('--storage_profile', type=str, default='default', help='Storage profile to use. You may use some formatting - see the docs')
+    ocr_request_parser.add_argument('--storage_filename', type=str, default=None, help='Storage filename to use')
+    ocr_request_parser.add_argument('--language', type=str, default='en', help='Language to use for the OCR task')
+
+    # Sub-command for getting the result
+    result_parser = subparsers.add_parser('result', help='Get the OCR result by specified task id.')
+    result_parser.add_argument('--task_id', type=str, help='Task Id returned by the upload command')
+    result_parser.add_argument('--print_progress', default=True, action='store_true', help='Print the progress of the OCR task')
+
+    # Sub-command for clearing the cache
+    clear_cache_parser = subparsers.add_parser('clear_cache', help='Clear the OCR result cache')
+
+    # Sub-command for running Ollama
+    ollama_parser = subparsers.add_parser('llm_generate', help='Run the Ollama endpoint')
+    ollama_parser.add_argument('--prompt', type=str, required=True, help='Prompt for the Ollama model')
+    ollama_parser.add_argument('--model', type=str, default='llama3.1', help='Model to use for the Ollama endpoint')
+
+    ollama_pull_parser = subparsers.add_parser('llm_pull', help='Pull the latest Llama model from the Ollama API')   
+    ollama_pull_parser.add_argument('--model', type=str, default='llama3.1', help='Model to pull from the Ollama API')
+
+    # Sub-command for listing files
+    list_files_parser = subparsers.add_parser('list_files', help='List files using the selected storage profile')
+    list_files_parser.add_argument('--storage_profile', type=str, default='default', help='Storage profile to use')
+
+    # Sub-command for loading a file
+    load_file_parser = subparsers.add_parser('load_file', help='Load a file using the selected storage profile')
+    load_file_parser.add_argument('--file_name', type=str, required=True, help='Name of the file to load')
+    load_file_parser.add_argument('--storage_profile', type=str, default='default', help='Storage profile to use')
+
+    # Sub-command for deleting a file
+    delete_file_parser = subparsers.add_parser('delete_file', help='Delete a file using the selected storage profile')
+    delete_file_parser.add_argument('--file_name', type=str, required=True, help='Name of the file to delete')
+    delete_file_parser.add_argument('--storage_profile', type=str, default='default', help='Storage profile to use')
+
+    args = parser.parse_args()
+
+    if args.command == 'ocr' or args.command == 'ocr_upload':
+        print(args)
+        result = ocr_upload(args.file, False if args.disable_ocr_cache else args.ocr_cache, args.prompt, args.prompt_file, args.model, args.strategy, args.storage_profile, args.storage_filename, args.language)
+        if result is None:
+            print("Error uploading file.")
+            return
+        if result.get('text'):
+            print(result.get('text'))
+        elif result:
+            print("File uploaded successfully. Task Id: " + result.get('task_id') +  " Waiting for the result...")
+            text_result = get_result(result.get('task_id'), args.print_progress)
+            if text_result:
+                print(text_result)
+    elif args.command == 'ocr_request':
+        result = ocr_request(args.file, False if args.disable_ocr_cache else args.ocr_cache, args.prompt, args.prompt_file, args.model, args.strategy, args.storage_profile, args.storage_filename, args.language)
+        if result is None:
+            print("Error uploading file.")
+            return
+        if result.get('text'):
+            print(result.get('text'))
+        elif result:
+            print("File uploaded successfully. Task Id: " + result.get('task_id') +  " Waiting for the result...")
+            text_result = get_result(result.get('task_id'), args.print_progress)
+            if text_result:
+                print(text_result)
+    elif args.command == 'result':
+        text_result = get_result(args.task_id, args.print_progress)
+        if text_result:
+            print(text_result)
+    elif args.command == 'clear_cache':
+        clear_cache()
+    elif args.command == 'llm_generate':
+        llm_generate(args.prompt, args.model)
+    elif args.command == 'llm_pull':
+        llm_pull(args.model)
+    elif args.command == 'list_files':
+        list_files(args.storage_profile)     
+    elif args.command == 'load_file':
+        load_file(args.file_name, args.storage_profile)
+    elif args.command == 'delete_file':
+        delete_file(args.file_name, args.storage_profile)           
+    else:
+        parser.print_help()
+
+if __name__ == "__main__":
+    main()
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/client/requirements.txt
+──────────────────────────────────────────────────────────────────────
+requests
+argparse
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/config/strategies.yaml
+──────────────────────────────────────────────────────────────────────
+strategies:
+   llama_vision:
+      class: text_extract_api.extract.strategies.ollama.OllamaStrategy
+      model: llama3.2-vision
+      prompt: You are OCR. Convert image to markdown. Return only the markdown with no explanation text. Do not exclude any content from the page.
+   minicpm_v:
+      class: text_extract_api.extract.strategies.ollama.OllamaStrategy
+      model: minicpm-v
+      prompt: You are OCR. Convert image to markdown. Return only the markdown with no explanation text. Do not exclude any content from the page.
+   easyocr:
+      class: text_extract_api.extract.strategies.easyocr.EasyOCRStrategy
+   docling:
+      class: text_extract_api.extract.strategies.docling.DoclingStrategy
+      model: llama3.1
+      prompt: You are OCR. Convert image to markdown. Return only the markdown with no explanation text. Do not exclude any content from the page.
+   remote:
+      class: text_extract_api.extract.strategies.remote.RemoteStrategy
+      url:
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/dev.Dockerfile
+──────────────────────────────────────────────────────────────────────
+FROM python:3.10-slim
+
+RUN mkdir -p /app/storage && ln -s /storage /app/storage # backward compability for (https://github.com/CatchTheTornado/text-extract-api/issues/85)
+
+RUN echo 'Acquire::http::Pipeline-Depth 0;\nAcquire::http::No-Cache true;\nAcquire::BrokenProxy true;\n' > /etc/apt/apt.conf.d/99fixbadproxy
+
+RUN apt-get clean && rm -rf /var/lib/apt/lists/* \
+    && apt-get update --fix-missing \
+    && apt-get install -y \
+        libglib2.0-0 \
+        libglib2.0-dev \
+        libgl1 \
+        poppler-utils \
+        libmagic1 \
+        libmagic-dev \
+        libpoppler-cpp-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy all project files first
+
+# Install Python dependencies
+RUN python -m venv .dvenv && \
+    . .dvenv/bin/activate && \
+    pip install --upgrade pip setuptools && \
+    pip install .
+
+EXPOSE 8000
+
+ENTRYPOINT ["/app/scripts/entrypoint.sh"]
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/dev.gpu.Dockerfile
+──────────────────────────────────────────────────────────────────────
+ARG CUDA_VERSION="11.8.0"
+ARG CUDNN_VERSION="8"
+ARG UBUNTU_VERSION="22.04"
+ARG MAX_JOBS=4
+
+FROM nvidia/cuda:$CUDA_VERSION-cudnn$CUDNN_VERSION-devel-ubuntu$UBUNTU_VERSION
+
+RUN mkdir -p /app/storage && ln -s /storage /app/storage # backward compatibility for (https://github.com/CatchTheTornado/text-extract-api/issues/85)
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    wget \
+    curl \
+    unzip \
+    git \
+    python3 \
+    python3-pip \
+    libgl1 \
+    libglib2.0-0 \
+    libglib2.0-dev \
+    curl \
+    gnupg2 \
+    ca-certificates \
+    apt-transport-https \
+    software-properties-common \
+    libreoffice \
+    libmagic1 \
+    libmagic-dev \
+    ffmpeg \
+    git-lfs \
+    xvfb \
+    && ln -s /usr/bin/python3 /usr/bin/python \
+    && apt-get update \
+    && apt install python3-packaging \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip3 install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
+WORKDIR /app
+
+RUN echo 'Acquire::http::Pipeline-Depth 0;\nAcquire::http::No-Cache true;\nAcquire::BrokenProxy true;\n' > /etc/apt/apt.conf.d/99fixbadproxy
+
+RUN apt-get clean && rm -rf /var/lib/apt/lists/* \
+    && apt-get update --fix-missing \
+    && apt-get install -y \
+        libgl1 \
+        poppler-utils \
+        libpoppler-cpp-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+EXPOSE 8000
+
+ENTRYPOINT ["/app/scripts/entrypoint.sh"]
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/docker-compose.gpu.yml
+──────────────────────────────────────────────────────────────────────
+services:
+  fastapi_app:
+    build:
+      context: . # Keep the build context as the root directory
+      dockerfile: dev.gpu.Dockerfile # Specify the new path to the GPU Dockerfile
+    entrypoint: /app/scripts/entrypoint.sh
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_TYPE=fastapi
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL-redis://redis:6379/0}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND-redis://redis:6379/0}
+      - LLM_PULL_API_URL=${LLM_PULL_API_URL-http://web:8000/llm_pull}
+      - LLM_GENEREATE_API_URL=${LLM_GENEREATE_API_URL-http://web:8000/llm_generate}
+      - OLLAMA_HOST=${OLLAMA_HOST-http://ollama:11434}
+      - APP_ENV=${APP_ENV-development}  # Default to development mode
+      - STORAGE_PROFILE_PATH=${STORAGE_PROFILE_PATH-/app/storage_profiles}  # Add the storage profile path
+      - LIST_FILES_URL=${LIST_FILES_URL-http://localhost:8000/storage/list}
+      - LOAD_FILE_URL=${LOAD_FILE_URL-http://localhost:8000/storage/load}
+      - DELETE_FILE_URL=${DELETE_FILE_URL-http://localhost:8000/storage/delete}
+      - REMOTE_API_URL=${REMOTE_API_URL}
+    depends_on:
+      - redis
+      - ollama
+    volumes: &appvolumes
+      - .:/app  # Mount the app directory to enable auto-reloading
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]  # Request GPU support
+
+  celery_worker:
+    build:
+      context: .  # Keep the build context as the root directory
+      dockerfile: dev.gpu.Dockerfile # Specify the new path to the GPU Dockerfile
+    entrypoint: /app/scripts/entrypoint.sh
+    environment:
+      - APP_TYPE=celery
+      - OLLAMA_HOST=${OLLAMA_HOST-http://ollama:11434}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL-redis://redis:6379/0}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND-redis://redis:6379/0}
+      - STORAGE_PROFILE_PATH=${STORAGE_PROFILE_PATH-/app/storage_profiles}  # Add the storage profile path
+      - LIST_FILES_URL=${LIST_FILES_URL-http://localhost:8000/storage/list}
+      - LOAD_FILE_URL=${LOAD_FILE_URL-http://localhost:8000/storage/load}
+      - DELETE_FILE_URL=${DELETE_FILE_URL-http://localhost:8000/storage/delete}
+    depends_on:
+      - redis
+      - fastapi_app
+    volumes: *appvolumes
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]  # Request GPU support
+
+  redis:
+    image: redis:7.2.4-alpine
+    ports:
+      - "${REDIS_HOST_PORT:-6379}:6379"
+
+  ollama:
+    image: ollama/ollama # Use the official Ollama image
+    pull_policy: always
+    tty: true
+    restart: always
+    ports:
+      - "11434:11434"  # Expose Ollama's API port, changing internal to external port
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/"]  # Assumes health endpoint exists
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/docker-compose.yml
+──────────────────────────────────────────────────────────────────────
+services:
+  fastapi_app:
+    build:
+      context: . # Keep the build context as the root directory
+      dockerfile: dev.Dockerfile
+    entrypoint: /app/scripts/entrypoint.sh
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_TYPE=fastapi
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL-redis://redis:6379/0}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND-redis://redis:6379/0}
+      - LLM_PULL_API_URL=${LLM_PULL_API_URL-http://web:8000/llm_pull}
+      - LLM_GENEREATE_API_URL=${LLM_GENEREATE_API_URL-http://web:8000/llm_generate}
+      - OLLAMA_HOST=${OLLAMA_HOST-http://ollama:11434}
+      - APP_ENV=${APP_ENV-development}  # Default to development mode
+      - STORAGE_PROFILE_PATH=${STORAGE_PROFILE_PATH-/app/storage_profiles}  # Add the storage profile path
+      - LIST_FILES_URL=${LIST_FILES_URL-http://localhost:8000/storage/list}
+      - LOAD_FILE_URL=${LOAD_FILE_URL-http://localhost:8000/storage/load}
+      - DELETE_FILE_URL=${DELETE_FILE_URL-http://localhost:8000/storage/delete}
+      - REMOTE_API_URL=${REMOTE_API_URL}
+    depends_on:
+      - redis
+      - ollama
+    volumes: &appvolumes
+      - .:/app  # Mount the text_extract_api directory to enable auto-reloading
+
+  celery_worker:
+    build:
+      context: . # Keep the build context as the root directory
+      dockerfile: dev.Dockerfile
+    entrypoint: /app/scripts/entrypoint.sh
+    environment:
+      - APP_TYPE=celery
+      - OLLAMA_HOST=${OLLAMA_HOST-http://ollama:11434}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL-redis://redis:6379/0}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND-redis://redis:6379/0}
+      - STORAGE_PROFILE_PATH=${STORAGE_PROFILE_PATH-/app/storage_profiles}  # Add the storage profile path
+      - LIST_FILES_URL=${LIST_FILES_URL-http://localhost:8000/storage/list}      
+      - LOAD_FILE_URL=${LOAD_FILE_URL-http://localhost:8000/storage/load}
+      - DELETE_FILE_URL=${DELETE_FILE_URL-http://localhost:8000/storage/delete}
+    depends_on:
+      - redis
+      - fastapi_app
+    volumes: *appvolumes
+
+  redis:
+    image: redis:7.2.4-alpine
+    ports:
+      - "${REDIS_HOST_PORT:-6379}:6379"
+
+  ollama:
+    image: ollama/ollama # Use the official Ollama image
+    pull_policy: always
+    tty: true
+    restart: always
+    ports:
+      - "11434:11434"  # Expose Ollama's API port, changing internal to external port
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/"]  # Assumes health endpoint exists
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/examples/example-invoice-remove-pii.md
+──────────────────────────────────────────────────────────────────────
+# Acme Invoice Ltd
+
+Invoice For   John Doe 2048 Michigan Str Adress Line 2 601 Chicago, US
+
+## Subject
+
+From Acme Invoice Ltd Darrow Street 2 E1 7AW Portsoken London Invoice ID 
+INV/S/24/2024 17/09/2024 Issue Date PO Number 11/10/2024 Due Date 
+
+| Amount                |            |        |       |
+|-----------------------|------------|--------|-------|
+| Quantity              | Unit Price |        |       |
+| Description           | 700.00     | 700.00 |       |
+| 1                     |            |        |       |
+| iPhone 13 PRO MAX     | 1          | 54.00  | 54.00 |
+| Magic Mouse           | 0.00       |        |       |
+| 0.00                  |            |        |       |
+| 0.00                  |            |        |       |
+| 0.00                  |            |        |       |
+| 754.00                |            |        |       |
+| Subtotal              | 7%         |        |       |
+| Discount (0:25 = 25%) | 701.22     |        |       |
+| Amount Due            |            |        |       |
+
+![0_image_0.png](0_image_0.png)
+
+NotesHere is the corrected text:
+
+# Acme Invoice Ltd
+
+Invoice For   John Doe ANONYMIZED
+2048 Michigan Str Adress Line 2
+601 Chicago, US
+
+## Subject
+
+From Acme Invoice Ltd Darrow Street 2 E1 7AW Portsoken London
+Invoice ID INV/S/24/2024 17/09/2024 Issue Date PO Number 11/10/2024 Due Date 
+
+| Amount                |            |        |       |
+|-----------------------|------------|--------|-------|
+| Quantity              | Unit Price |        |       |
+| Description           | 700.00     | 700.00 |       |
+| 1                     |            |        |       |
+| iPhone 13 PRO MAX     | 1          | 54.00  | 54.00 |
+| Magic Mouse           | 0.00       |        |       |
+| 0.00                  |            |        |       |
+| 0.00                  |            |        |       |
+| 0.00                  |            |        |       |
+| 754.00                |            |        |       |
+| Subtotal              |            |        |       |
+| Discount (7%)          | 701.22     |        |       |
+| Amount Due            |            |        |       |
+
+**Notes**
+
+(I removed the image reference and notes as they are not relevant to the invoice data)
+
+Here is the corrected text with spelling issues fixed:
+
+Now, I will convert this text to JSON according to the provided schema.
+
+```json
+{
+  "invoiceNumber": "INV/S/24/2024",
+  "date": "17/09/2024",
+  "dueDate": "11/10/2024",
+  "client": {
+    "clientName": "ANONYMIZED",
+    "clientAddress": "2048 Michigan Str Adress Line 2, 601 Chicago, US"
+  },
+  "items": [
+    {
+      "description": "iPhone 13 PRO MAX",
+      "quantity": 1,
+      "unitPrice": 54.00,
+      "total": 54.00
+    }
+  ],
+  "subtotal": null,
+  "tax": null,
+  "total": null
+}
+```
+
+However, I noticed that there are missing fields in the provided text (e.g., subtotal, tax, total). Also, there is no clear indication of the client's email or phone number. If this information exists elsewhere in the document (which was not provided), please let me know and I'll be happy to assist further.
+
+Here is a more complete JSON representation based on the given text:
+
+```json
+{
+  "invoiceNumber": "INV/S/24/2024",
+  "date": "17/09/2024",
+  "dueDate": "11/10/2024",
+  "client": {
+    "clientName": "ANONYMIZED",
+    "clientAddress": "2048 Michigan Str Adress Line 2, 601 Chicago, US"
+  },
+  "items": [
+    {
+      "description": "iPhone 13 PRO MAX",
+      "quantity": 1,
+      "unitPrice": 54.00,
+      "total": 54.00
+    }
+  ],
+  "subtotal": 701.22,
+  "tax": "7%",
+  "total": 754.00
+}
+```
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/examples/example-invoice-remove-pii.txt
+──────────────────────────────────────────────────────────────────────
+Below is th text from PDF document after OCR. Fix the text and spelling issues.
+Remove Any personal information (like name, first name, last name, address, street, phone number email) replacing it with "ANONYMIZED". 
+
+Convert to JSON using the following schema:
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "invoiceNumber": {
+      "type": "string",
+      "description": "Unique identifier for the invoice"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of invoice issue"
+    },
+    "dueDate": {
+      "type": "string",
+      "format": "date",
+      "description": "Due date for payment"
+    },
+    "client": {
+      "type": "object",
+      "properties": {
+        "clientName": {
+          "type": "string",
+          "description": "Name of the client"
+        },
+        "clientAddress": {
+          "type": "string",
+          "description": "Address of the client"
+        },
+        "clientEmail": {
+          "type": "string",
+          "format": "email",
+          "description": "Email address of the client"
+        }
+      },
+      "required": ["clientName", "clientAddress"]
+    },
+    "items": {
+      "type": "array",
+      "description": "List of items in the invoice",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Description of the item"
+          },
+          "quantity": {
+            "type": "number",
+            "description": "Quantity of the item"
+          },
+          "unitPrice": {
+            "type": "number",
+            "description": "Price per unit"
+          },
+          "total": {
+            "type": "number",
+            "description": "Total price for the item"
+          }
+        },
+        "required": ["description", "quantity", "unitPrice", "total"]
+      }
+    },
+    "subtotal": {
+      "type": "number",
+      "description": "Total amount before tax"
+    },
+    "tax": {
+      "type": "number",
+      "description": "Applicable tax amount"
+    },
+    "total": {
+      "type": "number",
+      "description": "Total amount after tax"
+    }
+  },
+  "required": ["invoiceNumber", "date", "client", "items", "subtotal", "tax", "total"]
+}
+```
+
+
+Input text:
+
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/examples/example-mri-2-json-prompt.txt
+──────────────────────────────────────────────────────────────────────
+Below is th text from PDF document after OCR. Fix the text and spelling issues.
+Convert the text to JSON format according to this schema:
+
+```json
+{
+  "$id": "https://example.com/health-record.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Schema for representing a health record",
+  "type": "object",
+  "required": ["patientName", "dateOfBirth", "bloodType"],
+  "properties": {
+    "patientName": {
+      "type": "string"
+    },
+    "dateOfBirth": {
+      "type": "string",
+      "format": "date"
+    },
+    "bloodType": {
+      "type": "string"
+    },
+    "allergies": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "conditions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "medications": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "emergencyContact": {
+      "$ref": "https://example.com/user-profile.schema.json"
+    }
+  }
+}
+```
+
+Return only JSON object.
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/examples/example-mri-remove-pii.txt
+──────────────────────────────────────────────────────────────────────
+Below is th text from PDF document after OCR. Fix the text and spelling issues.
+Remove Any personal information (like name, first name, last name, address, street, phone number email) replacing it with "ANONYMIZED". 
+
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/examples/example-mri-result.md
+──────────────────────────────────────────────────────────────────────
+| Maywood, NJ 0000   |
+|--------------------|
+
+# Ikengil Radiology Associates
+
+DikengilRadiologyAssociates.com | 201-725-0913 Phil Referrer, M. D.
+
+0 Maywood Ave.
+
+## Clinical History:
+
+| RE: Jane, Mary; 55 F   |
+|------------------------|
+| Acct #: 00002          |
+| DOB: 00/00/1966        |
+| Study: Brain MRI       |
+| DOS: 04/29/2021        |
+
+![0_image_0.png](0_image_0.png)
+
+55 year old female with intermittent, positional headaches.
+
+## Technique:
+
+Noncontrast MRI of the brain was performed in the three orthogonal planes utilizing T1/T2/T2 FLAIR/T2* GRE/Diffusion-ADC sequences. Findings:
+The lateral, third and fourth ventricles are normal in volume and configuration with intact symmetry.
+
+There is no diffusion signal abnormality.  The gradient echo sequence reveals no evidence of susceptibility related intra-axial signal dropoff or blooming artifact.
+
+The gray—white matter signal intensities and interface are normal.
+
+There is no evidence of intra-or extra-axial mass lesion. There is no evidence of infarct, premature iron deposition or abnormal hemosiderin cllection.
+
+Posterior fossa sections reveal pointed descent of the cerebellar tonsils with estimated 10 mm inferior migration below the foramen magnum
+(McRae line) characterizing a moderately advanced Chiari I
+malformation likely to be symptomatic at this degree.  There is moderate crowding of the foramen magnum. There is no additional morphologic or signal abnormality of the cerebellar hemispheres or the brain stem structures.  Cisternal–intracanalicular segments of CN7/8 are unremarkable.
+
+There are no abnormal extra-axial fluid collections except for a mildly prominent CSF signal intensity empty sella and prominent midline superior vermian cistern.
+
+Calvarium, skull base and the visualized paranasal sinuses are unremarkable.
+
+## Conclusion:
+
+Chiari I malformation with 10 mm descent of cerebellar tonsils.
+
+Asim G Dikengil, M. D.Here is the corrected text and spelling issues:
+
+Maywood, NJ 07607 |
+|--------------------|
+
+# Ikenga Radiology Associates
+
+IkengaRadiologyAssociates.com | (201) 725-0913 Phil Referrer, MD.
+
+0 Maywood Ave.
+
+## Clinical History:
+
+| RE: Jane, Mary; 55 F   |
+|------------------------|
+| Acct #: 00002          |
+| DOB: 06/00/1966        |
+| Study: Brain MRI       |
+| DOS: 04/29/2021        |
+
+![0_image_0.png](0_image_0.png)
+
+55-year-old female with intermittent, positional headaches.
+
+## Technique:
+
+Noncontrast MRI of the brain was performed in the three orthogonal planes utilizing T1/T2/T2 FLAIR/T2* GRE/Diffusion-ADC sequences. Findings:
+The lateral, third, and fourth ventricles are normal in volume and configuration with intact symmetry.
+
+There is no diffusion signal abnormality.  The gradient echo sequence reveals no evidence of susceptibility-related intra-axial signal dropoff or blooming artifact.
+
+The gray-white matter signal intensities and interface are normal.
+
+There is no evidence of intra-or extra-axial mass lesion. There is no evidence of infarct, premature iron deposition, or abnormal hemosiderin collection.
+
+Posterior fossa sections reveal pointed descent of the cerebellar tonsils with estimated 10 mm inferior migration below the foramen magnum (McRae line) characterizing a moderately advanced Chiari I malformation likely to be symptomatic at this degree.  There is moderate crowding of the foramen magnum. There is no additional morphologic or signal abnormality of the cerebellar hemispheres or the brain stem structures.  Cisternal-intracanalicular segments of CN7/8 are unremarkable.
+
+There are no abnormal extra-axial fluid collections except for a mildly prominent CSF signal intensity empty sella and prominent midline superior vermian cistern.
+
+Calvarium, skull base, and the visualized paranasal sinuses are unremarkable.
+
+## Conclusion:
+
+Chiari I malformation with 10 mm descent of cerebellar tonsils.
+
+Asim G Dikengil, MD.
+
+And here is the JSON object:
+
+```json
+{
+  "patientName": "Jane Mary",
+  "dateOfBirth": "1966-06-00",
+  "bloodType": null,
+  "allergies": [],
+  "conditions": [
+    {
+      "name": "Chiari I malformation"
+    }
+  ],
+  "medications": [],
+  "emergencyContact": {
+    "name": "Phil Referrer",
+    "title": "MD.",
+    "phone": "(201) 725-0913",
+    "email": "IkengaRadiologyAssociates.com"
+  },
+  "clinicalHistory": [
+    {
+      "studyType": "Brain MRI",
+      "dateOfStudy": "2021-04-29",
+      "age": 55,
+      "sex": "F",
+      "chiefComplaint": "intermittent, positional headaches"
+    }
+  ],
+  "diagnosis": [
+    {
+      "description": "Chiari I malformation with 10 mm descent of cerebellar tonsils."
+    }
+  ]
+}
+```
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/pyproject.toml
+──────────────────────────────────────────────────────────────────────
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "text_extract_api"
+version = "0.2.0"
+description = "Images and documents (PDF, Word, PPTX ...) extraction and parse API using state of the art modern OCRs + Ollama supported models. Anonymize documents. Remove PII. Convert any document or picture to structured JSON or Markdown"
+authors = [
+]
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "fastapi",
+    "easyocr",
+    "celery",
+    "redis",
+    "opencv-python-headless",
+    "pdf2image",
+    "ollama",
+    "uvicorn[standard]",
+    "requests",
+    "python-multipart",
+    "pdftext",
+    "argparse",
+    "google-api-python-client",
+    "google-auth-httplib2",
+    "google-auth-oauthlib",
+    "transformers",
+    "accelerate",
+    "boto3",
+    "Pillow",
+    "python-magic==0.4.27",
+    "setuptools",
+    "PyYAML",
+    "botocore",
+    "protobuf",
+    "opencv-python",
+    "numpy",
+    "pydantic",
+    "python-dotenv",
+    "docling",
+    "docling-parse"
+]
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+    "isort",
+    "flake8",
+]
+
+[tool.black]
+line-length = 88
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+
+[tool.pytest]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+[tool.flake8]
+max-line-length = 88
+exclude = ["venv", "__pycache__", ".git", ".mypy_cache"]
+
+[tool.setuptools.packages.find]
+where = ["text_extract_api"]
+include = ["text_extract_api.*"]
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/run.sh
+──────────────────────────────────────────────────────────────────────
+#!/bin/bash
+
+echo "$DISABLE_LOCAL_OLLAMA"
+
+DISABLE_VENV="${DISABLE_VENV:-0}"
+DISABLE_LOCAL_OLLAMA="${DISABLE_LOCAL_OLLAMA:-0}"
+
+RED='\033[0;31m'
+CYAN='\033[0;36m'
+RESET='\033[0m'
+
+if [ "$DISABLE_VENV" -eq 1 ]; then
+    echo "  .venv disabled"
+else
+    echo "  .venv enabled"
+    python3 -m venv .venv
+    source .venv/bin/activate
+fi
+
+echo "Installing current package..."
+if ! pip install -e . 2>logs/init.log; then
+    echo "Failed to install the package in editable mode."
+    printf "Error log: %s" "$RED"
+    cat logs/init.log
+    echo -e "$RESET Please check the setup and consider manually removing and recreating .venv if needed:"
+    echo -e "$CYAN    rm -rf .venv && python3 -m venv .venv && source .venv/bin/activate $RESET"
+    exit 1
+fi
+
+if [ ! -f .env.localhost ]; then
+  cp .env.localhost.example .env.localhost
+fi
+
+set -a; source .env.localhost; set +a
+
+if [ "$DISABLE_LOCAL_OLLAMA" -eq 1 ]; then
+  echo "Local Ollama disabled by env \`DISABLE_LOCAL_OLLAMA=$DISABLE_LOCAL_OLLAMA\`"
+  echo "External Ollama should be listening on OLLAMA_HOST=$OLLAMA_HOST"
+else
+  echo "Starting Ollama Server"
+  ollama serve &
+
+  echo "Pulling LLama3.1 model"
+  ollama pull llama3.1
+
+  echo "Pulling LLama3.2-vision model"
+  ollama pull llama3.2-vision
+fi
+
+echo "Starting Redis"
+
+echo "Your ENV settings loaded from .env.localhost file: "
+printenv
+
+CELERY_BIN="$(pwd)/.venv/bin/celery"
+CELERY_PIDS=$(pgrep -f "$CELERY_BIN")
+
+if [ -n "$CELERY_PIDS" ]; then
+  echo "Killing existing Celery processes from $CELERY_BIN with PIDs:"
+  echo "$CELERY_PIDS"
+  for PID in $CELERY_PIDS; do
+    kill "$PID" || echo "Failed to kill process with PID: $PID"
+  done
+else
+  echo "No running Celery process found."
+fi
+
+REDIS_PORT=6379 # will move it to .envs in near future
+
+if lsof -i :$REDIS_PORT | grep LISTEN >/dev/null; then
+  echo "Redis is already running on port $REDIS_PORT. Skipping Redis start."
+else
+  echo "Starting Redis..."
+  docker run -p $REDIS_PORT:6379 --restart always --detach redis &
+fi
+
+
+echo "Starting Celery Worker and FastAPI server"
+if [ $APP_ENV = 'production' ]; then
+    celery -A text_extract_api.celery_init worker --loglevel=info --pool=solo & # to scale by concurrent processing please run this line as many times as many concurrent processess you want to have running; keep in mind that after next run they will be killed
+    uvicorn text_extract_api.main:app --host 0.0.0.0 --port 8000;
+else
+
+  trap 'kill $(jobs -p) && exit' SIGINT SIGTERM
+  (
+      "$CELERY_BIN" -A text_extract_api.celery_app worker --loglevel=debug --pool=solo &
+      uvicorn text_extract_api.main:app --host 0.0.0.0 --port 8000 --reload
+  )
+fi
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/scripts/celery.sh
+──────────────────────────────────────────────────────────────────────
+#!/bin/bash
+exec celery -A text_extract_api.celery_app "$@"
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/scripts/entrypoint.sh
+──────────────────────────────────────────────────────────────────────
+#!/bin/bash
+
+PYPROJECT_HASH_FILE=".pyproject.hash"
+CURRENT_HASH=$(sha256sum pyproject.toml | awk '{ print $1 }')
+
+if [ ! -d ".dvenv" ] || [ ! -f "$PYPROJECT_HASH_FILE" ] || [ "$(cat $PYPROJECT_HASH_FILE)" != "$CURRENT_HASH" ]; then
+   echo "Dependencies have changed or .dvenv is missing. Reinstalling..."
+   python -m venv .dvenv
+   source .dvenv/bin/activate
+   pip install --upgrade pip setuptools
+   pip install .
+   echo "$CURRENT_HASH" >"$PYPROJECT_HASH_FILE"
+else
+   python3 -m venv --upgrade /app/.dvenv # temporary :(
+   echo "Virtual environment is up to date."
+fi
+
+source .dvenv/bin/activate
+
+if [ "$APP_TYPE" = "celery" ]; then
+   echo "Starting Celery worker..."
+   exec celery -A text_extract_api.celery_app worker --loglevel=info --pool=solo
+else
+   echo "Pulling LLM models, please wait until this process is done..."
+   python client/cli.py llm_pull --model llama3.1
+   python client/cli.py llm_pull --model llama3.2-vision
+   python client/cli.py llm_pull --model minicpm-v
+   echo "LLM models are ready!"
+
+   echo "Starting FastAPI app..."
+
+   if [ "$APP_ENV" = "production" ]; then
+      exec uvicorn text_extract_api.main:app --host 0.0.0.0 --port 8000
+   else
+      exec uvicorn text_extract_api.main:app --host 0.0.0.0 --port 8000 --reload
+   fi
+fi
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/storage_profiles/default.yaml
+──────────────────────────────────────────────────────────────────────
+strategy: local_filesystem
+settings:
+  root_path: ./storage # The root path where the files will be stored - mount a proper folder in the docker file to match it
+  subfolder_names_format: "" # eg: by_months/{Y}-{mm}/
+  create_subfolders: true
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/storage_profiles/gdrive.yaml
+──────────────────────────────────────────────────────────────────────
+strategy: google_drive
+settings:
+## how to enable GDrive API: https://developers.google.com/drive/api/quickstart/python?hl=pl
+  service_account_file: /storage/gdrive_service_account.json
+  folder_id: 
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/storage_profiles/s3.yaml
+──────────────────────────────────────────────────────────────────────
+strategy: aws_s3
+settings:
+  bucket_name: ${AWS_S3_BUCKET_NAME}
+  region: ${AWS_REGION}
+  access_key: ${AWS_ACCESS_KEY_ID}
+  secret_access_key: ${AWS_SECRET_ACCESS_KEY}
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/test_security_fix.py
+──────────────────────────────────────────────────────────────────────
+import os
+import tempfile
+import pytest
+
+from text_extract_api.files.storage_strategies.local_filesystem import LocalFilesystemStorageStrategy
+
+
+def test_path_traversal_protection():
+    """Test that path traversal attacks are blocked"""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        context = {
+            'settings': {
+                'root_path': temp_dir,
+                'create_subfolders': False,
+                'subfolder_names_format': ''
+            }
+        }
+        storage = LocalFilesystemStorageStrategy(context)
+        
+        # Test path traversal attempts
+        malicious_filenames = [
+            "../../../../../../etc/passwd",
+            "../../../secret.txt",
+            "..\\..\\..\\secret.txt",
+            "file/../../../etc/passwd"
+        ]
+        
+        for filename in malicious_filenames:
+            with pytest.raises(ValueError, match="Path traversal detected"):
+                storage.load(filename)
+            
+            with pytest.raises(ValueError, match="Path traversal detected"):
+                storage.save("test.txt", filename, "content")
+            
+            with pytest.raises(ValueError, match="Path traversal detected"):
+                storage.delete(filename)
+
+
+def test_legitimate_operations():
+    """Test that legitimate file operations work correctly"""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        context = {
+            'settings': {
+                'root_path': temp_dir,
+                'create_subfolders': False,
+                'subfolder_names_format': ''
+            }
+        }
+        storage = LocalFilesystemStorageStrategy(context)
+        
+        # Test normal file operations
+        filename = "test.txt"
+        content = "Test content"
+        
+        # Save file
+        storage.save(filename, filename, content)
+        
+        # Load file
+        loaded_content = storage.load(filename)
+        assert loaded_content == content
+        
+        # List files
+        files = storage.list()
+        assert filename in files
+        
+        # Delete file
+        storage.delete(filename)
+        
+        # Verify file is deleted
+        with pytest.raises(FileNotFoundError):
+            storage.load(filename)
+
+
+if __name__ == "__main__":
+    test_path_traversal_protection()
+    test_legitimate_operations()
+    print("All tests passed!")
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/tests/text_extract_api/files/converters/test_converter.py
+──────────────────────────────────────────────────────────────────────
+import unittest
+from unittest.mock import MagicMock, patch
+
+from text_extract_api.files.converters.converter import Converter
+from text_extract_api.files.file_formats.file_format import FileFormat
+
+
+class TestConverter(unittest.TestCase):
+
+    @patch("text_extract_api.files.converters.converter.Converter.convert",
+           return_value=iter(["page1", "page2", "page3"]))
+    def test_convert_to_list(self, mock_convert):
+        file_format = MagicMock(spec=FileFormat)
+        result = Converter.convert_to_list(file_format)
+        self.assertEqual(result, ["page1", "page2", "page3"])
+        mock_convert.assert_called_once_with(file_format)
+
+    @patch("text_extract_api.files.converters.converter.Converter.convert",
+           return_value=iter(["page1", "page2", "page3"]))
+    def test_convert_force_single(self, mock_convert):
+        file_format = MagicMock(spec=FileFormat)
+        result = Converter.convert_force_single(file_format)
+        self.assertEqual(result, "page1")
+        mock_convert.assert_called_once_with(file_format)
+
+    @patch("text_extract_api.files.converters.converter.Converter.convert", side_effect=NotImplementedError)
+    def test_convert_not_implemented(self):
+        file_format = MagicMock(spec=FileFormat)
+        with self.assertRaises(NotImplementedError):
+            list(Converter.convert(file_format))
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/tests/text_extract_api/files/storage_strategies/test_local_filesystem_security.py
+──────────────────────────────────────────────────────────────────────
+import os
+import tempfile
+import pytest
+
+from text_extract_api.files.storage_strategies.local_filesystem import LocalFilesystemStorageStrategy
+
+
+def test_path_traversal_protection():
+    """Test that path traversal attacks are blocked"""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        context = {
+            'settings': {
+                'root_path': temp_dir,
+                'create_subfolders': False,
+                'subfolder_names_format': ''
+            }
+        }
+        storage = LocalFilesystemStorageStrategy(context)
+        
+        # Test path traversal attempts
+        malicious_filenames = [
+            "../../../../../../etc/passwd",
+            "../../../secret.txt",
+            "..\\..\\..\\secret.txt",
+            "file/../../../etc/passwd"
+        ]
+        
+        for filename in malicious_filenames:
+            with pytest.raises(ValueError, match="Path traversal detected"):
+                storage.load(filename)
+            
+            with pytest.raises(ValueError, match="Path traversal detected"):
+                storage.save("test.txt", filename, "content")
+            
+            with pytest.raises(ValueError, match="Path traversal detected"):
+                storage.delete(filename)
+
+
+def test_legitimate_operations():
+    """Test that legitimate file operations work correctly"""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        context = {
+            'settings': {
+                'root_path': temp_dir,
+                'create_subfolders': False,
+                'subfolder_names_format': ''
+            }
+        }
+        storage = LocalFilesystemStorageStrategy(context)
+        
+        # Test normal file operations
+        filename = "test.txt"
+        content = "Test content"
+        
+        # Save file
+        storage.save(filename, filename, content)
+        
+        # Load file
+        loaded_content = storage.load(filename)
+        assert loaded_content == content
+        
+        # List files
+        files = storage.list()
+        assert filename in files
+        
+        # Delete file
+        storage.delete(filename)
+        
+        # Verify file is deleted
+        with pytest.raises(FileNotFoundError):
+            storage.load(filename)
+
+
+def test_absolute_path_protection():
+    """Test that absolute paths are blocked"""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        context = {
+            'settings': {
+                'root_path': temp_dir,
+                'create_subfolders': False,
+                'subfolder_names_format': ''
+            }
+        }
+        storage = LocalFilesystemStorageStrategy(context)
+        
+        # Test absolute path attempts
+        malicious_filenames = [
+            "/etc/passwd",
+            "/tmp/malicious.txt",
+            "C:\\Windows\\System32\\config\\SAM"
+        ]
+        
+        for filename in malicious_filenames:
+            with pytest.raises(ValueError, match="Path traversal detected"):
+                storage.load(filename)
+            
+            with pytest.raises(ValueError, match="Path traversal detected"):
+                storage.save("test.txt", filename, "content")
+            
+            with pytest.raises(ValueError, match="Path traversal detected"):
+                storage.delete(filename)
+
+
+def test_backslash_protection():
+    """Test that Windows-style path separators are blocked"""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        context = {
+            'settings': {
+                'root_path': temp_dir,
+                'create_subfolders': False,
+                'subfolder_names_format': ''
+            }
+        }
+        storage = LocalFilesystemStorageStrategy(context)
+        
+        # Test backslash attempts
+        malicious_filenames = [
+            "..\\..\\secret.txt",
+            "file\\..\\..\\secret.txt",
+            "normal\\path\\file.txt"  # This should also be blocked for security
+        ]
+        
+        for filename in malicious_filenames:
+            with pytest.raises(ValueError, match="Path traversal detected"):
+                storage.load(filename)
+            
+            with pytest.raises(ValueError, match="Path traversal detected"):
+                storage.save("test.txt", filename, "content")
+            
+            with pytest.raises(ValueError, match="Path traversal detected"):
+                storage.delete(filename)
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/text_extract_api/__init__.py
+──────────────────────────────────────────────────────────────────────
+
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/text_extract_api/celery_app.py
+──────────────────────────────────────────────────────────────────────
+import pathlib
+import sys
+
+from celery import Celery
+from dotenv import load_dotenv
+
+sys.path.insert(0, str(pathlib.Path(__file__).parent.resolve()))
+
+load_dotenv(".env")
+
+import multiprocessing
+
+multiprocessing.set_start_method("spawn", force=True)
+
+app = Celery(
+    "text_extract_api",
+    broker="redis://redis:6379/0",
+    backend="redis://redis:6379/0"
+)
+app.config_from_object({
+    "worker_max_memory_per_child": 8200000
+})
+
+app.autodiscover_tasks(["text_extract_api.extract"], 'tasks', True)
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/text_extract_api/extract/__init__.py
+──────────────────────────────────────────────────────────────────────
+
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/text_extract_api/extract/extract_result.py
+──────────────────────────────────────────────────────────────────────
+from typing import Callable, Any
+
+"""
+IMPORTANT INFORMATION ABOUT THIS CLASS:
+
+This is not the final version of the object, namespace, or intended use. 
+
+For this reason, I am not creating an interface, etc. Add code here as soon as possible 
+along with further integrations, and once we have gained sufficient experience, we will 
+undertake a refactor.
+
+Currently, the object's purpose is to replace the use of a primitive type, a string, for 
+extract returns. The limitation of this approach became evident when returning only the 
+resulting string caused us to lose valuable metadata about the document. Thanks to this 
+class, we retain DoclingDocument and foresee that other converters/OCRs may have similar 
+metadata.
+"""
+class ExtractResult:
+    def __init__(
+        self,
+        value: Any,
+        text_gatherer: Callable[[Any], str] = None
+    ):
+        """
+        Initializes a UnifiedText instance.
+
+        Args:
+            value (Any): The object containing or representing the text.
+            text_gatherer (Callable[[Any], str], optional): A callable that extracts text
+                from the `data`. Defaults to the `_default_text_gatherer`.
+
+        Raises:
+            ValueError: If `text_gatherer` is not callable or not provided when `value` is not a string.
+
+        Examples:
+            Using the default text gatherer
+
+            >>> unified = ExtractResult("Example text")
+            >>> print(unified.text())
+            Example text
+
+            Using a custom text gatherer
+
+            >>> def custom_gatherer(value): return f"Custom: {value}"
+            >>> unified = ExtractResult(123, custom_gatherer)
+            >>> print(unified.text())
+            Custom: 123
+        """
+
+        if text_gatherer is not None and not callable(text_gatherer):
+            raise ValueError("The `text_gatherer` provided to UnifiedText must be a callable.")
+
+        if not isinstance(value, str) and not callable(text_gatherer):
+            raise ValueError("If `value` is not a string, `text_gatherer` must be provided.")
+
+        self.value = value
+        self.text_gatherer = text_gatherer or self._default_text_gatherer
+
+    @staticmethod
+    def from_text(value: str) -> 'ExtractResult':
+        return ExtractResult(value)
+
+    @property
+    def text(self) -> str:
+        """
+        Retrieves text using the text gatherer.
+
+        Returns:
+            str: The extracted text from `value`.
+        """
+        return self.text_gatherer(self.value)
+
+    @staticmethod
+    def _default_text_gatherer(value: Any) -> str:
+        """
+        Default method to extract str from str.
+        So it just return value, obviously.
+
+        Args:
+            value (Any): The input value.
+
+        Returns:
+            str: The text representation of the input value.
+
+        Raises:
+            TypeError: If the `value` is not a string.
+        """
+        if isinstance(value, str):
+            return value
+        raise TypeError("Default text gatherer only supports strings.")
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/text_extract_api/extract/strategies/__init__.py
+──────────────────────────────────────────────────────────────────────
+
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/text_extract_api/extract/strategies/docling.py
+──────────────────────────────────────────────────────────────────────
+import tempfile
+
+from docling.document_converter import DocumentConverter
+from docling_core.types.doc.document import (  # Assuming a compatible Docling library or module
+    DoclingDocument,
+)
+
+from text_extract_api.extract.extract_result import ExtractResult
+from text_extract_api.extract.strategies.strategy import Strategy
+from text_extract_api.files.file_formats import FileFormat, PdfFileFormat
+
+class DoclingStrategy(Strategy):
+    """
+    Extraction strategy for processing PDF documents using Docling.
+    """
+
+    def name(self) -> str:
+        return "docling"
+
+    def extract_text(
+        self, file_format: FileFormat, language: str = "en"
+    ) -> ExtractResult:
+        """
+        Extracts text from a file using Docling and returns an ExtractResult.
+
+        :param file_format: Instance of FileFormat (which supports most docling formats).
+        :param language: Language of the text (default is 'en').
+        :return: ExtractResult containing the extracted DoclingDocument and metadata.
+        """
+
+        # Save file content to a temporary file
+        temp_file_path = self._save_to_temp_file(file_format)
+
+        # Convert the document using Docling
+        docling_document = self._convert_to_docling(temp_file_path)
+
+        # Return the result wrapped in ExtractResult
+        return ExtractResult(value=docling_document, text_gatherer=self.text_gatherer)
+
+    def text_gatherer(self, docling_document: DoclingDocument) -> str:
+        """
+        Gathers text content from a DoclingDocument in markdown format.
+
+        :param docling_document: Instance of DoclingDocument.
+        :return: Text content in markdown format.
+        """
+        return docling_document.export_to_markdown()
+
+    def _convert_to_docling(self, file_path: str) -> DoclingDocument:
+        """
+        Converts a file into a DoclingDocument instance.
+
+        :param file_path: Path to the PDF file to be converted.
+        :return: DoclingDocument instance.
+        """
+        # Placeholder for actual conversion logic using the Docling API
+        try:
+            converter = DocumentConverter()
+            docling_document = converter.convert(file_path).document
+            return docling_document
+        except Exception as e:
+            raise RuntimeError(f"Failed to convert document using Docling: {e}")
+
+    def _save_to_temp_file(self, file_format: FileFormat) -> str:
+        """
+        Saves the content of a FileFormat instance to a temporary file.
+
+        :param file_format: Instance of FileFormat.
+        :return: Path to the temporary file containing the file content.
+        """
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
+            temp_file.write(file_format.binary)
+            return temp_file.name
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/text_extract_api/extract/strategies/easyocr.py
+──────────────────────────────────────────────────────────────────────
+import io
+import numpy as np
+from PIL import Image
+import easyocr
+
+from extract.extract_result import ExtractResult
+from text_extract_api.extract.strategies.strategy import Strategy
+from text_extract_api.files.file_formats.file_format import FileFormat
+from text_extract_api.files.file_formats.image import ImageFileFormat
+
+
+class EasyOCRStrategy(Strategy):
+    @classmethod
+    def name(cls) -> str:
+        return "easyOCR"
+
+    def extract_text(self, file_format: FileFormat, language: str = 'en') -> ExtractResult:
+        """
+        Extract text using EasyOCR after converting the input file to images
+        (if not already an ImageFileFormat). 
+        """
+
+        # Ensure we can actually convert the input file to ImageFileFormat
+        if (
+            not isinstance(file_format, ImageFileFormat) 
+            and not file_format.can_convert_to(ImageFileFormat)
+        ):
+            raise TypeError(
+                f"EasyOCR - format {file_format.mime_type} is not supported (yet?)"
+            )
+
+        # Convert the input file to a list of ImageFileFormat objects
+        images = FileFormat.convert_to(file_format, ImageFileFormat)
+
+        # Initialize the EasyOCR Reader
+        # Add or change languages to your needs, e.g., ['en', 'fr']
+        reader = easyocr.Reader(language.split(','))
+
+        # Process each image, extracting text
+        all_extracted_text = []
+        for image_format in images:
+            # Convert the in-memory bytes to a PIL Image
+            pil_image = Image.open(io.BytesIO(image_format.binary))
+            
+            # Convert PIL image to numpy array for EasyOCR
+            np_image = np.array(pil_image)
+
+            # Perform OCR; with `detail=0`, we get just text, no bounding boxes
+            ocr_result = reader.readtext(np_image, detail=0) # TODO: addd bounding boxes support as described in #37
+
+            # Combine all lines into a single string for that image/page
+            extracted_text = "\n".join(ocr_result)
+            all_extracted_text.append(extracted_text)
+
+        # Join text from all images/pages
+        full_text = "\n\n".join(all_extracted_text)
+
+
+        return ExtractResult.from_text(full_text)
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/text_extract_api/extract/strategies/ollama.py
+──────────────────────────────────────────────────────────────────────
+import os
+import tempfile
+import time
+
+import httpx
+from ollama import Client
+
+from extract.extract_result import ExtractResult
+from text_extract_api.extract.strategies.strategy import Strategy
+from text_extract_api.files.file_formats.file_format import FileFormat
+from text_extract_api.files.file_formats.image import ImageFileFormat
+
+
+class OllamaStrategy(Strategy):
+    """Ollama models OCR strategy"""
+
+    @classmethod
+    def name(cls) -> str:
+        return "llama_vision"
+
+    def extract_text(self, file_format: FileFormat, language: str = 'en') -> ExtractResult:
+
+        if (
+                not isinstance(file_format, ImageFileFormat)
+                and not file_format.can_convert_to(ImageFileFormat)
+        ):
+            raise TypeError(
+                f"Ollama OCR - format {file_format.mime_type} is not supported (yet?)"
+            )
+        images = FileFormat.convert_to(file_format, ImageFileFormat)
+        extracted_text = ""
+        start_time = time.time()
+        ocr_percent_done = 0
+        num_pages = len(images)
+        for i, image in enumerate(images):
+
+            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
+                temp_file.write(image.binary)
+                temp_filename = temp_file.name
+
+            # Generate text using the specified model
+            try:
+                timeout = httpx.Timeout(connect=180.0, read=180.0, write=180.0, pool=180.0) # @todo move those values to .env
+                ollama = Client(timeout=timeout)
+                response = ollama.chat(self._strategy_config.get('model'), [{
+                    'role': 'user',
+                    'content': self._strategy_config.get('prompt'),
+                    'images': [temp_filename]
+                }], stream=True)
+                os.remove(temp_filename)
+                num_chunk = 1
+                for chunk in response:
+                    meta = {
+                        'progress': str(30 + ocr_percent_done),
+                        'status': 'OCR Processing'
+                                  + '(page ' + str(i + 1) + ' of ' + str(num_pages) + ')'
+                                  + ' chunk no: ' + str(num_chunk),
+                        'start_time': start_time,
+                        'elapsed_time': time.time() - start_time}
+                    self.update_state_callback(state='PROGRESS', meta=meta)
+                    num_chunk += 1
+                    extracted_text += chunk['message']['content']
+
+                ocr_percent_done += int(
+                    20 / num_pages)  # 20% of work is for OCR - just a stupid assumption from tasks.py
+            except ollama.ResponseError as e:
+                print('Error:', e.error)
+                raise Exception("Failed to generate text with Ollama model " + self._strategy_config.get('model'))
+
+            print(response)
+
+        return ExtractResult.from_text(extracted_text)
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/text_extract_api/extract/strategies/remote.py
+──────────────────────────────────────────────────────────────────────
+import os
+import tempfile
+import time
+
+from extract.extract_result import ExtractResult
+
+from text_extract_api.extract.strategies.strategy import Strategy
+from text_extract_api.files.file_formats.file_format import FileFormat
+from text_extract_api.files.file_formats.image import ImageFileFormat
+from text_extract_api.files.file_formats.pdf import PdfFileFormat
+import requests
+
+
+class RemoteStrategy(Strategy):
+    """Remote API Strategy"""
+
+    @classmethod
+    def name(cls) -> str:
+        return "remote"
+
+    def extract_text(self, file_format: FileFormat, language: str = 'en') -> ExtractResult:
+
+        if (
+                not isinstance(file_format, PdfFileFormat)
+                and not file_format.can_convert_to(PdfFileFormat)
+        ):
+            raise TypeError(
+                f"Marker PDF - format {file_format.mime_type} is not supported (yet?)"
+            )
+
+        pdf_files = FileFormat.convert_to(file_format, PdfFileFormat)
+        extracted_text = ""
+        start_time = time.time()
+        ocr_percent_done = 0
+        
+        if len(pdf_files) > 1:
+            raise ValueError("Only one PDF file is supported.")
+        
+        if len(pdf_files) == 0:
+            raise ValueError("No PDF file found - conversion error.")
+
+        try: 
+            url = os.getenv("REMOTE_API_URL", self._strategy_config.get("url"))
+            if not url:
+                raise Exception('Please do set the REMOTE_API_URL environment variable: export REMOTE_API_URL=http://...')
+            files = {'file': ('document.pdf', pdf_files[0].binary, 'application/pdf')}
+            data = {
+                'page_range': None,
+                'languages': language,
+                'force_ocr': False,
+                'paginate_output': False,
+                'output_format': 'markdown' # TODO: support JSON output format
+            }
+
+            meta = {
+                'progress': str(30 + ocr_percent_done),
+                'status': 'OCR Processing',
+                'start_time': start_time,
+                'elapsed_time': time.time() - start_time}
+            self.update_state_callback(state='PROGRESS', meta=meta)
+
+            response = requests.post(url, files=files, data=data)
+            if response.status_code != 200:
+                raise Exception(f"Failed to upload PDF file: {response.content}")
+
+            extracted_text = response.json().get('output', '')
+        except Exception as e:
+            print('Error:', e)
+            raise Exception("Failed to generate text with Remote API. Make sure the remote server is up and running")
+            
+        return ExtractResult.from_text(extracted_text)
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/text_extract_api/extract/strategies/strategy.py
+──────────────────────────────────────────────────────────────────────
+from __future__ import annotations
+import os
+import yaml
+import importlib
+import pkgutil
+from typing import Type, Dict
+
+from pydantic.v1.typing import get_class
+
+from extract.extract_result import ExtractResult
+from text_extract_api.files.file_formats.file_format import FileFormat
+
+class Strategy:
+    _strategies: Dict[str, Strategy] = {}
+    _strategy_config: Dict[str, Dict] = {}
+
+    def __init__(self):
+        self.update_state_callback = None
+        self._strategy_config = None
+
+    def set_strategy_config(self, config: Dict):
+        self._strategy_config = config
+
+    def set_update_state_callback(self, callback):
+        self.update_state_callback = callback
+
+    def update_state(self, state, meta):
+        if self.update_state_callback:
+            self.update_state_callback(state, meta)
+
+    @classmethod
+    def name(cls) -> str:
+        raise NotImplementedError("Strategy subclasses must implement name")
+
+    @classmethod
+    def extract_text(cls, file_format: Type["FileFormat"], language: str = 'en') -> ExtractResult:
+        raise NotImplementedError("Strategy subclasses must implement extract_text method")
+
+    @classmethod
+    def get_strategy(cls, name: str) -> Type["Strategy"]:
+        """
+        Fetches and returns a registered strategy class based on the given name.
+
+        Args:
+            name: The name of the strategy to fetch.
+
+        Returns:
+            The strategy class corresponding to the provided name.
+
+        Raises:
+            ValueError: If the specified strategy name does not exist among the registered strategies.
+        """
+
+        if name not in cls._strategies:
+            cls.load_strategies_from_config()
+
+        if name not in cls._strategies:
+            cls.autodiscover_strategies()
+
+        if name not in cls._strategies:
+            available = ', '.join(cls._strategies.keys())
+            raise ValueError(f"Unknown strategy '{name}'. Available: {available}")
+
+        return cls._strategies[name]
+
+    @classmethod
+    def register_strategy(cls, strategy: Type["Strategy"], name: str = None, override: bool = False):
+        name = name or strategy.name()
+        if override or name not in cls._strategies:
+            cls._strategies[name] = strategy
+
+    @classmethod
+    def load_strategies_from_config(cls, path: str = os.getenv('OCR_CONFIG_PATH', 'config/strategies.yaml')):
+        strategies = cls._strategies
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(path)))
+        config_file_path = os.path.join(project_root, path)
+
+        if not os.path.isfile(config_file_path):
+            raise FileNotFoundError(f"Config file not found at path: {config_file_path}")
+
+        with open(config_file_path, 'r') as f:
+            config = yaml.safe_load(f)
+
+        if 'strategies' not in config or not isinstance(config['strategies'], dict):
+            raise ValueError(f"Missing or invalid 'strategies' section in the {config_file_path} file")
+
+        for strategy_name, strategy_config in config['strategies'].items():
+            if 'class' not in strategy_config:
+                raise ValueError(f"Missing 'class' attribute for OCR strategy: {strategy_name}")
+
+            strategy_class_path = strategy_config['class']
+            module_path, class_name = strategy_class_path.rsplit('.', 1)
+            module = importlib.import_module(module_path)
+
+            strategy = getattr(module, class_name)
+            strategy_instance = strategy()
+            strategy_instance.set_strategy_config(strategy_config)
+            
+            cls.register_strategy(strategy_instance, strategy_name)
+            print(f"Loaded strategy from {config_file_path} {strategy_name} [{strategy_class_path}]")
+
+        return strategies
+
+    @classmethod
+    def autodiscover_strategies(cls) -> Dict[str, Type]:
+        strategies = cls._strategies
+        for module_info in pkgutil.iter_modules():
+            if not module_info.name.startswith("text_extract_api"):
+                continue
+
+            try:
+                module = importlib.import_module(module_info.name)
+            except ImportError:
+                continue
+
+            if not hasattr(module, "__path__"):
+                continue
+
+            for submodule_info in pkgutil.walk_packages(module.__path__, module_info.name + "."):
+                if ".strategies." not in submodule_info.name:
+                    continue
+
+                try:
+                    ocr_module = importlib.import_module(submodule_info.name)
+                except ImportError as e:
+                    print('Error loading strategy ' + submodule_info.name + ': ' + str(e))
+                    continue
+                for attr_name in dir(ocr_module):
+                    attr = getattr(ocr_module, attr_name)
+                    if (isinstance(attr, type)
+                            and issubclass(attr, Strategy)
+                            and attr is not Strategy
+                            and attr.name() not in strategies
+                    ):
+                        strategies[attr.name()] = attr()
+                        print(f"Discovered strategy {attr.name()} from {submodule_info.name} [{module_info.name}]")
+
+
+        cls._strategies = strategies
+
+
+
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/text_extract_api/extract/tasks.py
+──────────────────────────────────────────────────────────────────────
+import os
+import time
+from typing import Optional
+
+import ollama
+import redis
+
+from text_extract_api.celery_app import app as celery_app
+from text_extract_api.extract.strategies.strategy import Strategy
+from text_extract_api.files.file_formats.file_format import FileFormat
+from text_extract_api.files.storage_manager import StorageManager
+
+# Connect to Redis
+redis_url = os.getenv('REDIS_CACHE_URL', 'redis://redis:6379/1')
+redis_client = redis.StrictRedis.from_url(redis_url)
+
+
+@celery_app.task(bind=True)
+def ocr_task(
+        self,
+        binary_content: bytes,
+        strategy_name: str,
+        filename: str,
+        file_hash: str,
+        ocr_cache: bool,
+        prompt: Optional[str] = None,
+        model: Optional[str] = None,
+        language: Optional[str] = None,
+        storage_profile: Optional[str] = None,
+        storage_filename: Optional[str] = None,
+):
+    """
+    Celery task to perform OCR processing on a PDF/Office/image file.
+    """
+    start_time = time.time()
+
+    strategy = Strategy.get_strategy(strategy_name)
+    strategy.set_update_state_callback(self.update_state)
+
+    self.update_state(state='PROGRESS', status="File uploaded successfully",
+                      meta={'progress': 10})  # Example progress update
+
+    extracted_text = None
+    if ocr_cache:
+        cached_result = redis_client.get(file_hash)
+        if cached_result:
+            # Return cached result if available
+            extracted_text = cached_result.decode('utf-8')
+
+    if extracted_text is None:
+        print(f"Extracting text from file using strategy: {strategy.name()}")
+        self.update_state(state='PROGRESS',
+                          meta={'progress': 30, 'status': 'Extracting text from file', 'start_time': start_time,
+                                'elapsed_time': time.time() - start_time})  # Example progress update
+        extract_result = strategy.extract_text(FileFormat.from_binary(binary_content), language)
+        extracted_text = extract_result.text
+
+    else:
+        print("Using cached result...")
+
+    print("After extracted text")
+    self.update_state(state='PROGRESS',
+                      meta={'progress': 50, 'status': 'Text extracted', 'extracted_text': extracted_text,
+                            'start_time': start_time,
+                            'elapsed_time': time.time() - start_time})  # Example progress update
+
+    # @todo Universal Text Object - is cache available
+    if ocr_cache:
+        redis_client.set(file_hash, extracted_text)
+
+    if prompt:
+        print(f"Transforming text using LLM (prompt={prompt}, model={model}) ...")
+        self.update_state(state='PROGRESS', meta={'progress': 75, 'status': 'Processing LLM', 'start_time': start_time,
+                                                  'elapsed_time': time.time() - start_time})  # Example progress update
+        llm_resp = ollama.generate(model, prompt + extracted_text, stream=True)
+        num_chunk = 1
+        extracted_text = ''  # will be filled with chunks from llm
+        for chunk in llm_resp:
+            self.update_state(state='PROGRESS',
+                              meta={'progress': num_chunk, 'status': 'LLM Processing chunk no: ' + str(num_chunk),
+                                    'start_time': start_time,
+                                    'elapsed_time': time.time() - start_time})  # Example progress update
+            num_chunk += 1
+            extracted_text += chunk['response']
+
+    if storage_profile:
+        if not storage_filename:
+            storage_filename = filename.replace('.', '_') + '.pdf'
+
+        storage_manager = StorageManager(storage_profile)
+        storage_manager.save(filename, storage_filename, extracted_text)
+
+    self.update_state(state='DONE', meta={'progress': 100, 'status': 'Processing done!', 'start_time': start_time,
+                                          'elapsed_time': time.time() - start_time})
+
+    return extracted_text
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/text_extract_api/files/__init__.py
+──────────────────────────────────────────────────────────────────────
+
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/text_extract_api/files/converters/__init__.py
+──────────────────────────────────────────────────────────────────────
+
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/text_extract_api/files/converters/converter.py
+──────────────────────────────────────────────────────────────────────
+from typing import Iterator, List, Type
+
+from text_extract_api.files.file_formats.file_format import FileFormat
+
+class Converter:
+    @staticmethod
+    def convert(file_format: Type["FileFormat"]) -> Iterator["FileFormat"]:
+        raise NotImplementedError("Subclasses must implement the `convert` method.")
+
+    @classmethod
+    def convert_to_list(cls, file_format: Type["FileFormat"]) -> List["FileFormat"]:
+        return list(cls.convert(file_format))
+
+    @classmethod
+    def convert_force_single(cls, file_format: Type["FileFormat"]) -> Type["FileFormat"]:
+        """ Warning - this will return only first page """
+        return next(cls.convert(file_format), None)
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/text_extract_api/files/converters/image_to_pdf.py
+──────────────────────────────────────────────────────────────────────
+from io import BytesIO
+from typing import Iterator, Type
+from PIL import Image
+from files.converters.converter import Converter
+from files.file_formats.image import ImageFileFormat
+from files.file_formats.pdf import PdfFileFormat
+
+
+class ImageToPdfConverter(Converter):
+
+    @staticmethod
+    def convert(file_format: ImageFileFormat) -> Iterator[Type["PdfFileFormat"]]:
+
+        image = Image.open(BytesIO(file_format.binary))
+        pdf_bytes = ImageToPdfConverter._image_to_pdf_bytes(image)
+        yield PdfFileFormat.from_binary(
+            binary=pdf_bytes,
+            filename=f"{file_format.filename}.pdf",
+            mime_type="application/pdf"
+        )
+
+    @staticmethod
+    def _image_to_pdf_bytes(image: Image) -> bytes:
+
+        buffer = BytesIO()
+        image.save(buffer, format="PDF")
+        return buffer.getvalue()
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/text_extract_api/files/converters/pdf_to_jpeg.py
+──────────────────────────────────────────────────────────────────────
+from __future__ import annotations
+from typing import Iterator, Type
+from pdf2image import convert_from_bytes
+
+from text_extract_api.files.converters.converter import Converter
+from text_extract_api.files.file_formats.image import ImageFileFormat
+from text_extract_api.files.file_formats.pdf import PdfFileFormat
+
+class PdfToJpegConverter(Converter):
+
+    @staticmethod
+    def convert(file_format: PdfFileFormat) -> Iterator[Type["ImageFileFormat"]]:
+        pages = convert_from_bytes(file_format.binary)
+        if not pages:
+            raise ValueError("No pages found in the PDF.")
+        for i, page in enumerate(pages, start=1):
+            yield ImageFileFormat.from_binary(
+                binary=PdfToJpegConverter._image_to_bytes(page),
+                filename=f"{file_format.filename}_page_{i}.jpg",
+                mime_type="image/jpeg"
+            )
+
+    @staticmethod
+    def _image_to_bytes(image) -> bytes:
+        from io import BytesIO
+
+        buffer = BytesIO()
+        image.save(buffer, format="JPEG")
+        return buffer.getvalue()
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/text_extract_api/files/file_formats/__init__.py
+──────────────────────────────────────────────────────────────────────
+
+### WARNING
+###    This file is generated dynamically before git commit.
+###    Run ./scripts/dev/gen-file-format-init.sh from repository root.
+
+from .file_format import FileFormat
+from .docling import DoclingFileFormat
+from .pdf import PdfFileFormat
+from .image import ImageFileFormat
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/text_extract_api/files/file_formats/docling.py
+──────────────────────────────────────────────────────────────────────
+from typing import Type, Dict, Callable, Iterator
+from text_extract_api.files.file_formats.file_format import FileFormat
+
+
+class DoclingFileFormat(FileFormat):
+    DEFAULT_FILENAME: str = "document.docling"
+    DEFAULT_MIME_TYPE: str = "application/vnd.docling"
+
+    @staticmethod
+    def accepted_mime_types() -> list[str]:
+        return [
+            "application/vnd.docling",  # Docling documents
+            # Do not put all formats handled by docling here - only those that are not supported by dedicated file formats"
+            "text/plain",
+            "text/markdown",
+            "text/html",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.oasis.opendocument.text",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/vnd.ms-powerpoint",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "text/csv",
+            "application/json",
+            "application/xml",
+        ]
+
+    @staticmethod
+    def is_pageable() -> bool:
+        return True
+
+    @classmethod
+    def default_iterator_file_format(cls) -> Type[FileFormat]:
+        return cls
+
+    @staticmethod
+    def convertible_to() -> Dict[Type["FileFormat"], Callable[[], Iterator["FileFormat"]]]:
+        # No specific converters needed as the strategy will handle conversion
+        return {}
+
+    @staticmethod
+    def validate(binary_file_content: bytes):
+        if not binary_file_content or len(binary_file_content) == 0:
+            raise ValueError("Empty file content")
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/text_extract_api/files/file_formats/file_format.py
+──────────────────────────────────────────────────────────────────────
+import base64
+from hashlib import md5
+from typing import Type, Iterator, Optional, Dict, Callable, List, TypedDict
+
+import magic
+
+
+class FileFormatDict(TypedDict):
+    filename: str
+    mime_type: str
+    binary_file_content_size: int
+    content_base64: Optional[str]
+    content_binary: Optional[bytes]
+
+
+class FileFormat:
+    DEFAULT_FILENAME: str = "file"
+    DEFAULT_MIME_TYPE: Optional[str] = None
+    _base64_cache: Optional[str] = None
+
+    # Construction
+
+    def __init__(self, binary_file_content: bytes, filename: Optional[str] = None,
+                 mime_type: Optional[str] = None) -> None:
+        """
+        Attributes:
+            binary_file_content (bytes): The binary content of the file.
+            filename (str): The name of the file. Defaults to a predefined
+                value if not provided.
+            mime_type (str): The MIME type of the file. Defaults to a
+                predefined value if not provided.
+
+        Parameters:
+            binary_file_content: The binary content of the file.
+            filename: The name of the file. Defaults to None.
+            mime_type: The MIME type. Defaults to None.
+
+        Raises:
+            ValueError: If binary_file_content is empty or if no MIME type
+                is provided or defaulted to.
+        """
+        if not binary_file_content:
+            raise ValueError(f"{self.__class__.__name__} missing content file - corrupted base64 or binary data.")
+
+        resolved_mime_type = mime_type or self.DEFAULT_MIME_TYPE
+        if not resolved_mime_type:
+            raise ValueError(f"{self.__class__.__name__} requires a mime type to be provided or defaulted.")
+
+        self.binary_file_content: bytes = binary_file_content
+        self.filename: str = filename or self.DEFAULT_FILENAME
+        self.mime_type: str = resolved_mime_type
+
+    @classmethod
+    def from_base64(cls, base64_string: str, filename: Optional[str] = None, mime_type: Optional[str] = None) -> Type[
+        "FileFormat"]:
+        binary = base64.b64decode(base64_string)
+        instance = cls.from_binary(binary, filename=filename, mime_type=mime_type)
+        instance._base64_cache = base64_string
+        return instance
+
+    @classmethod
+    def from_binary(
+            cls,
+            binary: bytes,
+            filename: Optional[str] = None,
+            mime_type: Optional[str] = None
+    ) -> Type["FileFormat"]:
+        if mime_type == "application/octet-stream":
+            mime_type = None
+        mime_type = mime_type or FileFormat._guess_mime_type(binary_data=binary, filename=filename)
+        from text_extract_api.files.file_formats.pdf import PdfFileFormat  # type: ignore
+        file_format_class = cls._get_file_format_class(mime_type)
+        return file_format_class(binary_file_content=binary, filename=filename, mime_type=mime_type)
+
+    def __repr__(self) -> str:
+        """
+        Returns a string representation of the FileFormat instance.
+        """
+        size = len(self.binary_file_content)
+        return (
+            f"<FileFormat(filename='{self.filename}', mime_type='{self.mime_type}', size={size} bytes)>"
+        )
+
+    def to_dict(self, encode_base64: bool = False) -> FileFormatDict:
+        """
+        Converts the FileFormat instance to a dictionary.
+
+        Args:
+            encode_base64 (bool): If True, includes Base64-encoded content;
+                otherwise includes binary content.
+
+        Returns:
+            FileFormatDict: A dictionary containing the file's details,
+                including either Base64 or binary content.
+        """
+        return {
+            "filename": self.filename,
+            "mime_type": self.mime_type,
+            "binary_file_content_size": len(self.binary_file_content),
+            "content_base64": self.base64_content if encode_base64 else None,
+            "content_binary": self.binary_file_content if not encode_base64 else None,
+        }
+
+    @property
+    def base64_(self) -> str:
+        if self._base64_cache is None:
+            self._base64_cache = base64.b64encode(self.binary_file_content).decode('utf-8')
+        return self._base64_cache
+
+    @property
+    def hash(self) -> str:
+        return md5(self.binary).hexdigest()
+
+    @property
+    def binary(self) -> bytes:
+        return self.binary_file_content
+
+    def iterator(self, target_format: Optional["FileFormat"]) -> Iterator["FileFormat"]:
+        """
+        Return an iterator of a file(s)
+
+        By default, the iterator uses the format defined by `default_iterator_file_format()`.
+        If a `target_format` is provided, it must be compatible and convertible using
+        `convertible_to()`.
+
+        Args:
+            target_format (Optional[Type[FileFormat]]): The desired file format for conversion.
+
+        Returns:
+            Iterator[FileFormat]: An iterator for the specified or default file format.
+
+        Raises:
+            ValueError: If the target format is not compatible or convertible.
+        """
+        final_format = target_format or self.default_iterator_file_format
+
+        if self.is_pageable():
+            if final_format.is_pageable():
+                raise ValueError("Target format and current format are both pageable. Cannot iterate.")
+            else:
+                yield self.convert_to(final_format)
+        else:
+            yield self.convert_to(final_format)
+
+    # Utils
+    @staticmethod
+    def accepted_mime_types() -> list[str]:
+        raise NotImplementedError("Subclasses must implement accepted_mime_types.")
+
+    @staticmethod
+    def is_pageable() -> bool:
+        """
+        Checks if the format supports pagination. Pdf does, image does not. :)
+        """
+        raise NotImplementedError("Subclasses must implement is_pageable.")
+
+    def can_convert_to(self, target_format: "FileFormat") -> bool:
+        convertible_keys = self.convertible_to().keys()
+        return any(target_format is key for key in convertible_keys)
+
+    def convert_to(self, target_format: Type["FileFormat"]) -> List["FileFormat"]:
+        if isinstance(self, target_format):
+            return [self]
+
+        converters = self.convertible_to()
+        if target_format not in converters:
+            raise ValueError(f"Cannot convert to {target_format}. Conversion not supported.")
+
+        return list(converters[target_format](self))
+
+    @staticmethod
+    def convertible_to() -> Dict[Type["FileFormat"], Callable[[Type["FileFormat"]], Iterator[Type["Converter"]]]]:
+        """
+        Defines what formats this file type can be converted to.
+        Returns a dictionary where keys are target formats and values are functions
+        that produce FileFormat instances.
+
+        :return: A dictionary of convertible formats and their converters.
+        """
+        return {}
+
+    @classmethod
+    def default_iterator_file_format(cls) -> Type["FileFormat"]:
+        if not cls.is_pageable():
+            return cls
+        raise NotImplementedError("Pageable formats must implement default_iterator_file_format.")
+
+    def unify(self) -> "FileFormat":
+        """
+        Converts the file to a universal type for that format (e.g., JPEG from png, bmp, tiff, etc.).
+        Default implementation returns a new instance of the current format.
+
+        :return: Unified format as a new self instance.
+        """
+        return self
+
+    @staticmethod
+    def _get_file_format_class(mime_type: str) -> Type["FileFormat"]:
+        import text_extract_api.files.file_formats.pdf  # noqa - its not unused import @todo autodiscover
+        import text_extract_api.files.file_formats.image  # noqa - its not unused import @todo autodiscover
+        import text_extract_api.files.file_formats.docling  # noqa - its not unused import @todo autodiscover
+        for subclass in FileFormat.__subclasses__():
+            if mime_type in subclass.accepted_mime_types():
+                return subclass
+        raise ValueError(f"No matching FileFormat class for mime type: {mime_type}")
+
+    @staticmethod
+    def _guess_mime_type(binary_data: Optional[bytes] = None, filename: Optional[str] = None) -> str:
+        mime = magic.Magic(mime=True)
+        if binary_data:
+            return mime.from_buffer(binary_data)
+        if filename:
+            return mime.from_file(filename)
+        raise ValueError("Either binary_data or filename must be provided to guess the MIME type.")
+
+
+class FileField:
+    def __init__(self, value: str):
+        self._file_format = FileFormat.from_base64(value)
+        self.value = value
+
+    def __str__(self) -> str:
+        return self.value
+
+    def __get_pydantic_core_schema__(self, handler) -> str:
+        return handler.generate_schema(str)
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/text_extract_api/files/file_formats/image.py
+──────────────────────────────────────────────────────────────────────
+from enum import Enum
+from typing import Callable, Dict, Iterator, Type
+from io import BytesIO
+from PIL import Image
+
+from text_extract_api.files.file_formats.file_format import FileFormat
+
+class ImageSupportedExportFormats(Enum):
+    JPEG = "JPEG"
+    PNG = "PNG"
+    BMP = "BMP"
+    TIFF = "TIFF"
+
+class ImageFileFormat(FileFormat):
+    DEFAULT_FILENAME: str = "image.jpeg"
+
+    @staticmethod
+    def accepted_mime_types() -> list[str]:
+        return ["image/jpeg", "image/png", "image/bmp", "image/gif", "image/tiff"]
+    
+    @staticmethod
+    def convertible_to() -> Dict[Type["FileFormat"], Callable[[], Iterator["FileFormat"]]]:
+        from text_extract_api.files.file_formats.pdf import PdfFileFormat
+        from text_extract_api.files.converters.image_to_pdf import ImageToPdfConverter
+
+        return {
+            PdfFileFormat: ImageToPdfConverter.convert
+        }    
+
+    @staticmethod
+    def is_pageable() -> bool:
+        return False
+
+    @classmethod
+    def default_iterator_file_format(cls) -> Type["ImageFileFormat"]:
+        return cls
+
+    def unify(self) -> "FileFormat":
+        unified_image = ImageProcessor.unify_image(self.binary, ImageSupportedExportFormats.JPEG)
+        return ImageFileFormat.from_binary(unified_image, self.filename, self.mime_type)
+
+    @staticmethod
+    def validate(binary_file_content: bytes):
+        try:
+            with Image.open(BytesIO(binary_file_content)) as img:
+                img.verify()
+        except OSError as e:
+            raise ValueError("Corrupted image file content") from e
+
+class ImageProcessor:
+    @staticmethod
+    def unify_image(image_bytes: bytes, target_format: ImageSupportedExportFormats = "JPEG",
+                    convert_to_rgb: bool = True) -> bytes:
+        """
+        Prepares an image for OCR by unifying its format and color mode.
+        - Converts image to the desired format (e.g., JPEG).
+        - Converts grayscale, CMYK, etc., to RGB (if required).
+        :param image_bytes: Input image in bytes.
+        :param target_format: Desired format for the output image (default: JPEG)
+        :param convert_to_rgb: Convert to RGB format if not already (default: True).
+        :return:Image bytes in the new format.
+        """
+        image = Image.open(BytesIO(image_bytes))
+
+        # We need RGB - problem occurred when P (png) was sent
+        if convert_to_rgb and image.mode != "RGB":
+            image = image.convert("RGB")
+
+        buffered = BytesIO()
+        image.save(buffered, format=target_format.value)
+        return buffered.getvalue()
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/text_extract_api/files/file_formats/pdf.py
+──────────────────────────────────────────────────────────────────────
+from typing import Type, Callable, Dict, Iterator
+
+from text_extract_api.files.file_formats.file_format import FileFormat
+
+
+class PdfFileFormat(FileFormat):
+    DEFAULT_FILENAME: str = "image.pdf"
+
+    @staticmethod
+    def accepted_mime_types() -> list[str]:
+        return ["application/pdf"]
+
+    @staticmethod
+    def is_pageable() -> bool:
+        return True
+
+    @classmethod
+    def default_iterator_file_format(cls) -> Type[FileFormat]:
+        from text_extract_api.files.file_formats.image import ImageFileFormat
+        return ImageFileFormat
+
+    @staticmethod
+    def convertible_to() -> Dict[Type["FileFormat"], Callable[[], Iterator["FileFormat"]]]:
+        from text_extract_api.files.file_formats.image import ImageFileFormat
+        from text_extract_api.files.converters.pdf_to_jpeg import PdfToJpegConverter
+
+        return {
+            ImageFileFormat: PdfToJpegConverter.convert
+        }
+
+    @staticmethod
+    def validate(binary_file_content: bytes):
+        if not binary_file_content.startswith(b'%PDF'):
+            raise ValueError("Corrupted PDF file")
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/text_extract_api/files/storage_manager.py
+──────────────────────────────────────────────────────────────────────
+import os
+from enum import Enum
+
+import yaml
+
+from text_extract_api.files.storage_strategies.aws_s3 import AWSS3StorageStrategy
+from text_extract_api.files.storage_strategies.google_drive import GoogleDriveStorageStrategy
+from text_extract_api.files.storage_strategies.local_filesystem import LocalFilesystemStorageStrategy
+from text_extract_api.files.storage_strategies.storage_strategy import StorageStrategy
+
+
+class StorageStrategy(Enum):
+    LOCAL_FILESYSTEM = "local_filesystem"
+    GOOGLE_DRIVE = "google_drive"
+    AWS_S3 = "aws_s3"
+
+
+class StorageManager:
+    def __init__(self, profile_name):
+        profile_path = os.path.join(os.getenv('STORAGE_PROFILE_PATH', '/storage_profiles'), f'{profile_name}.yaml')
+        with open(profile_path, 'r') as file:
+            self.profile = yaml.safe_load(file)
+
+        strategy = StorageStrategy(self.profile['strategy'])
+        if strategy == StorageStrategy.LOCAL_FILESYSTEM:
+            self.strategy = LocalFilesystemStorageStrategy(self.profile)
+        elif strategy == StorageStrategy.GOOGLE_DRIVE:
+            self.strategy = GoogleDriveStorageStrategy(self.profile)
+        elif strategy == StorageStrategy.AWS_S3:
+            self.strategy = AWSS3StorageStrategy(self.profile)
+        else:
+            raise ValueError(f"Unknown storage strategy '{strategy}'")
+
+    def save(self, file_name, dest_file_name, content):
+        self.strategy.save(file_name, dest_file_name, content)
+
+    def load(self, file_name):
+        return self.strategy.load(file_name)
+
+    def list(self):
+        return self.strategy.list()
+
+    def delete(self, file_name):
+        self.strategy.delete(file_name)
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/text_extract_api/files/storage_strategies/__init__.py
+──────────────────────────────────────────────────────────────────────
+
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/text_extract_api/files/storage_strategies/aws_s3.py
+──────────────────────────────────────────────────────────────────────
+import boto3
+from botocore.exceptions import EndpointConnectionError, ClientError
+
+from text_extract_api.files.storage_strategies.storage_strategy import StorageStrategy
+
+
+class AWSS3StorageStrategy(StorageStrategy):
+    def __init__(self, context):
+        super().__init__(context)
+
+        self.bucket_name = self.resolve_placeholder(context['settings'].get('bucket_name'))
+        self.region = self.resolve_placeholder(context['settings'].get('region'))
+        self.access_key = self.resolve_placeholder(context['settings'].get('access_key'))
+        self.secret_access_key = self.resolve_placeholder(context['settings'].get('secret_access_key'))
+
+        try:
+            self.s3_client = boto3.client(
+                's3',
+                aws_access_key_id=self.access_key,
+                aws_secret_access_key=self.secret_access_key,
+                region_name=self.region
+            )
+            self.s3_client.head_bucket(Bucket=self.bucket_name)
+        except EndpointConnectionError as e:
+            raise RuntimeError(
+                f"{str(e)}\n"
+                "Check your AWS_REGION and AWS_S3_BUCKET_NAME environment variables."
+            ) from e
+        except ClientError as e:
+            error_code = e.response.get('Error', {}).get('Code', 'Unknown')
+            if error_code in ('400', '403'):
+                raise RuntimeError(
+                    f"{str(e)}\n"
+                    "Error: Please check your AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY."
+                ) from e
+            raise
+
+    def save(self, file_name, dest_file_name, content):
+        formatted_file_name = self.format_file_name(file_name, dest_file_name)
+
+        try:
+            self.s3_client.put_object(
+                Bucket=self.bucket_name,
+                Key=formatted_file_name,
+                Body=content.encode('utf-8')
+            )
+        except ClientError as e:
+            raise RuntimeError(
+                f"{str(e)}\n"
+                f"Error saving file '{file_name}' as '{formatted_file_name}' to bucket '{self.bucket_name}'."
+            ) from e
+
+    def load(self, file_name):
+        try:
+            response = self.s3_client.get_object(Bucket=self.bucket_name, Key=file_name)
+            return response['Body'].read().decode('utf-8')
+        except ClientError as e:
+            error_code = e.response['Error']['Code']
+            if error_code == 'NoSuchKey':
+                return None
+            raise RuntimeError(
+                f"{str(e)}\n"
+                f"Error loading file '{file_name}' from bucket '{self.bucket_name}'."
+            ) from e
+
+    def list(self):
+        try:
+            response = self.s3_client.list_objects_v2(Bucket=self.bucket_name)
+            return [item['Key'] for item in response.get('Contents', [])]
+        except ClientError as e:
+            raise RuntimeError(
+                f"{str(e)}\n"
+                f"Error listing objects in bucket '{self.bucket_name}'."
+            ) from e
+
+    def delete(self, file_name):
+        try:
+            self.s3_client.delete_object(Bucket=self.bucket_name, Key=file_name)
+        except ClientError as e:
+            raise RuntimeError(
+                f"{str(e)}\n"
+                f"Error deleting file '{file_name}' from bucket '{self.bucket_name}'."
+            ) from e
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/text_extract_api/files/storage_strategies/google_drive.py
+──────────────────────────────────────────────────────────────────────
+import io
+import os
+
+from google.oauth2.service_account import Credentials
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseDownload, MediaFileUpload
+
+
+## Note - this code is using Service Accounts for authentication which are separate accounts other than
+## your Google account. You can create a service account and download the JSON key file to use it for
+## how to enable GDrive API: https://developers.google.com/drive/api/quickstart/python?hl=pl
+from text_extract_api.files.storage_strategies.storage_strategy import StorageStrategy
+
+class GoogleDriveStorageStrategy(StorageStrategy):
+    def __init__(self, context):
+        super().__init__(context)
+        self.credentials = Credentials.from_service_account_file(
+            context['settings']['service_account_file'],
+            scopes=['https://www.googleapis.com/auth/drive']
+        )
+        self.service = build('drive', 'v3', credentials=self.credentials)
+        self.folder_id = context['settings']['folder_id']
+
+    def save(self, file_name, dest_file_name, content):
+        # Save content to a temporary file
+        with open(file_name, 'wb') as temp_file:
+            temp_file.write(content.encode('utf-8'))  # Encode the string to bytes
+
+        file_metadata = {
+            'name': self.format_file_name(file_name, dest_file_name),
+        }
+        if self.folder_id:
+            file_metadata['parents'] = [self.folder_id]
+
+        print(file_metadata)
+        media = MediaFileUpload(file_name, resumable=True)
+        file = self.service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+        print(f"File ID: {file.get('id')}")
+
+        # Remove the temporary file
+        os.remove(file_name)
+
+    def load(self, file_name):
+        query = f"name = '{file_name}'"
+        if self.folder_id:
+            query += f" and '{self.folder_id}' in parents"
+        results = self.service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
+        items = results.get('files', [])
+        if not items:
+            print('No files found.')
+            return None
+        file_id = items[0]['id']
+        request = self.service.files().get_media(fileId=file_id)
+        fh = io.BytesIO()
+        downloader = MediaIoBaseDownload(fh, request)
+        done = False
+        while done is False:
+            status, done = downloader.next_chunk()
+            print(f"Download {int(status.progress() * 100)}%.")
+        fh.seek(0)
+        return fh.read()
+
+    def list(self):
+        query = ""  # "mimeType='application/vnd.google-apps.file'"
+        if self.folder_id:
+            query = f"'{self.folder_id}' in parents"
+        results = self.service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
+        items = results.get('files', [])
+        return [item['name'] for item in items]
+
+    def delete(self, file_name):
+        query = f"name = '{file_name}'"
+        if self.folder_id:
+            query += f" and '{self.folder_id}' in parents"
+        results = self.service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
+        items = results.get('files', [])
+        if not items:
+            print('No files found.')
+            return
+        file_id = items[0]['id']
+        self.service.files().delete(fileId=file_id).execute()
+        print(f"File {file_name} deleted.")
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/text_extract_api/files/storage_strategies/local_filesystem.py
+──────────────────────────────────────────────────────────────────────
+import os
+from datetime import datetime
+
+from text_extract_api.files.storage_strategies.storage_strategy import StorageStrategy
+
+def resolve_path(path):
+    return os.path.abspath(os.path.expanduser(path))
+
+
+class LocalFilesystemStorageStrategy(StorageStrategy):
+    def __init__(self, context):
+        super().__init__(context)
+        self.base_directory = resolve_path(self.context['settings']['root_path'])
+        self.create_subfolders = self.context['settings'].get('create_subfolders', False)
+        self.subfolder_names_format = self.context['settings'].get('subfolder_names_format', '')
+        os.makedirs(self.base_directory, exist_ok=True)
+
+    def _sanitize_and_resolve(self, filename):
+        # Check for path traversal patterns before processing
+        if '..' in filename or filename.startswith('/') or '\\' in filename:
+            raise ValueError("Path traversal detected")
+        
+        name = os.path.basename(filename)
+        full_path = os.path.abspath(os.path.join(self._get_subfolder_path(name), name))
+        
+        # Additional check to ensure the resolved path is within base directory
+        if not full_path.startswith(self.base_directory):
+            raise ValueError("Path traversal detected")
+        return full_path
+
+    def _get_subfolder_path(self, file_name):
+        if not self.subfolder_names_format:
+            return self.base_directory
+        return os.path.join(self.base_directory, self.format_file_name(file_name, self.subfolder_names_format))
+
+    def save(self, file_name, dest_file_name, content):
+        file_name = self.format_file_name(file_name, dest_file_name)
+        path = self._sanitize_and_resolve(file_name)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'w') as file:
+            file.write(content)
+
+    def load(self, file_name):
+        path = self._sanitize_and_resolve(file_name)
+        with open(path, 'r') as file:
+            return file.read()
+
+    def list(self):
+        return [
+            os.path.relpath(os.path.join(root, f), self.base_directory)
+            for root, _, files in os.walk(self.base_directory)
+            for f in files
+        ]
+
+    def delete(self, file_name):
+        os.remove(self._sanitize_and_resolve(file_name))
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/text_extract_api/files/storage_strategies/storage_strategy.py
+──────────────────────────────────────────────────────────────────────
+import os
+from datetime import datetime
+from pathlib import Path
+from string import Template
+
+class StorageStrategy:
+    def __init__(self, context):
+        self.context = context
+
+    def save(self, file_name, dest_file_name, content):
+        raise NotImplementedError("Subclasses must implement this method")
+
+    def load(self, file_name):
+        raise NotImplementedError("Subclasses must implement this method")
+
+    def list(self):
+        raise NotImplementedError("Subclasses must implement this method")
+
+    def delete(self, file_name):
+        raise NotImplementedError("Subclasses must implement this method")
+
+    def format_file_name(self, file_name, format_string):
+        return format_string.format(file_fullname=file_name,  # file_name with path
+                                    file_name=Path(file_name).stem,  # file_name without path
+                                    file_extension=Path(file_name).suffix,  # file extension
+                                    Y=datetime.now().strftime('%Y'),
+                                    mm=datetime.now().strftime('%m'),
+                                    dd=datetime.now().strftime('%d'),
+                                    HH=datetime.now().strftime('%H'),
+                                    MM=datetime.now().strftime('%M'),
+                                    SS=datetime.now().strftime('%S'))
+
+    def resolve_placeholder(self, value, default=None):
+        if not value:
+            return default
+        try:
+            return Template(value).substitute(os.environ)
+        except KeyError as e:
+            if default:
+                return default
+            else:
+                raise ValueError(f"Environment variable '{e.args[0]}' is missing, and no default value is provided.")
+
+──────────────────────────────────────────────────────────────────────
+📄  text-extract-api/text_extract_api/main.py
+──────────────────────────────────────────────────────────────────────
+import os
+import pathlib
+import sys
+import time
+from typing import Optional
+
+import ollama
+import redis
+from celery.result import AsyncResult
+from fastapi import FastAPI, Form, UploadFile, File, HTTPException
+from pydantic import BaseModel, Field, field_validator
+
+from text_extract_api.celery_app import app as celery_app
+from text_extract_api.extract.strategies.strategy import Strategy
+from text_extract_api.extract.tasks import ocr_task
+from text_extract_api.files.file_formats.file_format import FileFormat, FileField
+from text_extract_api.files.storage_manager import StorageManager
+
+# Define base path as text_extract_api - required for keeping absolute namespaces
+sys.path.insert(0, str(pathlib.Path(__file__).parent.resolve()))
+
+def storage_profile_exists(profile_name: str) -> bool:
+    profile_path = os.path.abspath(
+        os.path.join(os.getenv('STORAGE_PROFILE_PATH', './storage_profiles'), f'{profile_name}.yaml'))
+    if not os.path.isfile(profile_path) and profile_path.startswith('..'):
+        # backward compability for ../storage_manager in .env
+        sub_profile_path = os.path.normpath(os.path.join('.', profile_path))
+        return os.path.isfile(sub_profile_path)
+    return True
+
+app = FastAPI()
+# Connect to Redis
+redis_url = os.getenv('REDIS_CACHE_URL', 'redis://redis:6379/1')
+redis_client = redis.StrictRedis.from_url(redis_url)
+
+@app.post("/ocr")
+async def ocr_endpoint(
+        strategy: str = Form(...),
+        prompt: str = Form(None),
+        model: str = Form(...),
+        file: UploadFile = File(...),
+        ocr_cache: bool = Form(...),
+        storage_profile: str = Form('default'),
+        storage_filename: str = Form(None),
+        language: str = Form('en')
+):
+    """
+    Endpoint to extract text from an uploaded PDF, Image or Office file using different OCR strategies.
+    Supports both synchronous and asynchronous processing.
+    """
+    # Validate input
+    try:
+        OcrFormRequest(strategy=strategy, prompt=prompt, model=model, ocr_cache=ocr_cache,
+                       storage_profile=storage_profile, storage_filename=storage_filename, language=language)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    filename = storage_filename if storage_filename else file.filename
+    file_binary = await file.read()
+    file_format = FileFormat.from_binary(file_binary, filename, file.content_type)
+
+    print(
+        f"Processing Document {file_format.filename} with strategy: {strategy}, ocr_cache: {ocr_cache}, model: {model}, storage_profile: {storage_profile}, storage_filename: {storage_filename}, language: {language}, will be saved as: {filename}")
+
+    # Asynchronous processing using Celery
+    task = ocr_task.apply_async(
+        args=[file_format.binary, strategy, file_format.filename, file_format.hash, ocr_cache, prompt, model, language,
+              storage_profile,
+              storage_filename])
+    return {"task_id": task.id}
+
+
+# this is an alias for /ocr - to keep the backward compatibility
+@app.post("/ocr/upload")
+async def ocr_upload_endpoint(
+        strategy: str = Form(...),
+        prompt: str = Form(None),
+        model: str = Form(None),
+        file: UploadFile = File(...),
+        ocr_cache: bool = Form(...),
+        storage_profile: str = Form('default'),
+        storage_filename: str = Form(None),
+        language: str = Form('en')
+):
+    """
+    Alias endpoint to extract text from an uploaded PDF/Office/Image file using different OCR strategies.
+    Supports both synchronous and asynchronous processing.
+    """
+    return await ocr_endpoint(strategy, prompt, model, file, ocr_cache, storage_profile, storage_filename, language)
+
+
+class OllamaGenerateRequest(BaseModel):
+    model: str
+    prompt: str
+
+
+class OllamaPullRequest(BaseModel):
+    model: str
+
+
+class OcrRequest(BaseModel):
+    strategy: str = Field(..., description="OCR strategy to use")
+    prompt: Optional[str] = Field(None, description="Prompt for the Ollama model")
+    model: Optional[str] = Field(None, description="Model to use for the Ollama endpoint")
+    file: FileField = Field(..., description="Base64 encoded document file")
+    ocr_cache: bool = Field(..., description="Enable OCR result caching")
+    storage_profile: Optional[str] = Field('default', description="Storage profile to use")
+    storage_filename: Optional[str] = Field(None, description="Storage filename to use")
+    language: Optional[str] = Field('en', description="Language to use for OCR")
+
+    @field_validator('strategy')
+    def validate_strategy(cls, v):
+        Strategy.get_strategy(v)
+        return v
+
+    @field_validator('storage_profile')
+    def validate_storage_profile(cls, v):
+        if not storage_profile_exists(v):
+            raise ValueError(f"Storage profile '{v}' does not exist.")
+        return v
+
+
+class OcrFormRequest(BaseModel):
+    strategy: str = Field(..., description="OCR strategy to use")
+    prompt: Optional[str] = Field(None, description="Prompt for the Ollama model")
+    model: Optional[str] = Field(None, description="Model to use for the Ollama endpoint")
+    ocr_cache: bool = Field(..., description="Enable OCR result caching")
+    storage_profile: Optional[str] = Field('default', description="Storage profile to use")
+    storage_filename: Optional[str] = Field(None, description="Storage filename to use")
+    language: Optional[str] = Field('en', description="Language to use for OCR")
+
+    @field_validator('strategy')
+    def validate_strategy(cls, v):
+        Strategy.get_strategy(v)
+        return v
+
+    @field_validator('storage_profile')
+    def validate_storage_profile(cls, v):
+        if not storage_profile_exists(v):
+            raise ValueError(f"Storage profile '{v}' does not exist.")
+        return v
+
+
+@app.post("/ocr/request")
+async def ocr_request_endpoint(request: OcrRequest):
+    """
+    Endpoint to extract text from an uploaded PDF/Office/Image file using different OCR strategies.
+    Supports both synchronous and asynchronous processing.
+    """
+    # Validate input
+    request_data = request.model_dump()
+    try:
+        OcrRequest(**request_data)
+        file = FileFormat.from_base64(request.file, request.storage_filename)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    print(
+        f"Processing {file.mime_type} with strategy: {request.strategy}, ocr_cache: {request.ocr_cache}, model: {request.model}, storage_profile: {request.storage_profile}, storage_filename: {request.storage_filename}, language: {request.language}")
+
+    # Asynchronous processing using Celery
+    task = ocr_task.apply_async(
+        args=[file.binary, request.strategy, file.filename, file.hash, request.ocr_cache, request.prompt,
+              request.model, request.language, request.storage_profile, request.storage_filename])
+    return {"task_id": task.id}
+
+
+@app.get("/ocr/result/{task_id}")
+async def ocr_status(task_id: str):
+    """
+    Endpoint to get the status of an OCR task using task_id.
+    """
+    task = AsyncResult(task_id, app=celery_app)
+
+    if task.state == 'PENDING':
+        return {"state": task.state, "status": "Task is pending..."}
+    elif task.state == 'PROGRESS':
+        task_info = task.info
+        if task_info.get('start_time'):
+            task_info['elapsed_time'] = time.time() - int(task_info.get('start_time'))
+        return {"state": task.state, "status": task.info.get("status"), "info": task_info}
+    elif task.state == 'SUCCESS':
+        return {"state": task.state, "status": "Task completed successfully.", "result": task.result}
+    else:
+        return {"state": task.state, "status": str(task.info)}
+
+
+@app.post("/ocr/clear_cache")
+async def clear_ocr_cache():
+    """
+    Endpoint to clear the OCR result cache in Redis.
+    """
+    redis_client.flushdb()
+    return {"status": "OCR cache cleared"}
+
+
+@app.get("/storage/list")
+async def list_files(storage_profile: str = 'default'):
+    """
+    Endpoint to list files using the selected storage profile.
+    """
+    storage_manager = StorageManager(storage_profile)
+    files = storage_manager.list()
+    return {"files": files}
+
+
+@app.get("/storage/load")
+async def load_file(file_name: str, storage_profile: str = 'default'):
+    """
+    Endpoint to load a file using the selected storage profile.
+    """
+    storage_manager = StorageManager(storage_profile)
+    content = storage_manager.load(file_name)
+    return {"content": content}
+
+
+@app.delete("/storage/delete")
+async def delete_file(file_name: str, storage_profile: str = 'default'):
+    """
+    Endpoint to delete a file using the selected storage profile.
+    """
+    storage_manager = StorageManager(storage_profile)
+    storage_manager.delete(file_name)
+    return {"status": f"File {file_name} deleted successfully"}
+
+
+@app.post("/llm/pull")
+async def pull_llama(request: OllamaPullRequest):
+    """
+    Endpoint to pull the latest Llama model from the Ollama API.
+    """
+    print("Pulling " + request.model)
+    try:
+        response = ollama.pull(request.model)
+    except ollama.ResponseError as e:
+        print('Error:', e.error)
+        raise HTTPException(status_code=500, detail="Failed to pull Llama model from Ollama API")
+
+    return {"status": response.get("status", "Model pulled successfully")}
+
+
+@app.post("/llm/generate")
+async def generate_llama(request: OllamaGenerateRequest):
+    """
+    Endpoint to generate text using Llama 3.1 model (and other models) via the Ollama API.
+    """
+    print(request)
+    if not request.prompt:
+        raise HTTPException(status_code=400, detail="No prompt provided")
+
+    try:
+        response = ollama.generate(request.model, request.prompt)
+    except ollama.ResponseError as e:
+        print('Error:', e.error)
+        if e.status_code == 404:
+            print("Error: ", e.error)
+            ollama.pull(request.model)
+
+        raise HTTPException(status_code=500, detail="Failed to generate text with Ollama API")
+
+    generated_text = response.get("response", "")
+    return {"generated_text": generated_text}
