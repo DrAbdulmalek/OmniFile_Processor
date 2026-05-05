@@ -11,6 +11,8 @@
 - معالجة النصوص العربية من اليمين لليسار (RTL)
 - معالجة النصوص المختلطة (عربي + إنجليزي + أرقام)
 - تصحيح النصوص باستخدام الذكاء الاصطناعي (GPT)
+- نظام الكلمات المحمية الشامل (Protected Words)
+- مولّد المراجع الدراسية (Study Guide Generator)
 """
 from modules.nlp.text_classifier import TextClassifier
 from modules.nlp.entity_extractor import EntityExtractor
@@ -23,6 +25,8 @@ from modules.nlp.mixed_text import (
     optimize_mixed_text,
     separate_text_components,
 )
+from modules.nlp.protected_words import ProtectedWordsManager
+from modules.nlp.study_guide import StudyGuideGenerator
 try:
     from modules.nlp.ai_corrector import AICorrector
 except ImportError:  # تبعيات اختيارية مثل python-dotenv / openai
@@ -33,6 +37,8 @@ __all__ = [
     "SpellCorrector", "LanguageDetector",
     "RTLFixer", "is_rtl_text", "get_text_direction",
     "detect_language", "optimize_mixed_text", "separate_text_components",
+    "ProtectedWordsManager",
+    "StudyGuideGenerator",
 ]
 
 if AICorrector is not None:

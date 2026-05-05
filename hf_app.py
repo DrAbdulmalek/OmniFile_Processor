@@ -8,13 +8,15 @@ Multilingual handwriting OCR system supporting Arabic, English, and German.
 
 Tabs:
   1. OCR Processing       — EasyOCR + TrOCR ensemble
-  2. Text Correction      — ar-corrector + pyspellchecker
+  2. Text Correction      — ar-corrector + pyspellchecker + protected words
   3. PDF Processing       — PyMuPDF (fitz) page-by-page extraction
   4. Translation          — Helsinki-NLP MarianMT models + post-MT correction
   5. Text Classification  — Keyword-based multilingual categorization
   6. Evaluation           — CER / WER metrics (Levenshtein + jiwer)
   7. Training Data        — PDF to page/word/character crops for handwriting fine-tuning
-  8. About                — Project info, links, author
+  8. Video OCR            — Extract text from video files with timestamps
+  9. Data Augmentation    — Expand training data for Arabic handwriting
+  10. About               — Project info, links, author
 
 Author:  Dr Abdulmalek Tamer Al-husseini
 Email:   Abdulmalek.husseini@gmail.com
@@ -1139,13 +1141,177 @@ ABOUT_MD = """
 
 
 # ====================================================================
+# Tab 8 — Video OCR
+# / استخراج النصوص من مقاطع الفيديو
+# ====================================================================
+
+def process_video_ocr(
+    video_file,
+    frame_interval: int = 30,
+    progress=gr.Progress(),
+) -> str:
+    """
+    Tab 8 handler — Extract text from video file.
+    / استخراج النصوص من ملف فيديو
+    """
+    if video_file is None:
+        return "⚠️ Please upload a video file."
+
+    progress(0.1, desc="Saving video file…")
+    tmp_dir = tempfile.mkdtemp(prefix="omnifile_video_")
+    video_path = os.path.join(tmp_dir, "input.mp4")
+    shutil.copy2(video_file.name, video_path)
+
+    progress(0.2, desc="Initializing Video OCR…")
+    try:
+        from modules.vision.video_ocr import VideoOCR
+
+        vid_ocr = VideoOCR(frame_interval=frame_interval)
+
+        progress(0.3, desc="Extracting frames and running OCR…")
+        timeline = vid_ocr.process_video(
+            video_path=video_path,
+            progress_callback=lambda cur, tot, msg: progress(0.3 + 0.6 * cur / max(tot, 1), desc=msg),
+        )
+
+        if timeline.error:
+            return f"❌ {timeline.error}"
+
+        progress(0.95, desc="Building results…")
+
+        # Build output
+        out = "## 🎬 Video OCR Results\n\n"
+        out += f"| Metric | Value |\n|--------|-------|\n"
+        out += f"| **Total Frames Processed** | {timeline.total_frames} |\n"
+        out += f"| **Frames with Text** | {timeline.frames_with_text} |\n"
+        out += f"| **Average Confidence** | {timeline.avg_confidence:.1%} |\n"
+        out += f"| **Frame Interval** | Every {frame_interval} frames |\n"
+        out += f"| **Duration** | {timeline.total_frames / 30:.1f}s (estimated at 30fps) |\n\n"
+
+        if timeline.frames:
+            out += "### 📝 Timeline\n\n"
+            for frame in timeline.frames[:50]:  # Limit display
+                ts = frame.timestamp
+                text = frame.text[:100] + ("..." if len(frame.text) > 100 else "")
+                conf = frame.confidence
+                out += f"- **[{ts}]** ({conf:.0%}) {text}\n"
+
+            if len(timeline.frames) > 50:
+                out += f"\n*... and {len(timeline.frames) - 50} more frames*\n"
+
+        if timeline.full_text:
+            out += "\n### 📄 Full Extracted Text\n\n"
+            out += f"```\n{timeline.full_text[:2000]}\n```"
+            if len(timeline.full_text) > 2000:
+                out += "\n*(text truncated)*"
+
+        return out
+
+    except ImportError:
+        return "❌ Video OCR module not available. Run with full OmniFile Processor installation."
+    except Exception as e:
+        logger.error("Video OCR error: %s", traceback.format_exc())
+        return f"❌ Error: {e}"
+
+
+# ====================================================================
+# Tab 9 — Data Augmentation
+# / توسيع بيانات التدريب للخط العربي
+# ====================================================================
+
+def augment_training_data(
+    input_images,
+    num_augmented: int = 5,
+    rotation: float = 5.0,
+    noise: float = 0.02,
+    blur: bool = True,
+    brightness: float = 0.2,
+    progress=gr.Progress(),
+) -> Tuple[str, Optional[str]]:
+    """
+    Tab 9 handler — Augment training images for better model training.
+    / توسيع صور التدريب لتحسين أداء النموذج
+    """
+    if input_images is None:
+        return "⚠️ Please upload training images.", None
+
+    progress(0.1, desc="Setting up augmentation…")
+    tmp_dir = tempfile.mkdtemp(prefix="omnifile_aug_")
+
+    try:
+        from modules.vision.data_augmentation import DataAugmentor
+
+        # Save uploaded images
+        image_paths = []
+        for img_info in input_images:
+            img_path = os.path.join(tmp_dir, os.path.basename(img_info.name))
+            shutil.copy2(img_info.name, img_path)
+            image_paths.append(img_path)
+
+        progress(0.2, desc="Processing images…")
+        augmentor = DataAugmentor(
+            rotation_max=rotation,
+            noise_std=noise,
+            blur_kernel=5 if blur else 0,
+            brightness_range=brightness,
+        )
+
+        progress(0.3, desc="Generating augmented images…")
+
+        results = []
+        for i, img_path in enumerate(image_paths):
+            aug_results = augmentor.augment_image(
+                img_path,
+                num_augmentations=num_augmented,
+                output_dir=os.path.join(tmp_dir, "augmented"),
+            )
+            results.extend(aug_results)
+            progress(0.3 + 0.5 * (i + 1) / len(image_paths),
+                       desc=f"Image {i+1}/{len(image_paths)}…")
+
+        progress(0.85, desc="Packaging results…")
+
+        # Create zip
+        import zipfile
+        zip_path = os.path.join(tmp_dir, "augmented_data.zip")
+        aug_dir = os.path.join(tmp_dir, "augmented")
+        if os.path.exists(aug_dir):
+            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+                for root, dirs, files in os.walk(aug_dir):
+                    for fname in files:
+                        fpath = os.path.join(root, fname)
+                        zf.write(fpath, os.path.relpath(fpath, aug_dir))
+
+        progress(1.0, desc="Done!")
+
+        out = "## 🔄 Data Augmentation Complete!\n\n"
+        out += f"| Metric | Value |\n|--------|-------|\n"
+        out += f"| **Original Images** | {len(image_paths)} |\n"
+        out += f"| **Augmented Images** | {len(results)} |\n"
+        out += f"| **Multiplication Factor** | {num_augmented}x |\n"
+        out += f"| **Rotation Range** | ±{rotation}° |\n"
+        out += f"| **Noise Level** | {noise} |\n"
+        out += f"| **Blur** | {'Enabled' if blur else 'Disabled'} |\n"
+        out += f"| **Brightness Range** | ±{brightness} |\n\n"
+        out += "📥 Download the ZIP file containing augmented images."
+
+        return out, zip_path if os.path.exists(zip_path) else None
+
+    except ImportError:
+        return "❌ Data Augmentation module not available.", None
+    except Exception as e:
+        logger.error("Augmentation error: %s", traceback.format_exc())
+        return f"❌ Error: {e}", None
+
+
+# ====================================================================
 # Build & Launch Gradio Application
 # ====================================================================
 
 def build_app() -> gr.Blocks:
     """
-    Build the full Gradio Blocks application with 7 tabs.
-    / بناء واجهة Gradio الكاملة مع 7 تبويبات
+    Build the full Gradio Blocks application with 10 tabs.
+    / بناء واجهة Gradio الكاملة مع 10 تبويبات
     """
 
     with gr.Blocks(
@@ -1495,8 +1661,107 @@ def build_app() -> gr.Blocks:
             )
 
         # ================================================================
-        # Tab 8 — About
-        # / التبويب الثامن: حول المشروع
+        # Tab 8 — Video OCR
+        # / التبويب الثامن: استخراج النصوص من الفيديو
+        # ================================================================
+        with gr.Tab("🎬 Video OCR"):
+            gr.Markdown(
+                "### Extract Text from Video Files  "
+                "### استخراج النصوص من مقاطع الفيديو"
+            )
+            gr.Markdown(
+                "📤 Upload a video → Get timestamped text from frames  "
+                "Supports MP4, AVI, MOV, MKV and more."
+            )
+
+            with gr.Row():
+                with gr.Column(scale=1):
+                    video_file = gr.File(
+                        label="📤 Upload Video / رفع فيديو",
+                        file_types=[".mp4", ".avi", ".mov", ".mkv", ".webm"],
+                        interactive=True,
+                    )
+                    video_interval = gr.Slider(
+                        label="⏱️ Frame Interval / فاصل الإطارات",
+                        minimum=5, maximum=120, value=30, step=5,
+                        info="Extract text every N frames (30 = ~1 sec at 30fps)",
+                    )
+                    video_btn = gr.Button(
+                        "🎬 Extract Text / استخراج النص",
+                        variant="primary", size="lg",
+                    )
+
+                with gr.Column(scale=2):
+                    video_output = gr.Markdown("")
+
+            video_btn.click(
+                fn=process_video_ocr,
+                inputs=[video_file, video_interval],
+                outputs=[video_output],
+            )
+
+        # ================================================================
+        # Tab 9 — Data Augmentation
+        # / التبويب التاسع: توسيع بيانات التدريب
+        # ================================================================
+        with gr.Tab("🔄 Data Augmentation"):
+            gr.Markdown(
+                "### Augment Training Images for Better Handwriting Recognition  "
+                "### توسيع صور التدريب لتحسين التعرف على الخط اليدوي"
+            )
+            gr.Markdown(
+                "📤 Upload training images → Get augmented copies with rotation, noise, blur, and brightness variations."
+            )
+
+            with gr.Row():
+                with gr.Column(scale=1):
+                    aug_files = gr.File(
+                        label="📤 Upload Images / رفع صور",
+                        file_types=[".png", ".jpg", ".jpeg", ".bmp", ".webp"],
+                        interactive=True,
+                        multiple=True,
+                    )
+                    aug_count = gr.Slider(
+                        label="🔢 Augmentations per Image / عدد النسخ لكل صورة",
+                        minimum=1, maximum=20, value=5, step=1,
+                    )
+                    aug_rotation = gr.Slider(
+                        label="🔄 Rotation (degrees) / الدوران",
+                        minimum=0, maximum=15, value=5, step=1,
+                    )
+                    aug_noise = gr.Slider(
+                        label="📡 Noise Level / مستوى الضوضاء",
+                        minimum=0, maximum=0.1, value=0.02, step=0.01,
+                    )
+                    aug_blur = gr.Checkbox(
+                        label="🌫️ Enable Blur / تفعيل الضبابية",
+                        value=True,
+                    )
+                    aug_brightness = gr.Slider(
+                        label="💡 Brightness Range / نطاق السطوع",
+                        minimum=0, maximum=0.5, value=0.2, step=0.05,
+                    )
+                    aug_btn = gr.Button(
+                        "🔄 Augment Images / توسيع الصور",
+                        variant="primary", size="lg",
+                    )
+
+                with gr.Column(scale=2):
+                    aug_output = gr.Markdown("")
+                    aug_download = gr.File(
+                        label="📥 Download Augmented Data / تنزيل البيانات الموسعة",
+                        interactive=False,
+                    )
+
+            aug_btn.click(
+                fn=augment_training_data,
+                inputs=[aug_files, aug_count, aug_rotation, aug_noise, aug_blur, aug_brightness],
+                outputs=[aug_output, aug_download],
+            )
+
+        # ================================================================
+        # Tab 10 — About
+        # / التبويب العاشر: حول المشروع
         # ================================================================
         with gr.Tab("ℹ️ About"):
             dev = f"**Runtime**: `{DEVICE.upper()}`"

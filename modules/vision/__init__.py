@@ -9,6 +9,8 @@
 - المعالجة المسبقة (CLAHE, denoise, deskew)
 - إعادة تجميع النصوص RTL
 - دمج نتائج عدة محركات OCR
+- استخراج النصوص من الفيديو (Video OCR)
+- توسيع بيانات التدريب للكتابة اليدوية (Data Augmentation)
 
 OmniFile AI Processor - وحدة معالجة الملفات الذكية
 """
@@ -19,6 +21,8 @@ from modules.vision.text_reconstructor import TextReconstructor
 from modules.vision.result_fusion import ResultFusion, FusionStrategy
 from modules.vision.layout_analyzer import LayoutAnalyzer
 from modules.vision.table_extractor import TableExtractor
+from modules.vision.video_ocr import VideoOCR, FrameResult, VideoTimeline
+from modules.vision.data_augmentation import DataAugmentor
 
 __all__ = [
     "OCREngine",
@@ -29,4 +33,8 @@ __all__ = [
     "FusionStrategy",
     "LayoutAnalyzer",
     "TableExtractor",
+    "VideoOCR",
+    "FrameResult",
+    "VideoTimeline",
+    "DataAugmentor",
 ]
