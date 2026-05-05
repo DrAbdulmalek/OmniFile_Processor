@@ -118,6 +118,51 @@ def _set_model(key: str, obj: Any) -> None:
         except Exception:
             pass
 
+# ====================================================================
+# Translation Corrector — Post-MT Arabic Correction
+# ====================================================================
+# / محرّك تصحيح الترجمات العربية بعد الترجمة الآلية
+
+_translation_corrector = None
+
+
+def _get_translation_corrector():
+    """Lazy-load the translation corrector with rules."""
+    global _translation_corrector
+    if _translation_corrector is not None:
+        return _translation_corrector
+    try:
+        # Try loading from modules first (dev environment)
+        base = Path(__file__).parent
+        rules_path = base / "data" / "translation_rules.json"
+        if not rules_path.is_file():
+            rules_path = None  # Will use built-in defaults
+        from modules.nlp.translation_corrector import ArabicTranslationProcessor
+        _translation_corrector = ArabicTranslationProcessor(rules_file=str(rules_path) if rules_path else None)
+        logger.info("Translation corrector loaded (%d rules)", len(_translation_corrector.rules))
+    except ImportError:
+        # Fallback: inline minimal corrector
+        logger.warning("translation_corrector module not found — using inline fallback")
+        _translation_corrector = None
+    return _translation_corrector
+
+
+def _correct_translation(english_text: str, arabic_text: str, enable: bool = True) -> str:
+    """
+    Apply post-MT correction to Arabic translation.
+    / تصحيح النص العربي بعد الترجمة الآلية
+    """
+    if not enable or not arabic_text:
+        return arabic_text
+    corrector = _get_translation_corrector()
+    if corrector is None:
+        return arabic_text
+    result = corrector.process_translation(english_text, arabic_text)
+    if result["improved"]:
+        logger.info("Translation corrected: %d rule changes + %d regex changes",
+                     len(result["corrections"]), len(result["regex_changes"]))
+    return result["corrected"]
+
 
 # ====================================================================
 # Custom CSS — Dark Theme + RTL Arabic Support
@@ -651,10 +696,11 @@ def _load_translator(model_name: str):
 
 # --- Gradio handler for Tab 4 ---
 
-def translate_text(text: str, direction: str, progress=gr.Progress()) -> str:
+def translate_text(text: str, direction: str, correct_output: bool = True, progress=gr.Progress()) -> str:
     """
     Tab 4 handler — translate text between Arabic/English/German.
-    / ترجمة النصوص بين العربية والإنجليزية والألمانية
+    Optionally applies post-MT correction for Arabic output.
+    / ترجمة النصوص بين العربية والإنجليزية والألمانية مع تصحيح اختياري
     """
     if not text or not text.strip():
         return "⚠️ Please enter text to translate."
@@ -695,9 +741,18 @@ def translate_text(text: str, direction: str, progress=gr.Progress()) -> str:
 
         translated = "\n\n".join(parts)
 
+        # Apply post-MT correction for Arabic output
+        correction_note = ""
+        if correct_output and "Arabic" in direction:
+            corrected = _correct_translation(text, translated)
+            if corrected != translated:
+                correction_note = "\n\n**✅ Post-MT Correction Applied** — Grammar, style, and punctuation improved.\n"
+                translated = corrected
+
         return (
             f"## 🌐 Translation Result ({direction})\n\n"
             f"{translated}\n\n"
+            f"{correction_note}"
             f"---\n"
             f"**Model**: `{model_name}`  |  **Device**: `{DEVICE}`  |  "
             f"**Chars**: {len(text)} → {len(translated)}"
@@ -1135,6 +1190,11 @@ def build_app() -> gr.Blocks:
                 "### Translate between Arabic, English, and German using Helsinki-NLP.  "
                 "### ترجمة بين العربية والإنجليزية والألمانية."
             )
+            gr.Markdown(
+                "🇸🇾 **Post-MT Correction** is enabled by default for Arabic output — "
+                "fixes grammar, style, and punctuation automatically.  "
+                "التصحيح التلقائي مفعّل افتراضياً للنص العربي — يصلح القواعد والأسلوب والترقيم."
+            )
 
             with gr.Row():
                 with gr.Column(scale=1):
@@ -1142,6 +1202,11 @@ def build_app() -> gr.Blocks:
                         label="➡️ Direction / الاتجاه",
                         choices=list(TRANSLATION_MODELS.keys()),
                         value="English → Arabic",
+                    )
+                    trans_correct = gr.Checkbox(
+                        label="✅ Post-MT Correction / تصحيح الترجمة",
+                        value=True,
+                        info="Fix grammar, style & punctuation after translation (Arabic output only)",
                     )
                     trans_btn = gr.Button("🌐 Translate / ترجم", variant="primary", size="lg")
 
@@ -1155,7 +1220,7 @@ def build_app() -> gr.Blocks:
 
             trans_btn.click(
                 fn=translate_text,
-                inputs=[trans_input, trans_dir],
+                inputs=[trans_input, trans_dir, trans_correct],
                 outputs=[trans_output],
             )
 
