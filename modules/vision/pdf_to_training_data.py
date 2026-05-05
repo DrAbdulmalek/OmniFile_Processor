@@ -32,6 +32,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
+import glob
 
 import numpy as np
 from PIL import Image
@@ -534,12 +535,61 @@ class TrainingDataGenerator:
         self._char_segmenter = CharacterSegmenter(self.config)
         self._exporter = TrainingDataExporter(self.config)
 
+    def _save_checkpoint(self, pdf_path: str, page_nums: List[int], current_index: int, stats: Dict):
+        """Save a checkpoint file for resume capability."""
+        checkpoint_dir = os.path.join(self.config.output_dir, ".checkpoint")
+        os.makedirs(checkpoint_dir, exist_ok=True)
+        pdf_stem = Path(pdf_path).stem
+        checkpoint_path = os.path.join(checkpoint_dir, f"{pdf_stem}.json")
+        checkpoint = {
+            "pdf_path": pdf_path,
+            "page_nums": page_nums,
+            "current_index": current_index,
+            "stats": stats,
+            "timestamp": datetime.now().isoformat(),
+        }
+        try:
+            with open(checkpoint_path, "w", encoding="utf-8") as f:
+                json.dump(checkpoint, f, ensure_ascii=False, indent=2)
+            logger.info("Checkpoint saved: %s (page %d/%d)", checkpoint_path, current_index, len(page_nums))
+        except Exception as e:
+            logger.warning("Failed to save checkpoint: %s", e)
+
+    def _load_checkpoint(self, pdf_path: str) -> Optional[Dict]:
+        """Load a checkpoint file if it exists."""
+        checkpoint_dir = os.path.join(self.config.output_dir, ".checkpoint")
+        pdf_stem = Path(pdf_path).stem
+        checkpoint_path = os.path.join(checkpoint_dir, f"{pdf_stem}.json")
+        if not os.path.isfile(checkpoint_path):
+            return None
+        try:
+            with open(checkpoint_path, "r", encoding="utf-8") as f:
+                checkpoint = json.load(f)
+            logger.info("Checkpoint loaded: %s (resuming from page index %d)", checkpoint_path, checkpoint["current_index"])
+            return checkpoint
+        except Exception as e:
+            logger.warning("Failed to load checkpoint: %s", e)
+            return None
+
+    def _clear_checkpoint(self, pdf_path: str):
+        """Delete the checkpoint file."""
+        checkpoint_dir = os.path.join(self.config.output_dir, ".checkpoint")
+        pdf_stem = Path(pdf_path).stem
+        checkpoint_path = os.path.join(checkpoint_dir, f"{pdf_stem}.json")
+        if os.path.isfile(checkpoint_path):
+            try:
+                os.remove(checkpoint_path)
+                logger.info("Checkpoint cleared: %s", checkpoint_path)
+            except Exception as e:
+                logger.warning("Failed to clear checkpoint: %s", e)
+
     def process_pdf(
         self,
         pdf_path: str,
         pages: str = None,
         level: str = "word",
         ocr_engine=None,
+        resume: bool = True,
     ) -> Dict:
         """
         Process a PDF file and generate training data.
@@ -549,6 +599,7 @@ class TrainingDataGenerator:
             pages: Page range ("all", "1-10", "1,3,5")
             level: "page" (full page images), "word" (word crops), "character" (char crops)
             ocr_engine: Optional OCR engine for text labels (e.g., EasyOCR instance)
+            resume: If True, resume from last checkpoint if available
 
         Returns:
             Statistics dict with counts and output paths
@@ -562,15 +613,42 @@ class TrainingDataGenerator:
         if not page_nums:
             return {"error": "No valid pages to process"}
 
+        # Resume from checkpoint if available
+        start_index = 0
+        all_records = []
+        if resume:
+            checkpoint = self._load_checkpoint(pdf_path)
+            if checkpoint is not None:
+                cp_page_nums = checkpoint.get("page_nums", [])
+                if cp_page_nums == page_nums:
+                    start_index = checkpoint.get("current_index", 0)
+                    all_records = []  # Re-collect records from output dir
+                    base_dir = checkpoint["stats"].get("output_dir", "")
+                    # Reload existing JSONL records
+                    for jsonl_name in ["train.jsonl", "val.jsonl"]:
+                        jsonl_path = os.path.join(base_dir, jsonl_name)
+                        if os.path.isfile(jsonl_path):
+                            with open(jsonl_path, "r", encoding="utf-8") as f:
+                                for line in f:
+                                    line = line.strip()
+                                    if line:
+                                        try:
+                                            all_records.append(json.loads(line))
+                                        except json.JSONDecodeError:
+                                            pass
+                    logger.info("Resuming from page index %d/%d", start_index, len(page_nums))
+                else:
+                    logger.info("Checkpoint page list differs from current request, starting fresh")
+                    self._clear_checkpoint(pdf_path)
+
         logger.info("Processing %d pages from %s (level=%s)", len(page_nums), pdf_path, level)
 
         base_dir = os.path.join(self.config.output_dir, Path(pdf_path).stem)
-        all_records = []
         stats = {
             "pdf_path": pdf_path,
             "level": level,
             "pages_total": len(page_nums),
-            "pages_processed": 0,
+            "pages_processed": start_index,
             "page_images": 0,
             "word_crops": 0,
             "char_crops": 0,
@@ -578,7 +656,22 @@ class TrainingDataGenerator:
             "timestamp": datetime.now().isoformat(),
         }
 
+        if start_index > 0:
+            # Restore stats from checkpoint
+            saved_stats = self._load_checkpoint(pdf_path)
+            if saved_stats:
+                stats["page_images"] = saved_stats["stats"].get("page_images", 0)
+                stats["word_crops"] = saved_stats["stats"].get("word_crops", 0)
+                stats["char_crops"] = saved_stats["stats"].get("char_crops", 0)
+                stats["pages_processed"] = saved_stats["stats"].get("pages_processed", 0)
+                logger.info("Restored stats: %d pages, %d images, %d words, %d chars",
+                            stats["pages_processed"], stats["page_images"],
+                            stats["word_crops"], stats["char_crops"])
+
         for i, pg in enumerate(page_nums):
+            if i < start_index:
+                continue  # Skip already-processed pages
+
             logger.info("Page %d/%d (page %d)", i + 1, len(page_nums), pg)
 
             # 1. Load page
@@ -674,6 +767,12 @@ class TrainingDataGenerator:
 
             # Cleanup
             del img_bgr, binary, gray, word_crops
+
+            # Save checkpoint after each page
+            self._save_checkpoint(pdf_path, page_nums, i + 1, stats)
+
+        # Clear checkpoint on successful completion
+        self._clear_checkpoint(pdf_path)
 
         # 6. Export JSONL
         if all_records:

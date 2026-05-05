@@ -10,10 +10,11 @@ Tabs:
   1. OCR Processing       — EasyOCR + TrOCR ensemble
   2. Text Correction      — ar-corrector + pyspellchecker
   3. PDF Processing       — PyMuPDF (fitz) page-by-page extraction
-  4. Translation          — Helsinki-NLP MarianMT models
-  5. Text Classification  — Keyword-based + zero-shot
+  4. Translation          — Helsinki-NLP MarianMT models + post-MT correction
+  5. Text Classification  — Keyword-based multilingual categorization
   6. Evaluation           — CER / WER metrics (Levenshtein + jiwer)
-  7. About                — Project info, links, author
+  7. Training Data        — PDF to page/word/character crops for handwriting fine-tuning
+  8. About                — Project info, links, author
 
 Author:  Dr Abdulmalek Tamer Al-husseini
 Email:   Abdulmalek.husseini@gmail.com
@@ -773,6 +774,9 @@ def generate_training_data(
     pages: str = "1-5",
     level: str = "word",
     dpi: int = 300,
+    enable_augmentation: bool = False,
+    val_split: float = 0.1,
+    enable_ocr: bool = True,
     progress=gr.Progress(),
 ) -> Tuple[str, Optional[str]]:
     """
@@ -798,6 +802,8 @@ def generate_training_data(
             dpi=dpi,
             pages=pages,
             max_image_height=64 if level == "character" else 0,
+            enable_augmentation=enable_augmentation,
+            val_ratio=val_split,
         )
 
         gen = TrainingDataGenerator(config=config)
@@ -805,11 +811,12 @@ def generate_training_data(
         progress(0.3, desc="Loading OCR engine for text labels…")
         # Try to get OCR engine for word labels
         ocr_engine = None
-        try:
-            import easyocr
-            ocr_engine = easyocr.Reader(["ar", "en"], gpu=USE_GPU, verbose=False)
-        except Exception as e:
-            logger.warning("EasyOCR not available for labeling: %s", e)
+        if enable_ocr:
+            try:
+                import easyocr
+                ocr_engine = easyocr.Reader(["ar", "en"], gpu=USE_GPU, verbose=False)
+            except Exception as e:
+                logger.warning("EasyOCR not available for labeling: %s", e)
 
         progress(0.4, desc="Processing PDF pages…")
         stats = gen.process_pdf(
@@ -847,7 +854,10 @@ def generate_training_data(
             f"| **Train Samples** | {stats.get('train_samples', 0)} |\n"
             f"| **Val Samples** | {stats.get('val_samples', 0)} |\n"
             f"| **Level** | {level} |\n"
-            f"| **DPI** | {dpi} |\n\n"
+            f"| **DPI** | {dpi} |\n"
+            f"| **Augmentation** | {'✅ Enabled' if enable_augmentation else '❌ Disabled'} |\n"
+            f"| **Validation Split** | {val_split:.0%} |\n"
+            f"| **OCR Labels** | {'✅ Enabled' if enable_ocr else '❌ Disabled'} |\n\n"
             f"📥 Download the ZIP file containing:\n"
             f"- `page_images/` — Full page renders\n"
             f"- `word_crops/` — Individual word images\n"
@@ -1445,6 +1455,20 @@ def build_app() -> gr.Blocks:
                         label="🔍 DPI",
                         minimum=72, maximum=600, value=300, step=12,
                     )
+                    train_augment = gr.Checkbox(
+                        label="🔄 Enable Augmentation / تفعيل التوسيع",
+                        value=False,
+                        info="Random rotation and brightness changes for more training variety",
+                    )
+                    train_val_split = gr.Slider(
+                        label="📊 Validation Split / نسبة البيانات التحققية",
+                        minimum=0.05, maximum=0.3, value=0.1, step=0.05,
+                    )
+                    train_enable_ocr = gr.Checkbox(
+                        label="🔍 Enable OCR for Labels / تفعيل التعرف للتصنيف",
+                        value=True,
+                        info="Use EasyOCR to generate text labels for each crop",
+                    )
                     train_btn = gr.Button(
                         "🚀 Generate Training Data / إنشاء بيانات التدريب",
                         variant="primary", size="lg",
@@ -1452,6 +1476,12 @@ def build_app() -> gr.Blocks:
 
                 with gr.Column(scale=2):
                     train_output = gr.Markdown("")
+                    train_gallery = gr.Gallery(
+                        label="🖼️ Sample Crops Preview / معاينة العينات",
+                        columns=4,
+                        height=300,
+                        show_label=True,
+                    )
                     train_files = gr.File(
                         label="📥 Download Results / تنزيل النتائج",
                         interactive=False,
@@ -1459,7 +1489,8 @@ def build_app() -> gr.Blocks:
 
             train_btn.click(
                 fn=generate_training_data,
-                inputs=[train_file, train_pages, train_level, train_dpi],
+                inputs=[train_file, train_pages, train_level, train_dpi,
+                        train_augment, train_val_split, train_enable_ocr],
                 outputs=[train_output, train_files],
             )
 

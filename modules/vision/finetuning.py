@@ -68,6 +68,7 @@ class TrOCRFinetuner:
 
         self._processor = None
         self._tokenizer = None
+        self._loaded_model = None
 
     def _load_processor(self):
         """Lazy-load the TrOCR processor and tokenizer."""
@@ -321,6 +322,68 @@ class TrOCRFinetuner:
             "total_time_sec": round(total_time, 2),
             "history": history,
         }
+
+    # ----------------------------------------------------------------
+    # Hot-Reload & Inference
+    # ----------------------------------------------------------------
+
+    def hot_reload(self, model_path: str) -> Dict:
+        """
+        Load fine-tuned LoRA adapters and return the model ready for inference.
+        This allows immediate use of the fine-tuned model without restarting.
+        """
+        try:
+            import torch
+            from transformers import VisionEncoderDecoderModel
+            from peft import PeftModel
+        except ImportError:
+            return {"status": "error", "reason": "Missing dependencies"}
+
+        base_model = VisionEncoderDecoderModel.from_pretrained(
+            self.model_name, cache_dir=self.cache_dir
+        )
+        model = PeftModel.from_pretrained(base_model, model_path)
+        model.to(self.device)
+        model.eval()
+
+        # Also reload processor from fine-tuned dir (may have custom tokenizer)
+        try:
+            from transformers import TrOCRProcessor
+            self._processor = TrOCRProcessor.from_pretrained(model_path)
+        except Exception:
+            logger.warning("Could not load processor from %s, using base processor", model_path)
+
+        self._loaded_model = model  # Store for inference use
+        return {
+            "status": "success",
+            "model_path": model_path,
+            "device": self.device,
+            "message": "Model loaded and ready for inference",
+        }
+
+    def predict(self, image, model_path: str = None) -> str:
+        """
+        Run inference on a single image using the fine-tuned model.
+        Falls back to the hot-loaded model if model_path is not provided.
+        """
+        import torch
+        from transformers import VisionEncoderDecoderModel, TrOCRProcessor
+        from peft import PeftModel
+
+        model = getattr(self, '_loaded_model', None)
+        if model is None and model_path:
+            result = self.hot_reload(model_path)
+            if result["status"] != "success":
+                return ""
+            model = self._loaded_model
+        if model is None:
+            return ""
+
+        self._load_processor()
+        pixel_values = self._processor(images=image, return_tensors="pt").pixel_values.to(self.device)
+        with torch.no_grad():
+            generated = model.generate(pixel_values)
+        return self._processor.tokenizer.decode(generated[0], skip_special_tokens=True)
 
     # ----------------------------------------------------------------
     # Data Loading

@@ -11,7 +11,7 @@ license: mit
 
 <div align="center">
 
-# 🧠 OmniFile AI Processor v4.3.0
+# 🧠 OmniFile AI Processor v4.4.0
 
 **نظام ذكاء اصطناعي متكامل لمعالجة الملفات والنصوص والخط اليدوي**
 **A Comprehensive AI System for File Processing, Text Analysis & Handwriting Recognition**
@@ -23,7 +23,7 @@ license: mit
 [![GitHub](https://img.shields.io/badge/GitHub-DrAbdulmalek-181717?logo=github)](https://github.com/DrAbdulmalek/OmniFile_Processor)
 
 <p>
-  <b>Version:</b> v4.3.0 &nbsp;|&nbsp;
+  <b>Version:</b> v4.4.0 &nbsp;|&nbsp;
   <b>Status:</b> ✅ CI-Verified
 </p>
 

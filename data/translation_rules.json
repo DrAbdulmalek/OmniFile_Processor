@@ -98,6 +98,22 @@
     "examples": []
   },
   {
+    "rule_id": "GRAM_006",
+    "category": "grammatical",
+    "english_pattern": "according to",
+    "wrong_arabic": "طبقاً ل",
+    "correct_arabic": "وفقاً ل",
+    "rule_description": "استخدام 'وفقاً' بدلاً من 'طبقاً' للتعبير عن الإسناد",
+    "priority": 2,
+    "examples": [
+      {
+        "en": "According to the report",
+        "ar_wrong": "طبقاً للتقرير",
+        "ar_correct": "وفقاً للتقرير"
+      }
+    ]
+  },
+  {
     "rule_id": "LEX_001",
     "category": "lexical",
     "english_pattern": "ladies and gentlemen",
