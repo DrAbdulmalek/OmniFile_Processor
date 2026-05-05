@@ -31,6 +31,7 @@ import io
 import re
 import gc
 import json
+import shutil
 import tempfile
 import traceback
 import logging
@@ -763,6 +764,109 @@ def translate_text(text: str, direction: str, correct_output: bool = True, progr
 
 
 # ====================================================================
+# Tab 7 — Training Data Generator
+# / إنشاء بيانات تدريب من PDF
+# ====================================================================
+
+def generate_training_data(
+    pdf_file,
+    pages: str = "1-5",
+    level: str = "word",
+    dpi: int = 300,
+    progress=gr.Progress(),
+) -> Tuple[str, Optional[str]]:
+    """
+    Tab 7 handler — Generate training data from uploaded PDF.
+    / إنشاء بيانات تدريب من ملف PDF مرفوع
+    """
+    if pdf_file is None:
+        return "⚠️ Please upload a PDF file.", None
+
+    progress(0.1, desc="Saving uploaded PDF…")
+    # Save uploaded file to temp location
+    tmp_dir = tempfile.mkdtemp(prefix="omnifile_train_")
+    pdf_path = os.path.join(tmp_dir, "input.pdf")
+    with open(pdf_path, "wb") as f:
+        shutil.copy2(pdf_file.name, pdf_path)
+
+    progress(0.2, desc="Initializing training data generator…")
+    try:
+        from modules.vision.pdf_to_training_data import TrainingDataGenerator, TrainingDataConfig
+
+        config = TrainingDataConfig(
+            output_dir=os.path.join(tmp_dir, "output"),
+            dpi=dpi,
+            pages=pages,
+            max_image_height=64 if level == "character" else 0,
+        )
+
+        gen = TrainingDataGenerator(config=config)
+
+        progress(0.3, desc="Loading OCR engine for text labels…")
+        # Try to get OCR engine for word labels
+        ocr_engine = None
+        try:
+            import easyocr
+            ocr_engine = easyocr.Reader(["ar", "en"], gpu=USE_GPU, verbose=False)
+        except Exception as e:
+            logger.warning("EasyOCR not available for labeling: %s", e)
+
+        progress(0.4, desc="Processing PDF pages…")
+        stats = gen.process_pdf(
+            pdf_path=pdf_path,
+            pages=pages,
+            level=level,
+            ocr_engine=ocr_engine,
+        )
+
+        if "error" in stats:
+            return f"❌ {stats['error']}", None
+
+        progress(0.9, desc="Packaging results…")
+
+        # Create zip of output
+        import zipfile
+        zip_path = os.path.join(tmp_dir, "training_data.zip")
+        output_base = stats.get("output_dir", tmp_dir)
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            for root, dirs, files in os.walk(output_base):
+                for fname in files:
+                    fpath = os.path.join(root, fname)
+                    arcname = os.path.relpath(fpath, output_base)
+                    zf.write(fpath, arcname)
+
+        # Build summary
+        summary = (
+            f"## 🧪 Training Data Generated Successfully!\n\n"
+            f"| Metric | Value |\n"
+            f"|--------|-------|\n"
+            f"| **Pages Processed** | {stats.get('pages_processed', 0)} |\n"
+            f"| **Page Images** | {stats.get('page_images', 0)} |\n"
+            f"| **Word Crops** | {stats.get('word_crops', 0)} |\n"
+            f"| **Character Crops** | {stats.get('char_crops', 0)} |\n"
+            f"| **Train Samples** | {stats.get('train_samples', 0)} |\n"
+            f"| **Val Samples** | {stats.get('val_samples', 0)} |\n"
+            f"| **Level** | {level} |\n"
+            f"| **DPI** | {dpi} |\n\n"
+            f"📥 Download the ZIP file containing:\n"
+            f"- `page_images/` — Full page renders\n"
+            f"- `word_crops/` — Individual word images\n"
+            f"- `char_crops/` — Individual character images\n"
+            f"- `train.jsonl` — Training labels\n"
+            f"- `val.jsonl` — Validation labels\n"
+            f"- `generation_summary.json` — Full statistics\n"
+        )
+
+        return summary, zip_path
+
+    except ImportError as e:
+        return f"❌ Missing module: {e}. Training data generator requires the full OmniFile Processor.", None
+    except Exception as e:
+        logger.error("Training data generation error: %s", traceback.format_exc())
+        return f"❌ Error: {e}", None
+
+
+# ====================================================================
 # Tab 5 — Text Classification
 # / تصنيف النصوص إلى فئات
 # ====================================================================
@@ -1305,8 +1409,63 @@ def build_app() -> gr.Blocks:
             )
 
         # ================================================================
-        # Tab 7 — About
-        # / التبويب السابع: حول المشروع
+        # Tab 7 — Training Data Generator
+        # / التبويب السابع: إنشاء بيانات التدريب
+        # ================================================================
+        with gr.Tab("🧪 Training Data"):
+
+            gr.Markdown(
+                "### Generate Training Data from PDF for Handwriting Model Fine-tuning  "
+                "### إنشاء بيانات تدريب من ملفات PDF لتدريب نموذج التعرف على الخط اليدوي"
+            )
+            gr.Markdown(
+                "📤 Upload a handwritten PDF → Get page images, word crops, and character crops  "
+                "with JSONL labels ready for TrOCR LoRA fine-tuning."
+            )
+
+            with gr.Row():
+                with gr.Column(scale=1):
+                    train_file = gr.File(
+                        label="📤 Upload PDF / رفع ملف PDF",
+                        file_types=[".pdf"],
+                        interactive=True,
+                    )
+                    train_pages = gr.Textbox(
+                        label="📄 Pages / الصفحات",
+                        value="1-5",
+                        placeholder="e.g. 'all', '1-10', '1,3,5'",
+                    )
+                    train_level = gr.Dropdown(
+                        label="📊 Level / المستوى",
+                        choices=["page", "word", "character"],
+                        value="word",
+                        info="page=full pages, word=word crops, character=individual characters",
+                    )
+                    train_dpi = gr.Slider(
+                        label="🔍 DPI",
+                        minimum=72, maximum=600, value=300, step=12,
+                    )
+                    train_btn = gr.Button(
+                        "🚀 Generate Training Data / إنشاء بيانات التدريب",
+                        variant="primary", size="lg",
+                    )
+
+                with gr.Column(scale=2):
+                    train_output = gr.Markdown("")
+                    train_files = gr.File(
+                        label="📥 Download Results / تنزيل النتائج",
+                        interactive=False,
+                    )
+
+            train_btn.click(
+                fn=generate_training_data,
+                inputs=[train_file, train_pages, train_level, train_dpi],
+                outputs=[train_output, train_files],
+            )
+
+        # ================================================================
+        # Tab 8 — About
+        # / التبويب الثامن: حول المشروع
         # ================================================================
         with gr.Tab("ℹ️ About"):
             dev = f"**Runtime**: `{DEVICE.upper()}`"
