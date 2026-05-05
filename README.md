@@ -28,7 +28,9 @@ license: mit
 </p>
 
 [🌐 Live Demo (HF Spaces)](https://huggingface.co/spaces/DrAbdulmalek/handwriting-ocr) &nbsp;|&nbsp;
+[🧪 HF Lab Space](https://huggingface.co/spaces/DrAbdulmalek/omnifile-processor-lab) &nbsp;|&nbsp;
 [📘 Documentation](docs/USER_GUIDE.md) &nbsp;|&nbsp;
+[🧩 Dependency Profiles](docs/DEPENDENCY_PROFILES.md) &nbsp;|&nbsp;
 [📓 Colab Debug Notebook](notebooks/OmniFile_Processor_Colab_Debug.ipynb) &nbsp;|&nbsp;
 [🗂️ Prioritized Suggestions](docs/PRIORITIZED_SUGGESTIONS.md) &nbsp;|&nbsp;
 [🐛 Report Bug](https://github.com/DrAbdulmalek/OmniFile_Processor/issues) &nbsp;|&nbsp;
@@ -119,7 +121,9 @@ OmniFile AI Processor is a production-ready, multimodal AI system that integrate
 ### Option 1: HuggingFace Spaces (Recommended for Demo)
 
 The project is deployed and available at:
-👉 **[https://huggingface.co/spaces/DrAbdulmalek/handwriting-ocr](https://huggingface.co/spaces/DrAbdulmalek/handwriting-ocr)**
+👉 **Production demo:** [https://huggingface.co/spaces/DrAbdulmalek/handwriting-ocr](https://huggingface.co/spaces/DrAbdulmalek/handwriting-ocr)
+
+👉 **Experimental lab space:** [https://huggingface.co/spaces/DrAbdulmalek/omnifile-processor-lab](https://huggingface.co/spaces/DrAbdulmalek/omnifile-processor-lab)
 
 To deploy your own instance:
 
@@ -166,21 +170,44 @@ docker-compose up -d
 # Nginx Proxy: http://localhost
 ```
 
+### Option 3.5: Mobile Review → Training Data
+
+```bash
+python mobile_review/server.py --host 0.0.0.0 --port 5000
+# بعد المراجعة والحفظ:
+python mobile_review/server.py --export-dataset --export-output mobile_review/dataset/review_dataset
+
+# أو عبر الأداة مباشرة:
+python tools/build_training_data.py --corrections mobile_review/ocr_corrected.json --output dataset/review_dataset
+```
+
 ### Option 4: Google Colab
+
+يفضَّل استخدام الدفتر الجاهز:
+👉 **[notebooks/OmniFile_Processor_Colab_Debug.ipynb](notebooks/OmniFile_Processor_Colab_Debug.ipynb)**
 
 ```python
 !git clone https://github.com/DrAbdulmalek/OmniFile_Processor.git
 %cd OmniFile_Processor
-!pip install -r requirements-full.txt          # Everything (~6-8 GB, ~15-30 min)
-
-# Or install in layers:
-# pip install -r requirements-core.txt          # Minimum (~1.5 GB, ~3 min)
-# pip install -r requirements-core.txt -r requirements-ocr.txt   # + OCR engines
-# pip install -r requirements-core.txt -r requirements-nlp.txt   # + NLP
-!streamlit run app.py --server.port 7860
+!apt-get update -qq
+!apt-get install -y -qq poppler-utils tesseract-ocr tesseract-ocr-ara tesseract-ocr-eng libgl1
+!pip install -r requirements-colab.txt
+!python hf_app.py
 ```
 
+> للمزيد عن فروق التثبيت، راجع [docs/DEPENDENCY_PROFILES.md](docs/DEPENDENCY_PROFILES.md).
+
 ---
+
+## 🧪 Benchmark & Review Utilities
+
+```bash
+# Benchmark OCR engines on a folder of images
+python tools/benchmark_ocr.py --images examples/ --output artifacts/ocr_benchmark
+
+# Optional ground truth comparison
+python tools/benchmark_ocr.py --images examples/ --ground-truth examples/ground_truth.json --output artifacts/ocr_benchmark
+```
 
 ## 📁 Project Structure | هيكل المشروع
 
