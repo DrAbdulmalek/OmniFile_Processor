@@ -29,6 +29,8 @@ license: mit
 
 [🌐 Live Demo (HF Spaces)](https://huggingface.co/spaces/DrAbdulmalek/handwriting-ocr) &nbsp;|&nbsp;
 [📘 Documentation](docs/USER_GUIDE.md) &nbsp;|&nbsp;
+[📓 Colab Debug Notebook](notebooks/OmniFile_Processor_Colab_Debug.ipynb) &nbsp;|&nbsp;
+[🗂️ Prioritized Suggestions](docs/PRIORITIZED_SUGGESTIONS.md) &nbsp;|&nbsp;
 [🐛 Report Bug](https://github.com/DrAbdulmalek/OmniFile_Processor/issues) &nbsp;|&nbsp;
 [💡 Suggestions](SUGGESTIONS.md)
 

@@ -67,6 +67,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 - **`requirements-colab.txt`**: ملف متطلبات مخصص لدفاتر Google Colab والدفاتر التفاعلية.
+- **`notebooks/OmniFile_Processor_Colab_Debug.ipynb`**: دفتر تجريبي للتشغيل والتصحيح على Google Colab.
+- **`tools/build_training_data.py`**: أداة لتحويل تصحيحات المراجعة اليدوية إلى JSONL صالح للتدريب والتحليل.
+- **`docs/PRIORITIZED_SUGGESTIONS.md`**: ترتيب عملي للاقتراحات المناسبة للمشروع بحسب الأولوية.
 
 ---
 
