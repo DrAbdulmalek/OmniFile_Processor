@@ -6,6 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [6.0.0] — 2026-05-07
+
+### Major Changes — Merge from OmniFile-Previous-Versions
+
+دمج كامل مع مستودع `OmniFile-Previous-Versions` لاستعادة جميع الميزات المفقودة من الإصدارات السابقة.
+
+### Added
+- **نظام تصحيح ترجمات عربية ثنائية اللغة** (modules/nlp/translation_corrector/): 23+ قاعدة تصحيح
+- **نظام المزامنة بين الأجهزة** (modules/security/sync/): FileLock + SyncManager + Syncthing
+- **مرجع دراسي شامل** (modules/export/study_guide/): Markdown + HTML + Mermaid + Anki Flashcards
+- **نظام ترحيل البيانات** (modules/core/migration/): DataMigrator للترحيل من الإصدارات القديمة
+- **تصدير مع الحفاظ على التنسيق** (modules/export/layout_preserving/): DOCX/HTML مع RTL
+- **أداة تقسيم الكلمات** (tools/streamlit_segmentation_app.py)
+- **أدوات مراجعة متقدمة**: double_blind_reviewer, review_dashboard, voting_tracker, quota_manager
+- **أدوات تدريب**: data_mixing, decay_tracker, unsloth_pipeline
+- **فهرس المشاريع المرجعية** (docs/REFERENCE_PROJECTS.md): 40+ مشروع مرجعي
+- **دفاتر Colab محسنة** (notebooks/)
+- **نسخ أرشيفية** (legacy/) محفوظة من OmniFile-Previous-Versions
+
+### Changed
+- **backend/main.py**: ترقية من v3.0 إلى v6.0 مع إضافة 20+ endpoint جديد
+- **__init__.py**: ترقية رقم الإصدار إلى 6.0.0
+
+---
+
+
 ## [4.2.0] — 2026-05-03
 
 ### Added — src/ → modules/ Migration

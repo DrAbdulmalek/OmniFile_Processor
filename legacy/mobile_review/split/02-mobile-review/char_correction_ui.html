@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>🔤 تصحيح حرفي - OmniFile</title>
+  <style>
+    :root {
+      --primary: #2563eb; --success: #16a34a; --warning: #f59e0b; --error: #dc2626;
+      --bg: #f8fafc; --card: #ffffff; --text: #1e293b; --highlight: #fef08a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body { font-family: 'Tajawal', system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 12px; }
+
+    .block-card { background: var(--card); border-radius: 16px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .text-viewer {
+      background: #f1f5f9; padding: 12px; border-radius: 10px; margin: 12px 0;
+      font-size: 1.1rem; line-height: 1.8; direction: rtl; cursor: text;
+      position: relative; overflow: hidden;
+    }
+    .char-span {
+      padding: 2px 4px; border-radius: 4px; transition: background 0.2s;
+      display: inline-block; margin: 0 1px;
+    }
+    .char-span:hover { background: #e2e8f0; }
+    .char-span.selected { background: var(--highlight); font-weight: 600; box-shadow: 0 0 0 2px var(--primary); }
+    .char-span.corrected { background: #dcfce7; text-decoration: line-through var(--error) wavy; }
+
+    .toolbar {
+      position: fixed; bottom: 0; left: 0; right: 0; background: var(--card);
+      padding: 12px; box-shadow: 0 -4px 12px rgba(0,0,0,0.1); display: flex; gap: 8px; overflow-x: auto;
+      border-top: 1px solid #e2e8f0;
+    }
+    .tool-btn {
+      min-width: 44px; height: 44px; border: 1px solid #cbd5e1; border-radius: 10px;
+      background: white; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    .tool-btn:active { background: #f1f5f9; transform: scale(0.95); }
+    .tool-btn.primary { background: var(--primary); color: white; border: none; }
+
+    .diff-panel {
+      background: #fefce8; padding: 10px; border-radius: 8px; margin-top: 8px;
+      font-size: 0.9rem; border: 1px dashed #f59e0b; display: none;
+    }
+    .diff-panel.visible { display: block; }
+
+    .toast {
+      position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%);
+      background: var(--text); color: white; padding: 10px 20px; border-radius: 10px;
+      font-weight: 500; z-index: 1000; opacity: 0; transition: opacity 0.3s;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="block-card">
+    <h3 style="margin-bottom:8px">📄 كتلة: <span id="blockId">blk_042</span> | نوع: <span id="blockType">caption</span></h3>
+    <div class="text-viewer" id="textViewer" contenteditable="false">
+      <!-- سيتم حقن الأحرف هنا ديناميكياً -->
+    </div>
+    <div class="diff-panel" id="diffPanel"></div>
+    <div style="display:flex; gap:8px; margin-top:12px">
+      <button class="tool-btn primary" style="flex:1" onclick="saveCharCorrections()">💾 حفظ التصحيحات الحرفية</button>
+      <button class="tool-btn" style="flex:1" onclick="resetSelection()">🔄 إعادة تعيين</button>
+    </div>
+  </div>
+
+  <!-- شريط أدوات سريع للأخطاء الشائعة -->
+  <div class="toolbar" id="toolbar">
+    <button class="tool-btn" data-action="replace" data-pair="ا|أ|إ|آ|ٱ">ألف</button>
+    <button class="tool-btn" data-action="replace" data-pair="ة|ه">تاء</button>
+    <button class="tool-btn" data-action="replace" data-pair="ي|ى|ئ">ياء</button>
+    <button class="tool-btn" data-action="replace" data-pair="ل|لا">لام</button>
+    <button class="tool-btn" data-action="replace" data-pair="و|ؤ">واو</button>
+    <button class="tool-btn" data-action="delete" data-symbol="✕">حذف</button>
+    <button class="tool-btn" data-action="space" data-symbol="␣">مسافة</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // 🔹 بيانات تجريبية (تُستبدل ببيانات حقيقية من Colab/JSON)
+    const BLOCK_DATA = {
+      id: "blk_042",
+      type: "caption",
+      text: "شكل 3: توزيع العينات حسب الفئه العمريه",
+      bbox: [120, 850, 880, 920],
+      confidence: 0.74
+    };
+
+    // 🔹 حالة التطبيق
+    const state = {
+      chars: [],
+      selectedIndices: new Set(),
+      correctionsLog: [] // [{index, length, original, replacement, timestamp}]
+    };
+
+    // 🔹 تهيئة العارض
+    function initViewer() {
+      const viewer = document.getElementById('textViewer');
+      viewer.innerHTML = '';
+      state.chars = [...BLOCK_DATA.text];
+
+      state.chars.forEach((char, idx) => {
+        const span = document.createElement('span');
+        span.className = 'char-span';
+        span.textContent = char;
+        span.dataset.index = idx;
+        span.dataset.original = char;
+        viewer.appendChild(span);
+      });
+    }
+
+    // 🔹 التفاعل باللمس/النقر
+    document.getElementById('textViewer').addEventListener('click', (e) => {
+      const span = e.target.closest('.char-span');
+      if (!span) return;
+
+      const idx = parseInt(span.dataset.index);
+      if (state.selectedIndices.has(idx)) {
+        state.selectedIndices.delete(idx);
+        span.classList.remove('selected');
+      } else {
+        state.selectedIndices.add(idx);
+        span.classList.add('selected');
+      }
+      updateToolbarState();
+    });
+
+    // 🔹 أزرار شريط الأدوات
+    document.querySelectorAll('.tool-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (state.selectedIndices.size === 0) {
+          showToast("⚠️ حدد حرفاً أو أكثر أولاً", "warning");
+          return;
+        }
+
+        const action = btn.dataset.action;
+        const pair = btn.dataset.pair;
+
+        if (action === 'replace' && pair) {
+          const replacement = prompt(`استبدل بـ:\n${pair.replace(/\|/g, ' | ')}\nاكتب الحرف الصحيح أو اضغط Enter للأول:`, pair.split('|')[0]);
+          if (replacement !== null) applyReplacement(replacement);
+        } else if (action === 'delete') {
+          applyReplacement('');
+        } else if (action === 'space') {
+          applyReplacement(' ');
+        }
+      });
+    });
+
+    function applyReplacement(replacement) {
+      const indices = Array.from(state.selectedIndices).sort((a, b) => a - b);
+      if (indices.length === 0) return;
+
+      // تطبيق التغيير على DOM والسجل
+      indices.forEach(idx => {
+        const span = document.querySelector(`.char-span[data-index="${idx}"]`);
+        const original = span.textContent;
+        if (original !== replacement) {
+          span.textContent = replacement;
+          span.dataset.corrected = replacement;
+          span.classList.add('corrected');
+          state.correctionsLog.push({
+            index: idx,
+            length: 1,
+            original: original,
+            replacement: replacement,
+            timestamp: new Date().toISOString()
+          });
+        }
+      });
+
+      state.selectedIndices.clear();
+      document.querySelectorAll('.char-span.selected').forEach(s => s.classList.remove('selected'));
+      updateDiffPanel();
+      showToast("✅ تم تطبيق التغيير", "success");
+    }
+
+    function updateDiffPanel() {
+      const panel = document.getElementById('diffPanel');
+      if (state.correctionsLog.length === 0) {
+        panel.classList.remove('visible');
+        return;
+      }
+      panel.classList.add('visible');
+      panel.innerHTML = `<strong>📝 سجل التعديلات (${state.correctionsLog.length}):</strong><br>` +
+        state.correctionsLog.slice(-5).map(c =>
+          `${c.original ? `"${c.original}"` : '␣'} → ${c.replacement ? `"${c.replacement}"` : '␣'} <span style="color:#64748b">[${c.index}]</span>`
+        ).join('<br>');
+    }
+
+    function updateToolbarState() {
+      // يمكن إضافة منطق هنا لتعطيل/تفعيل أزرار حسب نوع التحديد
+    }
+
+    function resetSelection() {
+      state.selectedIndices.clear();
+      state.correctionsLog = [];
+      document.querySelectorAll('.char-span.selected, .char-span.corrected').forEach(s => {
+        s.classList.remove('selected', 'corrected');
+        s.textContent = s.dataset.original;
+        delete s.dataset.corrected;
+      });
+      updateDiffPanel();
+      showToast("🔄 تمت إعادة التعيين", "info");
+    }
+
+    function saveCharCorrections() {
+      if (state.correctionsLog.length === 0) {
+        showToast("⚠️ لا توجد تعديلات لحفظها", "warning");
+        return;
+      }
+
+      // إعادة بناء النص النهائي
+      let finalText = BLOCK_DATA.text;
+      // تطبيق التصحيحات بترتيب عكسي لتجنب إزاحة الفهارس
+      const sortedCorrections = [...state.correctionsLog].reverse();
+      sortedCorrections.forEach(c => {
+        finalText = finalText.substring(0, c.index) + c.replacement + finalText.substring(c.index + c.length);
+      });
+
+      const payload = {
+        block_id: BLOCK_DATA.id,
+        original: BLOCK_DATA.text,
+        corrected: finalText,
+        char_corrections: state.correctionsLog,
+        saved_at: new Date().toISOString()
+      };
+
+      localStorage.setItem(`correction_${BLOCK_DATA.id}`, JSON.stringify(payload));
+      console.log("📤 جاهز للمزامنة:", payload);
+      showToast("💾 تم الحفظ محلياً + جاهز للمزامنة", "success");
+    }
+
+    function showToast(msg, type) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.style.background = type === 'success' ? '#16a34a' : type === 'warning' ? '#f59e0b' : '#1e293b';
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    // تهيئة
+    initViewer();
+  </script>
+</body>
+</html>

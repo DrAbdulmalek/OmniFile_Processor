@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>🔍 مراجعة OCR - OmniFile</title>
+  <style>
+    :root {
+      --primary: #2563eb; --success: #16a34a; --warning: #f59e0b; --error: #dc2626;
+      --bg: #f8fafc; --card: #ffffff; --text: #1e293b; --text-light: #64748b;
+      --rtl-font: 'Tajawal', 'Segoe UI', sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: var(--rtl-font); background: var(--bg); color: var(--text);
+      line-height: 1.6; padding: 12px; max-width: 100vw; overflow-x: hidden;
+    }
+    .header {
+      position: sticky; top: 0; background: var(--card); padding: 12px;
+      border-bottom: 1px solid #e2e8f0; z-index: 100; display: flex; justify-content: space-between; align-items: center;
+    }
+    .header h1 { font-size: 1.2rem; font-weight: 600; }
+    .header-actions { display: flex; gap: 8px; }
+    .btn {
+      padding: 8px 16px; border: none; border-radius: 8px; font-size: 0.9rem;
+      font-weight: 500; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-success { background: var(--success); color: white; }
+    .btn:active { transform: scale(0.98); }
+
+    .filters {
+      display: flex; gap: 8px; padding: 12px; overflow-x: auto;
+      background: var(--card); margin: 8px 0; border-radius: 12px;
+    }
+    .filter-chip {
+      padding: 6px 12px; background: #e2e8f0; border-radius: 20px;
+      font-size: 0.85rem; white-space: nowrap; cursor: pointer;
+    }
+    .filter-chip.active { background: var(--primary); color: white; }
+
+    .block-card {
+      background: var(--card); border-radius: 16px; padding: 16px;
+      margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      border-left: 4px solid var(--primary);
+    }
+    .block-card.low-confidence { border-left-color: var(--warning); }
+    .block-card.type-table { border-left-color: #8b5cf6; }
+    .block-card.type-caption { border-left-color: #ec4899; }
+
+    .block-header {
+      display: flex; justify-content: space-between; align-items: start;
+      margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #e2e8f0;
+    }
+    .block-type {
+      font-size: 0.8rem; font-weight: 600; padding: 4px 8px;
+      border-radius: 6px; background: #f1f5f9; color: var(--text-light);
+    }
+    .block-confidence {
+      font-size: 0.8rem; color: var(--text-light);
+    }
+    .block-confidence.low { color: var(--warning); font-weight: 600; }
+
+    .text-original {
+      background: #fff3f3; padding: 12px; border-radius: 10px;
+      margin: 8px 0; direction: rtl; font-size: 1rem;
+      border: 1px solid #fecaca;
+    }
+    .text-original:empty::before {
+      content: "⚠️ لا يوجد نص مستخرج"; color: var(--error); font-style: italic;
+    }
+
+    .text-editor {
+      width: 100%; min-height: 100px; padding: 12px;
+      border: 2px solid #cbd5e1; border-radius: 10px;
+      font-size: 1rem; direction: rtl; font-family: inherit;
+      resize: vertical; transition: border-color 0.2s;
+    }
+    .text-editor:focus {
+      outline: none; border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+    }
+
+    .action-row {
+      display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;
+    }
+    .action-btn {
+      flex: 1; min-width: 100px; padding: 10px;
+      border: none; border-radius: 10px; font-weight: 500;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .action-btn.save { background: var(--success); color: white; }
+    .action-btn.skip { background: #e2e8f0; color: var(--text); }
+    .action-btn:active { transform: scale(0.97); }
+
+    .empty-state {
+      text-align: center; padding: 40px 20px; color: var(--text-light);
+    }
+    .empty-state svg { width: 80px; height: 80px; margin-bottom: 16px; opacity: 0.6; }
+
+    .toast {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: var(--text); color: white; padding: 12px 24px;
+      border-radius: 12px; font-weight: 500; z-index: 1000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      animation: slideUp 0.3s ease;
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translate(-50%, 20px); }
+      to { opacity: 1; transform: translate(-50%, 0); }
+    }
+
+    /* تحسينات للشاشات الصغيرة جداً */
+    @media (max-width: 360px) {
+      .header h1 { font-size: 1rem; }
+      .btn { padding: 6px 12px; font-size: 0.85rem; }
+      .block-card { padding: 12px; }
+    }
+
+    /* دعم الوضع الليلي التلقائي */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; --text-light: #94a3b8;
+      }
+      .text-original { background: #450a0a; border-color: #7f1d1d; }
+      .text-editor { background: #0f172a; border-color: #334155; color: var(--text); }
+      .filter-chip { background: #334155; color: var(--text-light); }
+      .filter-chip.active { background: var(--primary); }
+    }
+  </style>
+  <!-- خطوط عربية محسّنة -->
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- رأس الصفحة مع إجراءات عامة -->
+  <header class="header">
+    <h1>🔍 مراجعة OCR</h1>
+    <div class="header-actions">
+      <button class="btn btn-primary" id="syncBtn">☁️ مزامنة</button>
+      <button class="btn" id="settingsBtn">⚙️</button>
+    </div>
+  </header>
+
+  <!-- فلاتر سريعة لأنواع الكتل -->
+  <div class="filters" id="filters">
+    <div class="filter-chip active" data-type="all">الكل</div>
+    <div class="filter-chip" data-type="low-confidence">منخفضة الثقة</div>
+    <div class="filter-chip" data-type="table">جداول</div>
+    <div class="filter-chip" data-type="caption">تسميات</div>
+    <div class="filter-chip" data-type="title">عناوين</div>
+  </div>
+
+  <!-- حاوية الكتل -->
+  <main id="blocksContainer">
+    <!-- سيتم حقن الكتل هنا ديناميكياً -->
+    <div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M12 6v6m0 0v6m0-6h6m-6 0H6" stroke-linecap="round"/>
+      </svg>
+      <p>لا توجد كتل للمراجعة.<br>ابدأ برفع صورة في Colab أولاً.</p>
+    </div>
+  </main>
+
+  <!-- شريط تقدم للمزامنة -->
+  <div id="progressBar" style="display:none; position:fixed; top:0; left:0; right:0; height:3px; background:#e2e8f0;">
+    <div id="progressFill" style="height:100%; width:0%; background:var(--primary); transition:width 0.3s;"></div>
+  </div>
+
+  <script>
+    // 🔹 بيانات تجريبية (في الإنتاج: تُحمّل من ملف .json عبر fetch)
+    const SAMPLE_BLOCKS = [
+      {
+        id: "blk_001", type: "caption", text: "شكل 3: توزيع العينات",
+        bbox: [120, 850, 880, 920], confidence: 0.72, rtl: true,
+        original: "شكل 3: توزيع العينات", corrected: null
+      },
+      {
+        id: "blk_002", type: "table", text: "الفئة | العدد | النسبة",
+        bbox: [50, 200, 950, 400], confidence: 0.65, rtl: true,
+        original: "الفئة | العدد | النسبة", corrected: null,
+        children: [
+          {text: "أ", confidence: 0.91}, {text: "45", confidence: 0.88}, {text: "30%", confidence: 0.95}
+        ]
+      },
+      {
+        id: "blk_003", type: "paragraph", text: "الجرعة الموصى بها: 500 ملغ يومياً",
+        bbox: [80, 450, 920, 520], confidence: 0.94, rtl: true,
+        original: "الجرعة الموصى بها: 500 ملغ يومياً", corrected: null
+      }
+    ];
+
+    // 🔹 حالة التطبيق
+    const state = {
+      blocks: JSON.parse(localStorage.getItem('omnifile_blocks')) || SAMPLE_BLOCKS,
+      filter: 'all',
+      corrections: JSON.parse(localStorage.getItem('omnifile_corrections')) || {}
+    };
+
+    // 🔹 دوال العرض
+    function renderBlocks() {
+      const container = document.getElementById('blocksContainer');
+      const filtered = state.blocks.filter(block => {
+        if (state.filter === 'all') return true;
+        if (state.filter === 'low-confidence') return block.confidence < 0.85;
+        return block.type === state.filter;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="empty-state">
+          <p>لا توجد كتل تطابق الفلتر المحدد.</p>
+          <button class="btn btn-primary" onclick="resetFilter()">إعادة تعيين الفلتر</button>
+        </div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(block => `
+        <article class="block-card ${block.confidence < 0.85 ? 'low-confidence' : ''} type-${block.type}" data-id="${block.id}">
+          <div class="block-header">
+            <span class="block-type">${translateBlockType(block.type)}</span>
+            <span class="block-confidence ${block.confidence < 0.85 ? 'low' : ''}">
+              ثقة: ${(block.confidence * 100).toFixed(0)}%
+            </span>
+          </div>
+
+          <div class="text-original">${escapeHtml(block.original)}</div>
+
+          <textarea class="text-editor"
+                    id="editor-${block.id}"
+                    dir="${block.rtl ? 'rtl' : 'ltr'}"
+                    placeholder="اكتب التصحيح هنا...">${block.corrected || block.original}</textarea>
+
+          <div class="action-row">
+            <button class="action-btn save" onclick="saveCorrection('${block.id}')">
+              💾 حفظ
+            </button>
+            <button class="action-btn skip" onclick="skipBlock('${block.id}')">
+              ⏭️ تخطي
+            </button>
+            ${block.children ? `<button class="action-btn" onclick="expandTable('${block.id}')">
+              🔍 عرض الخلايا
+            </button>` : ''}
+          </div>
+        </article>
+      `).join('');
+    }
+
+    // 🔹 دوال التفاعل
+    function saveCorrection(blockId) {
+      const editor = document.getElementById(`editor-${blockId}`);
+      const correctedText = editor.value.trim();
+      const block = state.blocks.find(b => b.id === blockId);
+
+      if (!correctedText) {
+        showToast("⚠️ لا يمكن حفظ نص فارغ", "warning");
+        return;
+      }
+
+      // تحديث الحالة
+      block.corrected = correctedText;
+      state.corrections[blockId] = {
+        original: block.original,
+        corrected: correctedText,
+        timestamp: new Date().toISOString(),
+        confidence: block.confidence
+      };
+
+      // حفظ محلياً
+      localStorage.setItem('omnifile_blocks', JSON.stringify(state.blocks));
+      localStorage.setItem('omnifile_corrections', JSON.stringify(state.corrections));
+
+      // تأثير بصري للنجاح
+      const card = document.querySelector(`[data-id="${blockId}"]`);
+      card.style.borderColor = 'var(--success)';
+      card.style.boxShadow = '0 0 0 2px var(--success)';
+      setTimeout(() => {
+        card.style.borderColor = '';
+        card.style.boxShadow = '';
+      }, 1500);
+
+      showToast("✅ تم حفظ التصحيح", "success");
+
+      // مزامنة خلفية مع Google Drive (في الإنتاج)
+      if (typeof syncToDrive === 'function') {
+        syncToDrive(blockId, correctedText);
+      }
+    }
+
+    function skipBlock(blockId) {
+      const card = document.querySelector(`[data-id="${blockId}"]`);
+      card.style.opacity = '0.6';
+      card.querySelector('.action-row').innerHTML = '<span style="color:var(--text-light)">تم التخطي</span>';
+      showToast("⏭️ تم تخطي الكتلة", "info");
+    }
+
+    function expandTable(blockId) {
+      const block = state.blocks.find(b => b.id === blockId);
+      if (!block.children) return;
+
+      const cellsHtml = block.children.map((cell, i) => `
+        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed #e2e8f0">
+          <span>الخلية ${i+1}:</span>
+          <strong>${escapeHtml(cell.text)}</strong>
+          <span style="color:${cell.confidence > 0.9 ? 'var(--success)' : 'var(--warning)'}">
+            ${(cell.confidence * 100).toFixed(0)}%
+          </span>
+        </div>
+      `).join('');
+
+      showToast(`<div style="text-align:right">${cellsHtml}</div>`, 'info', 5000);
+    }
+
+    // 🔹 فلاتر
+    document.querySelectorAll('.filter-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        state.filter = chip.dataset.type;
+        renderBlocks();
+      });
+    });
+
+    function resetFilter() {
+      state.filter = 'all';
+      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+      document.querySelector('[data-type="all"]').classList.add('active');
+      renderBlocks();
+    }
+
+    // 🔹 أدوات مساعدة
+    function translateBlockType(type) {
+      const map = {
+        'title': 'عنوان', 'paragraph': 'فقرة', 'table': 'جدول',
+        'caption': 'تسمية', 'figure': 'شكل', 'list_item': 'عنصر قائمة'
+      };
+      return map[type] || type;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function showToast(message, type = 'info', duration = 2500) {
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.style.background = type === 'success' ? 'var(--success)' :
+                               type === 'warning' ? 'var(--warning)' :
+                               type === 'error' ? 'var(--error)' : 'var(--text)';
+      toast.innerHTML = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), duration);
+    }
+
+    // 🔹 مزامنة مع Google Drive (نموذج مبسط)
+    async function syncToDrive(blockId, correctedText) {
+      // في الإنتاج: استخدام Google Drive API مع صلاحية محدودة
+      document.getElementById('progressBar').style.display = 'block';
+      document.getElementById('progressFill').style.width = '50%';
+
+      try {
+        // محاكاة تأخير الشبكة
+        await new Promise(resolve => setTimeout(resolve, 800));
+        document.getElementById('progressFill').style.width = '100%';
+
+        // هنا نرفع ملف التصحيح إلى مجلد مخصص في Drive
+        // مثال: /OmniFile_MobileSync/corrections/{blockId}.json
+
+        showToast("☁️ تمت المزامنة مع السحابة", "success");
+      } catch (err) {
+        showToast("❌ فشل في المزامنة - تم الحفظ محلياً", "error");
+        console.error("Sync error:", err);
+      } finally {
+        setTimeout(() => {
+          document.getElementById('progressBar').style.display = 'none';
+          document.getElementById('progressFill').style.width = '0%';
+        }, 500);
+      }
+    }
+
+    // 🔹 تهيئة التطبيق
+    document.addEventListener('DOMContentLoaded', () => {
+      renderBlocks();
+
+      // دعم لوحة المفاتيح للمراجعة السريعة (على الأجهزة التي تدعمها)
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.ctrlKey) {
+          // Ctrl+Enter: حفظ أول كتلة غير محفوظة
+          const firstUnsaved = state.blocks.find(b => !b.corrected);
+          if (firstUnsaved) {
+            const editor = document.getElementById(`editor-${firstUnsaved.id}`);
+            if (editor) {
+              editor.value = editor.value.trim() || firstUnsaved.original;
+              saveCorrection(firstUnsaved.id);
+            }
+          }
+        }
+      });
+    });
+  </script>
+</body>
+</html>
