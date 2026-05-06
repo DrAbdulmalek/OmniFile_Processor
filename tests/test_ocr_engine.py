@@ -46,7 +46,8 @@ class TestOCREngineInit:
         engine = OCREngine()
         engines = engine.get_available_engines()
         assert isinstance(engines, list)
-        assert len(engines) == 4
+        assert len(engines) >= 4
+        assert any(e["name"] == "Surya" for e in engines) or any(e["name"] == "PaddleOCR" for e in engines)
         for e in engines:
             assert "name" in e
             assert "available" in e

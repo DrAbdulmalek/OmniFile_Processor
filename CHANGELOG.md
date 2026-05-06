@@ -31,7 +31,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
-
 ## [4.2.0] — 2026-05-03
 
 ### Added — src/ → modules/ Migration
@@ -68,6 +67,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 - **`requirements-colab.txt`**: ملف متطلبات مخصص لدفاتر Google Colab والدفاتر التفاعلية.
+- **`notebooks/OmniFile_Processor_Colab_Debug.ipynb`**: دفتر تجريبي للتشغيل والتصحيح على Google Colab.
+- **`tools/build_training_data.py`**: أداة لتحويل تصحيحات المراجعة اليدوية إلى JSONL صالح للتدريب والتحليل.
+- **`tools/benchmark_ocr.py`**: أداة Benchmark خفيفة لقياس السرعة والدقة الأساسية على مجموعات صور محلية.
+- **`docs/PRIORITIZED_SUGGESTIONS.md`**: ترتيب عملي للاقتراحات المناسبة للمشروع بحسب الأولوية.
+- **`docs/DEPENDENCY_PROFILES.md`**: شرح واضح لطبقات التثبيت واستخدام كل ملف requirements.
+- **`mobile_review/server.py` dataset export**: مسار `/export_dataset` وخيار CLI `--export-dataset` لتحويل تصحيحات المراجعة مباشرةً إلى JSONL.
+
+### Changed
+- **README**: إضافة روابط Space التجريبي ودفتر Colab ودليل طبقات الاعتماديات ووصفات Benchmark و workflow المراجعة المحمولة.
+- **Integration tests**: تحديث اختبارات التكامل لتتوافق مع واجهات المشروع الحالية بدون افتراضات قديمة عن APIs.
+- **Core requirements**: إضافة `flask` إلى `requirements-core.txt` لأن خادم `mobile_review` جزء خفيف ومباشر من بيئة التطوير والتجريب.
 
 ---
 

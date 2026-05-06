@@ -31,7 +31,7 @@ class TestOCRToNLPIntegration:
             enable_paddleocr=False,
         )
         assert engine is not None
-        assert len(engine.get_available_engines()) == 0
+        assert sum(1 for info in engine.get_available_engines() if info["enabled"]) == 0
 
     def test_spell_corrector_initialization(self):
         """اختبار تهيئة المصحح الإملائي."""
@@ -200,12 +200,12 @@ class TestResultFusion:
         """اختبار دمج نتائج فارغة."""
         from modules.vision.result_fusion import ResultFusion
         fusion = ResultFusion()
-        result = fusion.fuse_page_results([])
+        result = fusion.merge_pages([])
         assert result is not None
 
     def test_fusion_single_result(self):
         """اختبار دمج نتيجة واحدة."""
-        from modules.vision.result_fusion import ResultFusion, LineResult, BoundingBox, PageResult
+        from modules.vision.result_fusion import ResultFusion, LineResult, BoundingBox, PageResult, TextBlockType
         fusion = ResultFusion()
 
         line = LineResult(
@@ -213,11 +213,10 @@ class TestResultFusion:
             confidence=0.9,
             bbox=BoundingBox(x=0, y=0, width=100, height=30),
             words=[],
-            block_type="paragraph",
-            source_engine="easyocr"
+            block_type=TextBlockType.PARAGRAPH,
         )
         page = PageResult(lines=[line])
-        result = fusion.fuse_page_results([page])
+        result = fusion.merge_pages([page])
         assert result is not None
 
 
@@ -227,14 +226,18 @@ class TestMetricsIntegration:
     def test_cer_perfect_match(self):
         """اختبار CER مع تطابق مثالي."""
         from modules.evaluation.metrics import calculate_cer
-        cer = calculate_cer("hello world", "hello world")
+        cer, errors, total = calculate_cer("hello world", "hello world")
         assert cer == 0.0
+        assert errors == 0
+        assert total == 11
 
     def test_wer_perfect_match(self):
         """اختبار WER مع تطابق مثالي."""
         from modules.evaluation.metrics import calculate_wer
-        wer = calculate_wer("hello world", "hello world")
+        wer, errors, total = calculate_wer("hello world", "hello world")
         assert wer == 0.0
+        assert errors == 0
+        assert total == 2
 
     def test_arabic_normalization(self):
         """اختبار تطبيع النص العربي."""
