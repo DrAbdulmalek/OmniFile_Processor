@@ -1,0 +1,127 @@
+اضف كل ما يلي لملف الاقتراحات وطبقها على المشروع ...
+deepdeek:
+سأقدم لك ثلاث مخرجات عملية:
+
+1. **ملف IPYNB كامل لتشغيل المشروع على Google Colab**
+2. **شرح مفصل لطريقة مراجعة نتائج OCR على هاتف أندرويد بسهولة**
+3. **نص مقترح التطوير (الحفاظ على التنسيق) لإضافته إلى ملف الاقتراحات في المشروع**
+
+---
+
+## 1. دفتر Google Colab للتجربة والتصحيح
+
+هذا دفتر جاهز يمكنك نسخه إلى Google Colab وتجربة تطبيق OmniFile Processor مباشرة، مع إعداد البيئة تلقائياً وتشغيل واجهة Gradio.
+
+```json
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "provenance": [],
+      "toc_visible": true
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "source": [
+        "# 🧠 OmniFile AI Processor - تجربة على Google Colab\n",
+        "هذا الدفتر يقوم باستنساخ المستودع وتثبيت المتطلبات وتشغيل واجهة Gradio لمعالجة الملفات."
+      ],
+      "metadata": {
+        "id": "header"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# @title 1. استنساخ المستودع وتثبيت الحزم الأساسية\n",
+        "!git clone https://github.com/DrAbdulmalek/OmniFile_Processor.git\n",
+        "%cd OmniFile_Processor\n",
+        "!pip install -q gradio==4.29.0 streamlit==1.33.0\n",
+        "!pip install -q -r requirements_colab.txt || !pip install -q -r requirements.txt"
+      ],
+      "metadata": {
+        "id": "clone_install"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# @title 2. تثبيت اعتماديات النظام (Tesseract, Poppler, إلخ)\n",
+        "!apt-get update -qq\n",
+        "!apt-get install -y -qq tesseract-ocr tesseract-ocr-ara tesseract-ocr-eng poppler-utils libgl1-mesa-glx"
+      ],
+      "metadata": {
+        "id": "system_deps"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# @title 3. تجهيز نماذج الذكاء الاصطناعي (اختياري، قد يستغرق وقتاً)\n",
+        "import subprocess, os\n",
+        "if not os.path.exists('models_downloaded.flag'):\n",
+        "    subprocess.run(['bash', 'install.sh'], check=False)\n",
+        "    !touch models_downloaded.flag\n",
+        "else:\n",
+        "    print('✅ النماذج محملة مسبقاً')"
+      ],
+      "metadata": {
+        "id": "install_models"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# @title 4. تشغيل واجهة Gradio (رابط عام)\n",
+        "# سيظهر رابط ngrok يمكنك فتحه من أي جهاز\n",
+        "import gradio as gr\n",
+        "from app_gradio import create_interface\n",
+        "\n",
+        "iface = create_interface()\n",
+        "iface.launch(share=True, debug=True)"
+      ],
+      "metadata": {
+        "id": "launch_gradio"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# @title 5. (بديل) تجربة سريعة عبر CLI مع صورة مثال\n",
+        "!python main.py --input samples/sample_arabic.png --output output_test --ocr easyocr --lang ar"
+      ],
+      "metadata": {
+        "id": "cli_test"
+      },
+      "execution_count": null,
+      "outputs": []
+    }
+  ]
+}
+```
+
+**ملاحظات التشغيل:**
+- بعد تشغيل الخلية الرابعة ستظهر لك واجهة Gradio برابط `*.gradio.live` يمكن فتحه مباشرة على الهاتف أو المتصفح.
+- إذا أردت توفير الوقت يمكن الاكتفاء بالخلية الخامسة التي تنفذ OCR على صورة محفوظة مسبقاً في `samples/`.
+
+---
+
+## 2. طريقة مراجعة نتائج OCR على هاتف أندرويد لتطوير النماذج العربية

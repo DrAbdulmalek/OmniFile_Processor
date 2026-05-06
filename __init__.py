@@ -59,5 +59,5 @@ OmniFile AI Processor v4.2.0
 البريد الإلكتروني: Abdulmalek.husseini@gmail.com
 """
 
-__version__ = "4.2.0"
+__version__ = "6.0.0"
 __project_name__ = "OmniFile AI Processor"

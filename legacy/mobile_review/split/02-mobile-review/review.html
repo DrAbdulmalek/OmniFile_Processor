@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=yes">
+  <title>مراجعة OCR</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 0;
+    }
+    .container { max-width: 100%; margin: 10px; }
+    .image-container {
+      position: relative;
+      width: 100%;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .image-container img {
+      width: 100%;
+      display: block;
+      touch-action: pinch-zoom;
+    }
+    .block-highlight {
+      position: absolute;
+      border: 2px solid #2196F3;
+      background: rgba(33,150,243,0.1);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .block-highlight.active {
+      border-color: #f44336;
+      background: rgba(244,67,54,0.2);
+    }
+    .edit-panel {
+      margin-top: 15px;
+      background: #fff;
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .edit-panel label { font-weight: bold; display: block; margin-bottom: 5px; }
+    textarea, input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin-bottom: 12px;
+    }
+    .table-editor {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+    }
+    .table-editor td, .table-editor th {
+      border: 1px solid #aaa;
+      padding: 4px;
+    }
+    .table-editor input {
+      border: none;
+      width: 100%;
+      font-size: 14px;
+      padding: 2px;
+    }
+    .btn {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    .btn.save { background: #2196F3; }
+    .btn:hover { opacity: 0.9; }
+    .navigation { display: flex; gap: 10px; margin: 10px 0; }
+    @media (max-width: 600px) {
+      .btn { width: 100%; }
+      .navigation { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+<div class="container" id="app">
+  <!-- عرض الصورة والمربعات -->
+  <div class="image-container" id="imgContainer">
+    <img id="mainImage" src="" alt="المستند">
+    <div id="overlay"></div>
+  </div>
+
+  <!-- منطقة التحرير -->
+  <div class="edit-panel" id="editPanel">
+    <div id="blockInfo"></div>
+    <div id="editorArea"></div>
+    <div class="navigation">
+      <button class="btn" onclick="prevBlock()">◀ السابق</button>
+      <button class="btn" onclick="nextBlock()">التالي ▶</button>
+      <button class="btn save" onclick="saveCorrections()">💾 حفظ التصحيحات</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ---------- تحميل البيانات من الخادم ----------
+  {% if data %}
+  const ocrData = {{ data | tojson }};
+  {% else %}
+  const ocrData = {"image": "sample.jpg", "blocks": []};
+  {% endif %}
+
+  let currentBlockIndex = -1;
+  let blocks = ocrData.blocks || [];
+
+  // عرض الصورة الرئيسية
+  const img = document.getElementById('mainImage');
+  img.src = `/images/${ocrData.image}`;
+
+  // رسم المربعات
+  function drawOverlay() {
+    const overlay = document.getElementById('overlay');
+    overlay.innerHTML = '';
+    blocks.forEach((block, idx) => {
+      const div = document.createElement('div');
+      div.className = 'block-highlight';
+      if (idx === currentBlockIndex) div.classList.add('active');
+      // الإحداثيات نسبية بين 0 و1
+      div.style.left = (block.bbox[0] * 100) + '%';
+      div.style.top = (block.bbox[1] * 100) + '%';
+      div.style.width = ((block.bbox[2] - block.bbox[0]) * 100) + '%';
+      div.style.height = ((block.bbox[3] - block.bbox[1]) * 100) + '%';
+      div.setAttribute('data-index', idx);
+      div.onclick = function(e) {
+        selectBlock(idx);
+      };
+      overlay.appendChild(div);
+    });
+  }
+
+  function selectBlock(idx) {
+    currentBlockIndex = idx;
+    drawOverlay();
+    renderEditor();
+  }
+
+  function renderEditor() {
+    const infoDiv = document.getElementById('blockInfo');
+    const editorArea = document.getElementById('editorArea');
+    if (currentBlockIndex < 0 || currentBlockIndex >= blocks.length) {
+      infoDiv.innerHTML = '<p>اختر كتلة من الصورة</p>';
+      editorArea.innerHTML = '';
+      return;
+    }
+    const block = blocks[currentBlockIndex];
+    infoDiv.innerHTML = `<strong>النوع:</strong> ${block.type || 'نص'} | <strong>الثقة:</strong> ${(block.confidence*100).toFixed(1)}%`;
+
+    if (block.type === 'table') {
+      // محرر جدول
+      let html = '<table class="table-editor">';
+      if (block.cells && block.cells.length) {
+        block.cells.forEach((row, rIdx) => {
+          html += '<tr>';
+          row.forEach((cell, cIdx) => {
+            html += `<td><input type="text" data-row="${rIdx}" data-col="${cIdx}" value="${cell.replace(/"/g, '&quot;')}"></td>`;
+          });
+          html += '</tr>';
+        });
+      } else {
+        // جدول افتراضي للتحرير
+        html += '<tr><td><input type="text" value=""></td><td><input type="text" value=""></td></tr>';
+      }
+      html += '</table><button class="btn" onclick="addRow()">➕ صف</button> <button class="btn" onclick="addCol()">➕ عمود</button>';
+      editorArea.innerHTML = html;
+    } else if (block.type === 'caption') {
+      // تسمية صورة
+      editorArea.innerHTML = `<label>التسمية:</label><input type="text" id="captionInput" value="${block.text || ''}">`;
+    } else {
+      // نص عادي
+      editorArea.innerHTML = `<label>النص:</label><textarea id="textInput" rows="5">${block.text || ''}</textarea>`;
+    }
+  }
+
+  // استخراج المحتوى الحالي من المحرر
+  function getCurrentContent() {
+    if (currentBlockIndex < 0) return;
+    const block = blocks[currentBlockIndex];
+    if (block.type === 'table') {
+      const inputs = document.querySelectorAll('.table-editor input');
+      const rows = {};
+      inputs.forEach(inp => {
+        const r = inp.getAttribute('data-row');
+        const c = inp.getAttribute('data-col');
+        if (!rows[r]) rows[r] = [];
+        rows[r][c] = inp.value;
+      });
+      block.cells = Object.values(rows);
+    } else if (block.type === 'caption') {
+      block.text = document.getElementById('captionInput').value;
+    } else {
+      block.text = document.getElementById('textInput').value;
+    }
+  }
+
+  function nextBlock() {
+    getCurrentContent();
+    if (blocks.length === 0) return;
+    currentBlockIndex = (currentBlockIndex + 1) % blocks.length;
+    selectBlock(currentBlockIndex);
+  }
+
+  function prevBlock() {
+    getCurrentContent();
+    if (blocks.length === 0) return;
+    currentBlockIndex = (currentBlockIndex - 1 + blocks.length) % blocks.length;
+    selectBlock(currentBlockIndex);
+  }
+
+  function addRow() {
+    getCurrentContent();
+    const block = blocks[currentBlockIndex];
+    if (!block.cells) block.cells = [['']];
+    const colCount = block.cells[0]?.length || 1;
+    block.cells.push(new Array(colCount).fill(''));
+    renderEditor();
+  }
+
+  function addCol() {
+    getCurrentContent();
+    const block = blocks[currentBlockIndex];
+    if (!block.cells) block.cells = [['']];
+    block.cells.forEach(row => row.push(''));
+    renderEditor();
+  }
+
+  function saveCorrections() {
+    getCurrentContent();
+    fetch('/save', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(ocrData)
+    }).then(r => r.json())
+      .then(res => alert('✅ تم الحفظ: ' + res.path))
+      .catch(err => alert('❌ خطأ: ' + err));
+  }
+
+  // بدء التطبيق
+  window.onload = function() {
+    drawOverlay();
+    if (blocks.length > 0) selectBlock(0);
+  };
+
+  // إعادة رسم المربعات عند تغيير حجم النافذة
+  window.addEventListener('resize', drawOverlay);
+</script>
+</body>
+</html>

@@ -1,0 +1,268 @@
+[
+  {
+    "rule_id": "STRUCT_001",
+    "category": "structural",
+    "english_pattern": "no smoking",
+    "wrong_arabic": "ممنوع التدخين",
+    "correct_arabic": "التدخين ممنوع",
+    "rule_description": "تقديم المبتدأ على الخبر في الجملة الاسمية",
+    "priority": 1,
+    "examples": [
+      {
+        "en": "No smoking allowed",
+        "ar_wrong": "ممنوع التدخين هنا",
+        "ar_correct": "التدخين ممنوع هنا"
+      }
+    ]
+  },
+  {
+    "rule_id": "STRUCT_002",
+    "category": "structural",
+    "english_pattern": "no parking",
+    "wrong_arabic": "ممنوع الوقوف",
+    "correct_arabic": "الوقوف ممنوع",
+    "rule_description": "تقديم المبتدأ على الخبر",
+    "priority": 1,
+    "examples": []
+  },
+  {
+    "rule_id": "STRUCT_003",
+    "category": "structural",
+    "english_pattern": "no entry",
+    "wrong_arabic": "ممنوع الدخول",
+    "correct_arabic": "الدخول ممنوع",
+    "rule_description": "تقديم المبتدأ على الخبر",
+    "priority": 1,
+    "examples": []
+  },
+  {
+    "rule_id": "GRAM_001",
+    "category": "grammatical",
+    "english_pattern": "by",
+    "wrong_arabic": "بواسطة",
+    "correct_arabic": "",
+    "rule_description": "حذف 'بواسطة' المترجمة حرفياً من by - تحويل للمبني للمعلوم",
+    "priority": 2,
+    "examples": [
+      {
+        "en": "The book was written by Ahmed",
+        "ar_wrong": "كُتب الكتاب بواسطة أحمد",
+        "ar_correct": "كتب أحمد الكتاب"
+      }
+    ]
+  },
+  {
+    "rule_id": "GRAM_002",
+    "category": "grammatical",
+    "english_pattern": "met with",
+    "wrong_arabic": "التقى ب",
+    "correct_arabic": "لقي",
+    "rule_description": "تصحيح تعدية الفعل 'لقي' - لا يحتاج حرف جر",
+    "priority": 2,
+    "examples": [
+      {
+        "en": "He met with the president",
+        "ar_wrong": "التقى بالرئيس",
+        "ar_correct": "لقي الرئيس"
+      }
+    ]
+  },
+  {
+    "rule_id": "GRAM_003",
+    "category": "grammatical",
+    "english_pattern": "and that",
+    "wrong_arabic": "وأن",
+    "correct_arabic": "أن",
+    "rule_description": "حذف الواو الزائدة قبل 'أن'",
+    "priority": 2,
+    "examples": []
+  },
+  {
+    "rule_id": "GRAM_004",
+    "category": "grammatical",
+    "english_pattern": "despite that",
+    "wrong_arabic": "رغم وأن",
+    "correct_arabic": "رغم أن",
+    "rule_description": "حذف الواو الزائدة بعد 'رغم'",
+    "priority": 2,
+    "examples": []
+  },
+  {
+    "rule_id": "GRAM_005",
+    "category": "grammatical",
+    "english_pattern": "especially that",
+    "wrong_arabic": "خاصة وأن",
+    "correct_arabic": "خاصة أن",
+    "rule_description": "حذف الواو الزائدة بعد 'خاصة'",
+    "priority": 2,
+    "examples": []
+  },
+  {
+    "rule_id": "LEX_001",
+    "category": "lexical",
+    "english_pattern": "ladies and gentlemen",
+    "wrong_arabic": "السيدات والسادة",
+    "correct_arabic": "السادة والسيدات",
+    "rule_description": "تقديم المذكر على المؤنث في التحية العربية",
+    "priority": 1,
+    "examples": [
+      {
+        "en": "Ladies and gentlemen, welcome",
+        "ar_wrong": "السيدات والسادة، أهلاً بكم",
+        "ar_correct": "السادة والسيدات، أهلاً بكم"
+      }
+    ]
+  },
+  {
+    "rule_id": "LEX_002",
+    "category": "lexical",
+    "english_pattern": "computer",
+    "wrong_arabic": "كمبيوتر",
+    "correct_arabic": "حاسوب",
+    "rule_description": "استخدام المصطلح العربي الفصيح",
+    "priority": 1,
+    "examples": []
+  },
+  {
+    "rule_id": "LEX_003",
+    "category": "lexical",
+    "english_pattern": "internet",
+    "wrong_arabic": "إنترنت",
+    "correct_arabic": "الشابكة",
+    "rule_description": "استخدام المصطلح العربي للإنترنت",
+    "priority": 2,
+    "examples": []
+  },
+  {
+    "rule_id": "LEX_004",
+    "category": "lexical",
+    "english_pattern": "mobile",
+    "wrong_arabic": "موبايل",
+    "correct_arabic": "هاتف محمول",
+    "rule_description": "استخدام المصطلح العربي للهاتف المحمول",
+    "priority": 2,
+    "examples": []
+  },
+  {
+    "rule_id": "LEX_005",
+    "category": "lexical",
+    "english_pattern": "email",
+    "wrong_arabic": "إيميل",
+    "correct_arabic": "بريد إلكتروني",
+    "rule_description": "استخدام المصطلح العربي",
+    "priority": 2,
+    "examples": []
+  },
+  {
+    "rule_id": "LEX_006",
+    "category": "lexical",
+    "english_pattern": "website",
+    "wrong_arabic": "ويب سايت",
+    "correct_arabic": "موقع إلكتروني",
+    "rule_description": "استخدام المصطلح العربي",
+    "priority": 2,
+    "examples": []
+  },
+  {
+    "rule_id": "STYLE_001",
+    "category": "stylistic",
+    "english_pattern": "played a role",
+    "wrong_arabic": "لعب دوراً",
+    "correct_arabic": "قام بدور",
+    "rule_description": "استخدام الفعل المناسب في السياق",
+    "priority": 2,
+    "examples": [
+      {
+        "en": "He played a major role",
+        "ar_wrong": "لعب دوراً كبيراً",
+        "ar_correct": "قام بدور كبير"
+      }
+    ]
+  },
+  {
+    "rule_id": "STYLE_002",
+    "category": "stylistic",
+    "english_pattern": "covered the event",
+    "wrong_arabic": "غطى الحدث",
+    "correct_arabic": "تابع الحدث",
+    "rule_description": "استخدام الفعل المناسب في السياق الإعلامي",
+    "priority": 2,
+    "examples": []
+  },
+  {
+    "rule_id": "STYLE_003",
+    "category": "stylistic",
+    "english_pattern": "took place",
+    "wrong_arabic": "أخذ مكاناً",
+    "correct_arabic": "وقع",
+    "rule_description": "استخدام الفعل العربي الصحيح للحدث",
+    "priority": 2,
+    "examples": [
+      {
+        "en": "The meeting took place yesterday",
+        "ar_wrong": "الاجتماع أخذ مكاناً أمس",
+        "ar_correct": "وقع الاجتماع أمس"
+      }
+    ]
+  },
+  {
+    "rule_id": "STYLE_004",
+    "category": "stylistic",
+    "english_pattern": "make a decision",
+    "wrong_arabic": "يصنع قراراً",
+    "correct_arabic": "يتخذ قراراً",
+    "rule_description": "استخدام التعبير العربي الصحيح",
+    "priority": 2,
+    "examples": []
+  },
+  {
+    "rule_id": "STYLE_005",
+    "category": "stylistic",
+    "english_pattern": "pay attention",
+    "wrong_arabic": "يدفع انتباهاً",
+    "correct_arabic": "ينتبه",
+    "rule_description": "استخدام الفعل العربي المباشر",
+    "priority": 2,
+    "examples": []
+  },
+  {
+    "rule_id": "CULT_001",
+    "category": "cultural",
+    "english_pattern": "god",
+    "wrong_arabic": "جود",
+    "correct_arabic": "الله",
+    "rule_description": "استخدام اللفظ الإسلامي المناسب",
+    "priority": 1,
+    "examples": []
+  },
+  {
+    "rule_id": "CULT_002",
+    "category": "cultural",
+    "english_pattern": "christmas",
+    "wrong_arabic": "عيد الميلاد المجيد",
+    "correct_arabic": "عيد الميلاد",
+    "rule_description": "استخدام التعبير المحايد",
+    "priority": 2,
+    "examples": []
+  },
+  {
+    "rule_id": "PUNCT_001",
+    "category": "punctuation",
+    "english_pattern": ",",
+    "wrong_arabic": ",",
+    "correct_arabic": "،",
+    "rule_description": "استخدام الفاصلة العربية",
+    "priority": 3,
+    "examples": []
+  },
+  {
+    "rule_id": "PUNCT_002",
+    "category": "punctuation",
+    "english_pattern": "?",
+    "wrong_arabic": "?",
+    "correct_arabic": "؟",
+    "rule_description": "استخدام علامة الاستفهام العربية",
+    "priority": 3,
+    "examples": []
+  }
+]
