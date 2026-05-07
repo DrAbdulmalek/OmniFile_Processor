@@ -63,6 +63,27 @@ logging.basicConfig(
 logger = logging.getLogger("OmniFile_HF")
 
 # ====================================================================
+# OmniFile Version / الإصدار
+# ====================================================================
+OMNIFILE_VERSION = "5.0"
+
+# ====================================================================
+# Engine Router — Lazy import (اقتراح QWEN + Claude)
+# ====================================================================
+try:
+    import sys, os as _os
+    _sys_root = _os.path.dirname(_os.path.abspath(__file__))
+    if _sys_root not in sys.path:
+        sys.path.insert(0, _sys_root)
+    from modules.core.engine_router import EngineRouter as _EngineRouter
+    ENGINE_ROUTER_AVAILABLE = True
+    logger.info("EngineRouter loaded successfully")
+except Exception as _er_err:
+    ENGINE_ROUTER_AVAILABLE = False
+    _EngineRouter = None
+    logger.warning("EngineRouter not available: %s", _er_err)
+
+# ====================================================================
 # Environment & HF Spaces Configuration
 # ====================================================================
 # / إعدادات بيئة HuggingFace Spaces
@@ -392,10 +413,38 @@ def _ocr_ensemble(
     engine: str,
     progress=None,
 ) -> Tuple[str, str]:
-    """Run selected OCR engine(s). Returns (text, info)."""
+    """
+    Run selected OCR engine(s). Returns (text, info).
+    v5.0: Engine Router integration — smart engine selection.
+    """
     parts_text, parts_info = [], []
 
-    if engine in ("EasyOCR", "Both"):
+    # ── Engine Router: اقتراح QWEN + Claude ─────────────────────────
+    # إذا اختار المستخدم "Auto (Smart)", يستخدم EngineRouter لاختيار المحركين الأمثل
+    if engine == "Auto (Smart)" and ENGINE_ROUTER_AVAILABLE and _EngineRouter:
+        lang_code = "ar" if ("ar" in languages) else ("mixed" if len(languages) > 1 else "en")
+        router = _EngineRouter(
+            profile="balanced",
+            use_gpu=USE_GPU,
+            max_engines=2,
+        )
+        selected_engines, reasons = router.select(
+            image_quality=0.80,
+            language=lang_code,
+            block_type="paragraph",
+        )
+        logger.info("EngineRouter selected: %s (reasons: %s)", selected_engines, reasons)
+        parts_info.append(f"Router: {selected_engines} — {', '.join(reasons)}")
+        # تحويل أسماء المحركات إلى قرارات تشغيل
+        use_easy  = "EasyOCR" in selected_engines
+        use_trocr = "TrOCR"   in selected_engines
+    else:
+        # الاختيار اليدوي (كما كان)
+        use_easy  = engine in ("EasyOCR", "Both")
+        use_trocr = engine in ("TrOCR",   "Both")
+
+    # ── EasyOCR ──────────────────────────────────────────────────────
+    if use_easy:
         if progress:
             progress(0.4, desc="Running EasyOCR…")
         txt, conf = _run_easyocr(image, languages)
@@ -405,11 +454,12 @@ def _ocr_ensemble(
         else:
             parts_info.append("EasyOCR: no text detected")
 
-    if engine in ("TrOCR", "Both"):
+    # ── TrOCR ────────────────────────────────────────────────────────
+    if use_trocr:
         if progress:
             progress(0.8, desc="Running TrOCR…")
         txt, _ = _run_trocr(image)
-        prefix = "[TrOCR] " if engine == "Both" else ""
+        prefix = "[TrOCR] " if (use_easy and txt) else ""
         if txt:
             parts_text.append(prefix + txt)
             parts_info.append(f"TrOCR: {len(txt)} chars")
@@ -1135,8 +1185,9 @@ ABOUT_MD = """
 
 ---
 
-*Built with ❤️ by Dr Abdulmalek Tamer Al-husseini | OmniFile AI Processor v4.3.0*
+*Built with ❤️ by Dr Abdulmalek Tamer Al-husseini | OmniFile AI Processor v5.0*
 *📍 Homs, Syria | 📧 Abdulmalek.husseini@gmail.com*
+*🆕 v5.0: Engine Router + Corrections Export + Engine Profiles (Low/Balanced/High)*
 """
 
 
@@ -1359,8 +1410,9 @@ def build_app() -> gr.Blocks:
                     )
                     ocr_engine = gr.Dropdown(
                         label="⚙️ OCR Engine / محرك OCR",
-                        choices=["EasyOCR", "TrOCR", "Both"],
-                        value="EasyOCR",
+                        choices=["Auto (Smart)", "EasyOCR", "TrOCR", "Both"],
+                        value="Auto (Smart)",
+                        info="Auto = EngineRouter يختار المحرك الأمثل تلقائياً (v5.0)",
                     )
                     ocr_btn = gr.Button("🚀 Process / معالجة", variant="primary", size="lg")
                     ocr_info = gr.Markdown("")
@@ -1767,8 +1819,101 @@ def build_app() -> gr.Blocks:
             dev = f"**Runtime**: `{DEVICE.upper()}`"
             if USE_GPU:
                 dev += f" · **GPU**: `{GPU_NAME}`"
+            dev += f" · **OmniFile v{OMNIFILE_VERSION}**"
+            dev += f" · **EngineRouter**: {'✅ active' if ENGINE_ROUTER_AVAILABLE else '⚠️ unavailable'}"
             gr.Markdown(dev)
             gr.Markdown(ABOUT_MD)
+
+        # ================================================================
+        # Tab 11 — Corrections Export / استيراد وتصدير التصحيحات
+        # اقتراح QWEN: "حزم تصحيح قابلة للمشاركة بين المستخدمين"
+        # ================================================================
+        with gr.Tab("📦 Corrections"):
+
+            gr.Markdown(
+                "### 📦 Corrections Dictionary — تصدير/استيراد قاموس التصحيحات\n"
+                "> **اقتراح QWEN v5.0:** شارك قاموس تصحيحاتك مع مستخدمين آخرين "
+                "أو أرسله عبر البريد الإلكتروني لمزامنة أجهزتك.\n\n"
+                "| الإجراء | الوصف |\n"
+                "|--------|-------|\n"
+                "| **Export** | تصدير القاموس كملف JSON قابل للمشاركة |\n"
+                "| **Import & Merge** | دمج قاموس خارجي مع القاموس الحالي |\n"
+                "| **Stats** | عرض إحصائيات القاموس الحالي |\n"
+            )
+
+            with gr.Row():
+                with gr.Column():
+                    gr.Markdown("#### ⬇️ Export")
+                    corr_include_fixes = gr.Checkbox(
+                        label="Include Arabic Fixes (186 entries)",
+                        value=True,
+                    )
+                    corr_export_btn = gr.Button("Export Corrections", variant="primary")
+                    corr_export_file = gr.File(label="Download")
+                    corr_export_info = gr.Markdown()
+
+                with gr.Column():
+                    gr.Markdown("#### ⬆️ Import & Merge")
+                    corr_import_file = gr.File(
+                        label="Upload Corrections JSON",
+                        file_types=[".json"],
+                        type="filepath",
+                    )
+                    corr_merge_mode = gr.Radio(
+                        ["Merge (keep existing)", "Replace all"],
+                        value="Merge (keep existing)",
+                        label="Import Mode",
+                    )
+                    corr_import_btn = gr.Button("Import & Merge", variant="secondary")
+                    corr_import_info = gr.Markdown()
+
+            corr_stats_btn = gr.Button("📊 Show Stats")
+            corr_stats_out = gr.JSON(label="Dictionary Statistics")
+
+            # ── Handlers ────────────────────────────────────────────────
+            def _export_corrections(include_fixes):
+                try:
+                    from modules.core.corrections_manager import CorrectionsDictManager
+                    mgr  = CorrectionsDictManager()
+                    path = mgr.export("/tmp/omnifile_corrections_export.json",
+                                      include_arabic_fixes=include_fixes)
+                    count = mgr.stats()["total"]
+                    return path, f"✅ Exported **{count}** corrections → `{path}`"
+                except Exception as e:
+                    return None, f"❌ Export failed: {e}"
+
+            def _import_corrections(upload_path, mode):
+                if not upload_path:
+                    return "⚠️ Please upload a corrections JSON file."
+                try:
+                    from modules.core.corrections_manager import CorrectionsDictManager
+                    mgr   = CorrectionsDictManager()
+                    total = mgr.import_and_merge(upload_path, replace=(mode == "Replace all"))
+                    return f"✅ Import complete — **{total}** total corrections in dictionary."
+                except Exception as e:
+                    return f"❌ Import failed: {e}"
+
+            def _show_stats():
+                try:
+                    from modules.core.corrections_manager import CorrectionsDictManager
+                    return CorrectionsDictManager().stats()
+                except Exception as e:
+                    return {"error": str(e)}
+
+            corr_export_btn.click(
+                fn=_export_corrections,
+                inputs=[corr_include_fixes],
+                outputs=[corr_export_file, corr_export_info],
+            )
+            corr_import_btn.click(
+                fn=_import_corrections,
+                inputs=[corr_import_file, corr_merge_mode],
+                outputs=[corr_import_info],
+            )
+            corr_stats_btn.click(
+                fn=_show_stats,
+                outputs=[corr_stats_out],
+            )
 
     return app
 

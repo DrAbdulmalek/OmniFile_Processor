@@ -26,6 +26,8 @@ from modules.core.structure import (
     DocumentMetadata,
     Document,
 )
+from modules.core.engine_router import EngineRouter
+from modules.core.corrections_manager import CorrectionsDictManager
 
 __all__ = [
     "BBox",
@@ -35,4 +37,6 @@ __all__ = [
     "DocumentPage",
     "DocumentMetadata",
     "Document",
+    "EngineRouter",
+    "CorrectionsDictManager",
 ]

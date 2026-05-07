@@ -1,5 +1,5 @@
 """
-OmniFile AI Processor v4.1.1 - الإعدادات المركزية
+OmniFile AI Processor v5.0 - الإعدادات المركزية
 ===================================================
 مدمج من: OmniFile_Processor + HandwrittenOCR + handwriting-ocr
          + arabic-ocr-pro + advanced-ocr + OCR-Enhancer
@@ -138,6 +138,20 @@ class OmniFileConfig:
         "password", "secret", "api_key", "token", "credential"
     ])
 
+    # === بروفايلات المحركات (اقتراح QWEN: نظام Progressive Enhancement) ===
+    # المستوى 0 (low):      Tesseract فقط  — يعمل على أي جهاز
+    # المستوى 1 (balanced): + EasyOCR + TrOCR — يتطلب 6GB RAM
+    # المستوى 2 (high):     + PaddleOCR + ONNX — يتطلب GPU و14GB RAM
+    engine_profile: str = "balanced"  # low | balanced | high
+
+    # === تصدير/استيراد قاموس التصحيحات (اقتراح QWEN: export_corrections) ===
+    corrections_export_path: str = "artifacts/correction_dict.json"
+    corrections_auto_export: bool = False  # تصدير تلقائي عند كل تحديث
+
+    # === الموجّه الذكي للمحركات (اقتراح QWEN + Claude: Engine Router) ===
+    enable_engine_router: bool = True   # تفعيل الاختيار الذكي بدلاً من تشغيل كل المحركات
+    router_max_engines: int = 2         # أقصى عدد محركات تُشغَّل معاً
+
     # === HuggingFace ===
     hf_token: str = ""
     hf_username: str = "DrAbdulmalek"
@@ -275,6 +289,89 @@ class OmniFileConfig:
         with open(path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
+
+    @classmethod
+    def from_profile(cls, profile: str = "balanced", **overrides) -> "OmniFileConfig":
+        """
+        إنشاء إعدادات بناءً على بروفايل الجهاز.
+        اقتراح QWEN: نظام الملفات الشخصية (Profiles) للأجهزة الضعيفة/المتوسطة/القوية.
+
+        Args:
+            profile: "low" | "balanced" | "high"
+            **overrides: إعدادات إضافية تطغى على القيم الافتراضية
+
+        Returns:
+            OmniFileConfig مُعَدّة للبروفايل المطلوب
+
+        مثال:
+            cfg = OmniFileConfig.from_profile("low")   # Tesseract فقط
+            cfg = OmniFileConfig.from_profile("high", use_gpu=True)
+        """
+        PROFILES = {
+            "low": {
+                "engine_profile":    "low",
+                "enable_trocr":      False,
+                "enable_easyocr":    True,
+                "enable_tesseract":  True,
+                "enable_paddleocr":  False,
+                "use_onnx":          True,
+                "use_quantization":  True,
+                "low_memory":        True,
+                "trocr_batch_size":  2,
+            },
+            "balanced": {
+                "engine_profile":    "balanced",
+                "enable_trocr":      True,
+                "enable_easyocr":    True,
+                "enable_tesseract":  True,
+                "enable_paddleocr":  False,
+                "use_onnx":          False,
+                "use_quantization":  False,
+                "low_memory":        False,
+                "trocr_batch_size":  8,
+            },
+            "high": {
+                "engine_profile":    "high",
+                "enable_trocr":      True,
+                "enable_easyocr":    True,
+                "enable_tesseract":  True,
+                "enable_paddleocr":  True,
+                "use_onnx":          False,
+                "use_quantization":  False,
+                "low_memory":        False,
+                "trocr_batch_size":  16,
+            },
+        }
+        base = dict(PROFILES.get(profile, PROFILES["balanced"]))
+        base.update(overrides)
+        return cls(**{k: v for k, v in base.items() if k in cls.__dataclass_fields__})
+
+    @staticmethod
+    def auto_profile(ram_gb: float = 0.0, has_gpu: bool = False) -> str:
+        """
+        اختيار البروفايل تلقائياً بناءً على موارد الجهاز.
+
+        Args:
+            ram_gb: حجم الذاكرة المتاحة بالجيجابايت (0 = كشف تلقائي)
+            has_gpu: هل يوجد GPU
+
+        Returns:
+            "low" | "balanced" | "high"
+        """
+        if ram_gb == 0.0:
+            try:
+                with open("/proc/meminfo") as f:
+                    lines = f.read()
+                mem_kb = int([l for l in lines.split("\n") if "MemAvailable" in l][0].split()[1])
+                ram_gb = mem_kb / 1e6
+            except Exception:
+                ram_gb = 8.0
+        if ram_gb >= 14 and has_gpu:
+            return "high"
+        elif ram_gb >= 6:
+            return "balanced"
+        else:
+            return "low"
 
     @classmethod
     def from_colab_drive(cls, **overrides) -> "OmniFileConfig":
