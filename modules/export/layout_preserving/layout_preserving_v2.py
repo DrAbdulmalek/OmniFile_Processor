@@ -96,3 +96,11 @@ def export_to_docx(layout_data, output_path):
 
     doc.save(output_path)
     print(f"✅ تم تصدير المستند إلى: {output_path}")
+
+
+# === Compatibility class for OmniFile_v500_Colab ===
+class LayoutPreservingExporter:
+    """واجهة متوافقة مع الـ notebook — تغلف export_to_docx."""
+    @staticmethod
+    def export(layout_data: dict, output_path: str) -> str:
+        return export_to_docx(layout_data, output_path)

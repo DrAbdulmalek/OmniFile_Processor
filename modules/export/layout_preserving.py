@@ -241,3 +241,11 @@ def ocr_result_to_layout(ocr_json: dict, image_path: str = "") -> dict:
             nb["image_file"] = block.get('image_file', '')
         layout["blocks"].append(nb)
     return layout
+
+
+# === Compatibility class for OmniFile_v500_Colab ===
+class LayoutPreservingExporter:
+    """واجهة متوافقة مع الـ notebook — تغلف الدوال المستقلة."""
+    @staticmethod
+    def export(layout_data: dict, output_path: str) -> str:
+        return export_to_docx(layout_data, output_path)

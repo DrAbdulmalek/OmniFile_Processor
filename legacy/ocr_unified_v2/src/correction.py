@@ -338,3 +338,36 @@ def get_protected_words_count() -> dict:
         "custom_vocabulary": len(_CUSTOM_VOCAB),
         "total_protected": len(_PROTECTED_WORDS_LOWER),
     }
+
+
+# === Compatibility class for OmniFile_v500_Colab ===
+class CorrectionManager:
+    """واجهة متوافقة مع الـ notebook — تغلف الدوال المستقلة في class."""
+    def __init__(self, feedback_csv="", correction_dict_path=""):
+        self.feedback_csv = feedback_csv
+        self.correction_dict_path = correction_dict_path
+        self._dict = {}
+
+    def correct(self, text: str) -> str:
+        return correct_text(text)
+
+    def build_dict(self, min_votes=1) -> dict:
+        if self.feedback_csv and self.correction_dict_path:
+            self._dict = build_correction_dict(
+                self.feedback_csv, self.correction_dict_path, min_votes=min_votes
+            )
+        return self._dict
+
+    def load_dict(self) -> dict:
+        if self.correction_dict_path:
+            self._dict = load_correction_dict(self.correction_dict_path)
+        return self._dict
+
+    def apply_dict(self, text: str) -> str:
+        if not self._dict:
+            self.load_dict()
+        return apply_correction_dict(text, self._dict)
+
+    def add_feedback(self, image_id, original, corrected, status="verified"):
+        if self.feedback_csv:
+            append_feedback(self.feedback_csv, image_id, original, corrected, status)

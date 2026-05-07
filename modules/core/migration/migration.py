@@ -522,3 +522,7 @@ class DataMigrator:
             "total_db_files": sum(len(p.get("db_files", [])) for p in projects),
             "total_feedback_files": sum(len(p.get("feedback_files", [])) for p in projects),
         }
+
+
+# === Compatibility alias for OmniFile_v500_Colab ===
+MigrationManager = DataMigrator

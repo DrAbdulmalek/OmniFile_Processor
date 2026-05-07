@@ -218,3 +218,15 @@ class FileEncryptor:
 
         logger.info("تم فك تشفير %d ملف من %s", len(decrypted_files), input_dir)
         return decrypted_files
+
+
+# === Module-level convenience functions for OmniFile_v500_Colab ===
+_default_encryptor = FileEncryptor()
+
+def encrypt_file(input_path: str, output_path: str = None) -> str:
+    """تشفير ملف — واجهة مستوى الوحدة."""
+    return _default_encryptor.encrypt_file(input_path, output_path)
+
+def decrypt_file(input_path: str, output_path: str = None) -> str:
+    """فك تشفير ملف — واجهة مستوى الوحدة."""
+    return _default_encryptor.decrypt_file(input_path, output_path)
