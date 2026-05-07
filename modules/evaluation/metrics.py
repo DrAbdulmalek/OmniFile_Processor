@@ -266,6 +266,7 @@ def _levenshtein_distance(s1, s2) -> tuple[int, int, int]:
     return (d[len1][len2], 0, 0)
 
 
+<<<<<<< Updated upstream
 # === Compatibility aliases for OmniFile_v500_Colab ===
 # Notebook imports compute_cer / compute_wer — our functions return (cer, errors, total)
 def compute_cer(reference: str, hypothesis: str) -> float:
@@ -277,3 +278,61 @@ def compute_wer(reference: str, hypothesis: str) -> float:
     """معدل خطأ الكلمات (WER) — واجهة متوافقة مع الـ notebook."""
     wer, _, _ = calculate_wer(reference, hypothesis)
     return wer
+=======
+
+# ══════════════════════════════════════════════════════════════════════
+# دوال مستوى الوحدة — Module-Level Helper Functions
+# للاستيراد المباشر: from modules.evaluation.metrics import compute_cer
+# ══════════════════════════════════════════════════════════════════════
+
+def compute_cer(reference: str, hypothesis: str) -> float:
+    """
+    حساب معدل خطأ الأحرف (CER) مباشرة.
+
+    Args:
+        reference:  النص المرجعي الصحيح
+        hypothesis: النص الناتج عن OCR
+
+    Returns:
+        float — CER بين 0.0 (مثالي) و 1.0+ (سيء)
+
+    مثال:
+        >>> compute_cer("مرحبا", "مرحبا")
+        0.0
+        >>> compute_cer("hello", "helo")
+        0.2
+    """
+    result = evaluate(reference, hypothesis)
+    return result.cer
+
+
+def compute_wer(reference: str, hypothesis: str) -> float:
+    """
+    حساب معدل خطأ الكلمات (WER) مباشرة.
+
+    Args:
+        reference:  النص المرجعي الصحيح
+        hypothesis: النص الناتج عن OCR
+
+    Returns:
+        float — WER بين 0.0 (مثالي) و 1.0+ (سيء)
+    """
+    result = evaluate(reference, hypothesis)
+    return result.wer
+
+
+def quick_grade(reference: str, hypothesis: str) -> dict:
+    """
+    تقييم سريع شامل مع الدرجة.
+
+    Returns:
+        dict مع: cer, wer, grade, accuracy_percent
+    """
+    result = evaluate(reference, hypothesis)
+    return {
+        "cer":              result.cer,
+        "wer":              result.wer,
+        "grade":            result.quality_grade,
+        "accuracy_percent": result.accuracy_percent,
+    }
+>>>>>>> Stashed changes
