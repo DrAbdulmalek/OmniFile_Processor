@@ -264,3 +264,16 @@ def _levenshtein_distance(s1, s2) -> tuple[int, int, int]:
             )
 
     return (d[len1][len2], 0, 0)
+
+
+# === Compatibility aliases for OmniFile_v500_Colab ===
+# Notebook imports compute_cer / compute_wer — our functions return (cer, errors, total)
+def compute_cer(reference: str, hypothesis: str) -> float:
+    """معدل خطأ الأحرف (CER) — واجهة متوافقة مع الـ notebook."""
+    cer, _, _ = calculate_cer(reference, hypothesis)
+    return cer
+
+def compute_wer(reference: str, hypothesis: str) -> float:
+    """معدل خطأ الكلمات (WER) — واجهة متوافقة مع الـ notebook."""
+    wer, _, _ = calculate_wer(reference, hypothesis)
+    return wer

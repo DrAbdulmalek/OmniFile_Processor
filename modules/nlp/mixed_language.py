@@ -158,6 +158,10 @@ class MixedLanguageHandler:
 
         return "".join(corrected_parts)
 
+    def process(self, text: str) -> str:
+        """واجهة متوافقة مع الـ notebook — تساوي correct_text_mixed."""
+        return self.correct_text_mixed(text)
+
     def _correct_arabic(self, text: str) -> str:
         """
         تصحيح النص العربي باستخدام القاموس المحلي.

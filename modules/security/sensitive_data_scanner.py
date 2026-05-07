@@ -329,6 +329,10 @@ class SensitiveDataScanner:
                 "error": str(e),
             }
 
+    def scan(self, text: str, language: str = "en") -> dict:
+        """واجهة متوافقة مع الـ notebook — تساوي scan_text."""
+        return self.scan_text(text, language=language)
+
     @staticmethod
     def _calculate_risk_level(entities: list[dict]) -> str:
         """

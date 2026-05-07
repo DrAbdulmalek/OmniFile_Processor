@@ -979,3 +979,17 @@ def export_study_guide_html(
     logger.info(f"تم حفظ المرجع HTML في: {output_path}")
 
     return output_path
+
+
+# === Compatibility class for OmniFile_v500_Colab ===
+class StudyGuide:
+    """واجهة متوافقة مع الـ notebook — تغلف الدوال المستقلة في class."""
+    def __init__(self, db=None):
+        self._db = db
+
+    def generate(self, db=None, output_path=None, title=None, **kwargs):
+        db = db or self._db
+        if db is None:
+            raise ValueError("Database object required")
+        return generate_study_guide(db=db, output_path=output_path,
+                                     title=title or "مرجع دراسة", **kwargs)

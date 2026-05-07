@@ -239,3 +239,7 @@ def save_annotation(doc: DocumentAnnotation, output_path: str):
     """حفظ الهيكلية مع ضمان الترميز الصحيح للعربية"""
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(doc.json(indent=2, ensure_ascii=False))
+
+
+# === Compatibility alias for OmniFile_v500_Colab ===
+StructuralAnnotation = DocumentAnnotation

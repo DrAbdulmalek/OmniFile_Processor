@@ -979,3 +979,34 @@ def export_study_guide_html(
     logger.info(f"تم حفظ المرجع HTML في: {output_path}")
 
     return output_path
+
+
+# === Compatibility class for OmniFile_v500_Colab ===
+class StudyGuideGenerator:
+    """واجهة متوافقة مع الـ notebook — تغلف الدوال المستقلة في class."""
+    def __init__(self, db=None):
+        self._db = db
+
+    def generate(self, db=None, output_path=None, title=None, **kwargs):
+        """توليد مرجع دراسي."""
+        db = db or self._db
+        if db is None:
+            raise ValueError("Database object required")
+        return generate_study_guide(db=db, output_path=output_path,
+                                     title=title or "مرجع دراسة", **kwargs)
+
+    def generate_full(self, db=None, output_dir=None, **kwargs):
+        """توليد مرجع شامل مع Mermaid + Flashcards."""
+        db = db or self._db
+        if db is None:
+            raise ValueError("Database object required")
+        return generate_study_guide_full(db=db, output_dir=output_dir, **kwargs)
+
+    def generate_flashcards(self, db=None, **kwargs):
+        return generate_flashcards(db=db or self._db, **kwargs)
+
+    def export_html(self, content, output_path, title=None):
+        return export_study_guide_html(content, output_path, title=title or "مرجع دراسة")
+
+    def export_anki(self, cards, output_path, **kwargs):
+        return export_flashcards_anki(cards, output_path, **kwargs)
