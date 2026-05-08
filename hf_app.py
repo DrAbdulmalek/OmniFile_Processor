@@ -1915,6 +1915,31 @@ def build_app() -> gr.Blocks:
                 outputs=[corr_stats_out],
             )
 
+        # ================================================================
+        # Tabs 12-14 — ✏️ Word Trainer + 📚 Review DB + 📤 Sync
+        # نظام التعلم من تصحيحات المستخدم (v5.0 — الميزة الرئيسية الجديدة)
+        # ================================================================
+        try:
+            import sys as _sys
+            import os as _os
+            _src_dir = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "src")
+            if _src_dir not in _sys.path:
+                _sys.path.insert(0, _src_dir)
+            from correction_trainer_ui import build_trainer_tabs
+            build_trainer_tabs(use_gpu=USE_GPU)
+            logger.info("Word Trainer tabs loaded successfully")
+        except Exception as _trainer_err:
+            logger.warning("Word Trainer tabs unavailable: %s", _trainer_err)
+            with gr.Tab("✏️ Word Trainer"):
+                gr.HTML(f"""
+                <div style="padding:20px;background:#1c1c1c;border-radius:8px;text-align:center">
+                  <h3 style="color:#f85149">⚠️ Word Trainer غير متاح</h3>
+                  <p style="color:#8b949e">السبب: <code>{_trainer_err}</code></p>
+                  <p style="color:#8b949e">تأكد من وجود <code>src/correction_trainer_ui.py</code>
+                  و <code>modules/core/word_trainer.py</code></p>
+                </div>
+                """)
+
     return app
 
 

@@ -28,15 +28,12 @@ from modules.core.structure import (
 )
 from modules.core.engine_router import EngineRouter
 from modules.core.corrections_manager import CorrectionsDictManager
+from modules.core.word_trainer import WordCorrectionDB
 
 __all__ = [
-    "BBox",
-    "BlockType",
-    "OCRToken",
-    "DocumentBlock",
-    "DocumentPage",
-    "DocumentMetadata",
-    "Document",
+    "BBox", "BlockType", "OCRToken", "DocumentBlock",
+    "DocumentPage", "DocumentMetadata", "Document",
     "EngineRouter",
     "CorrectionsDictManager",
+    "WordCorrectionDB",
 ]
