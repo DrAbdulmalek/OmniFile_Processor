@@ -92,27 +92,34 @@ OmniFile AI Processor is a production-ready, multimodal AI system that integrate
 12. **GPT & Gemini Refinement** — Context-aware OCR correction with block-type-specific prompts
 13. **SSIM Pattern Matching** — Self-learning from corrected word images with SQLite pattern database
 
+### 🌐 AI Gateway (وحدة بوابة الذكاء الاصطناعي)
+14. **Universal AI Model Proxy** — Drop-in proxy server compatible with Messages API protocol, routes to 8+ providers (DeepSeek, NVIDIA NIM, OpenRouter, Ollama, LM Studio, llama.cpp, Kimi, Wafer)
+15. **Multi-Provider Routing** — Intelligent model routing with per-tier selection (Opus/Sonnet/Haiku levels) and automatic fallback
+16. **Streaming SSE** — Full Server-Sent Events streaming with thinking block support and tool call conversion
+17. **Request Optimization** — Fast-path optimizations including quota mock, prefix detection, title/suggestion skip
+18. **Rate Limiting & Concurrency** — Configurable per-provider rate limits, concurrency control, and timeout management
+
 ### 📤 Multi-Format Export (وحدة التصدير)
-14. **6 Export Formats** — DOCX (RTL support), HTML, searchable PDF, Excel, JSON (with BBox), TXT (UTF-8 BOM)
+19. **6 Export Formats** — DOCX (RTL support), HTML, searchable PDF, Excel, JSON (with BBox), TXT (UTF-8 BOM)
 
 ### 🔒 Security & Privacy (وحدة الأمان)
-15. **PII Detection** — Presidio-based sensitive data scanning + detect-secrets
-16. **File Encryption** — Fernet (AES-128) with folder support
-17. **Code Protection** — Prevents spell correction inside code blocks
-18. **Audit Logging** — File + Redis audit trail with rate limiting (slowapi + Nginx)
+20. **PII Detection** — Presidio-based sensitive data scanning + detect-secrets
+21. **File Encryption** — Fernet (AES-128) with folder support
+22. **Code Protection** — Prevents spell correction inside code blocks
+23. **Audit Logging** — File + Redis audit trail with rate limiting (slowapi + Nginx)
 
 ### 📊 Evaluation (وحدة التقييم)
-19. **CER/WER Metrics** — OCR accuracy evaluation with Arabic normalization + Levenshtein distance
-20. **Quality Grading** — A+ to F with actionable recommendations
+24. **CER/WER Metrics** — OCR accuracy evaluation with Arabic normalization + Levenshtein distance
+25. **Quality Grading** — A+ to F with actionable recommendations
 
 ### 🖥️ Multiple Interfaces (واجهات المستخدم)
-21. **4 UIs** — Streamlit (6 tabs), Gradio (7 tabs), React + shadcn/ui (dark/light), CLI, PyQt6 desktop
-22. **FastAPI Backend** — Full REST API with Swagger documentation
+26. **4 UIs** — Streamlit (6 tabs), Gradio (7 tabs), React + shadcn/ui (dark/light), CLI, PyQt6 desktop
+27. **FastAPI Backend** — Full REST API with Swagger documentation
 
 ### 🚀 Scalability & Deployment (التحجيم والنشر)
-23. **Docker + Compose** — One-command deployment with all services
-24. **Kubernetes Ready** — Complete K8s manifests with HPA (2-10 pods auto-scaling)
-25. **Celery + Redis** — Asynchronous task processing for heavy workloads
+28. **Docker + Compose** — One-command deployment with all services
+29. **Kubernetes Ready** — Complete K8s manifests with HPA (2-10 pods auto-scaling)
+30. **Celery + Redis** — Asynchronous task processing for heavy workloads
 
 ---
 
@@ -197,6 +204,28 @@ python tools/build_training_data.py --corrections mobile_review/ocr_corrected.js
 
 > للمزيد عن فروق التثبيت، راجع [docs/DEPENDENCY_PROFILES.md](docs/DEPENDENCY_PROFILES.md).
 
+### Option 5: AI Gateway (Universal Model Proxy)
+
+The OmniFile AI Gateway provides a universal proxy for routing AI model requests to multiple providers:
+
+```bash
+# Clone and install gateway dependencies
+git clone https://github.com/DrAbdulmalek/OmniFile_Processor.git
+cd OmniFile_Processor
+pip install -r requirements-gateway.txt
+
+# Configure your provider (edit modules/ai/gateway/.env)
+cp modules/ai/gateway/.env.example modules/ai/gateway/.env
+
+# Start the gateway
+bash scripts/start_gateway.sh
+
+# Or start manually:
+python -m uvicorn modules.ai.gateway.server:app --host 0.0.0.0 --port 8082
+```
+
+**Supported Providers:** DeepSeek, NVIDIA NIM, OpenRouter, Ollama, LM Studio, llama.cpp, Kimi, Wafer
+
 ---
 
 ## 🧪 Benchmark & Review Utilities
@@ -266,7 +295,13 @@ OmniFile_Processor/
 │   ├── ai/                         # AI Enhancement
 │   │   ├── pattern_matcher.py      #   SSIM pattern matching
 │   │   ├── pattern_db.py           #   SQLite pattern database
-│   │   └── gemini_refiner.py       #   Gemini AI refinement
+│   │   ├── gemini_refiner.py       #   Gemini AI refinement
+│   │   └── gateway/                #   OmniFile AI Gateway (universal proxy)
+│   │       ├── server.py           #     ASGI entry point
+│   │       ├── api/                #     FastAPI routes & auth
+│   │       ├── config/             #     Provider catalog & settings
+│   │       ├── core/               #     SSE & protocol helpers
+│   │       └── providers/          #     8 provider backends
 │   │
 │   ├── security/                   # Security & Privacy
 │   │   ├── file_scanner.py         #   Security scanning
@@ -406,13 +441,37 @@ Comprehensive security module for PII detection, encryption, code protection, fi
 
 ### 5. 🤖 `modules/ai/` — AI Enhancement
 
-Advanced AI capabilities including self-learning pattern matching and Gemini-based refinement.
+Advanced AI capabilities including self-learning pattern matching, Gemini-based refinement, and a universal AI model gateway.
 
 | File | Description |
 |------|-------------|
 | `pattern_matcher.py` | SSIM-based visual pattern matching — learns from corrected word images |
 | `pattern_db.py` | SQLite database for storing and retrieving visual OCR patterns |
 | `gemini_refiner.py` | Google Gemini API integration for context-aware OCR refinement |
+| `gateway/` | **OmniFile AI Gateway** — Universal proxy for routing AI model requests to multiple providers (see below) |
+
+#### 🌐 `modules/ai/gateway/` — OmniFile AI Gateway
+
+A universal AI model proxy that intercepts Messages API requests and routes them to alternative providers. Supports 8 provider backends with automatic format conversion and SSE streaming.
+
+| Subdirectory | Description |
+|-------------|-------------|
+| `api/` | FastAPI application layer — routes, auth, model routing, request optimization |
+| `api/models/` | Pydantic request/response models for the Messages API protocol |
+| `api/web_tools/` | Local web search and fetch handling with SSRF protection |
+| `config/` | Central settings, provider catalog, logging configuration |
+| `core/` | Protocol helpers — SSE formatting, message conversion, token estimation |
+| `core/anthropic/` | Native Messages API support — content blocks, thinking tags, tool parsing |
+| `providers/` | Provider transport implementations — OpenAI-compatible and native protocols |
+| `providers/deepseek/` | DeepSeek provider (native Messages API) |
+| `providers/nvidia_nim/` | NVIDIA NIM provider (OpenAI-compatible) |
+| `providers/open_router/` | OpenRouter provider (native Messages API) |
+| `providers/ollama/` | Ollama local provider (native Messages API) |
+| `providers/lmstudio/` | LM Studio local provider (native Messages API) |
+| `providers/llamacpp/` | llama.cpp local provider (native Messages API) |
+| `providers/kimi/` | Kimi/Moonshot provider (OpenAI-compatible) |
+| `providers/wafer/` | Wafer provider (native Messages API) |
+| `server.py` | ASGI entry point for the gateway proxy |
 
 ---
 
@@ -492,9 +551,9 @@ http://localhost:5001/api/v1
 
 | Metric | Value |
 |--------|-------|
-| Python Files | 72+ |
-| Lines of Code | ~28,000 |
-| Total Files | 152+ |
+| Python Files | 150+ |
+| Lines of Code | ~40,000+ |
+| Total Files | 230+ |
 | OCR Engines | 4 (TrOCR, EasyOCR, Tesseract, PaddleOCR) |
 | Fusion Strategies | 4 |
 | Supported Languages | 3 (EN, AR, DE) |
@@ -503,6 +562,7 @@ http://localhost:5001/api/v1
 | Merged Projects | 6 |
 | Security Modules | 9 |
 | NLP Capabilities | 10 |
+| AI Gateway Providers | 8 (DeepSeek, NIM, OpenRouter, Ollama, LM Studio, llama.cpp, Kimi, Wafer) |
 | API Endpoints | 14+ |
 
 ---

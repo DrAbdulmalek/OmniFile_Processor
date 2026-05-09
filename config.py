@@ -183,6 +183,22 @@ class OmniFileConfig:
     lora_r: int = 8
     lora_alpha: int = 16
 
+    # === AI Gateway Configuration ===
+    gateway_enabled: bool = False
+    gateway_host: str = "0.0.0.0"
+    gateway_port: int = 8082
+    gateway_auth_token: str = "freecc"
+    gateway_model: str = ""  # provider/model format
+    gateway_model_opus: str = ""
+    gateway_model_sonnet: str = ""
+    gateway_model_haiku: str = ""
+    gateway_provider_rate_limit: int = 1
+    gateway_provider_rate_window: int = 3
+    gateway_max_concurrency: int = 5
+    gateway_http_read_timeout: int = 300
+    gateway_http_write_timeout: int = 60
+    gateway_http_connect_timeout: int = 60
+
     # === Properties ===
 
     @property
