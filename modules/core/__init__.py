@@ -31,6 +31,7 @@ from modules.core.corrections_manager import CorrectionsDictManager
 from modules.core.word_trainer import WordCorrectionDB
 from modules.core.spell_checker import HybridSpellChecker
 from modules.core.log_manager import AppLogger, get_app_logger
+from modules.core.user_manager import UserManager
 
 __all__ = [
     "BBox", "BlockType", "OCRToken", "DocumentBlock",
@@ -38,4 +39,5 @@ __all__ = [
     "EngineRouter", "CorrectionsDictManager",
     "WordCorrectionDB", "HybridSpellChecker",
     "AppLogger", "get_app_logger",
+    "UserManager",
 ]

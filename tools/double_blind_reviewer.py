@@ -9,7 +9,11 @@ import json, difflib, random
 from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Optional
-from core.user_manager import UserManager
+import sys as _sys, os as _os
+_root = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+if _root not in _sys.path:
+    _sys.path.insert(0, _root)
+from modules.core.user_manager import UserManager
 
 class DoubleBlindReviewer:
     def __init__(
