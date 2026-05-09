@@ -7,13 +7,14 @@
 
 import json, difflib, random
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Dict, Optional
-import sys as _sys, os as _os
-_root = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
-if _root not in _sys.path:
-    _sys.path.insert(0, _root)
-from modules.core.user_manager import UserManager
+
+# المسار الصحيح — tools/ وليس core/
+try:
+    from tools.user_manager import UserManager
+except ImportError:
+    UserManager = None  # fallback: سمعة المراجعين لن تُتتبع
 
 class DoubleBlindReviewer:
     def __init__(
@@ -81,9 +82,10 @@ class DoubleBlindReviewer:
             task["status"] = "approved"
             task["consensus"] = t1 if sim == 1.0 else (t1 if len(t1) >= len(t2) else t2)
             # مكافأة السمعة للمراجعتين المتطابقتين
-            um = UserManager()
-            um.update_reputation(task["reviews"][0]["reviewer"], aligned=True, alpha=0.15)
-            um.update_reputation(task["reviews"][1]["reviewer"], aligned=True, alpha=0.15)
+            if UserManager is not None:
+                um = UserManager()
+                um.update_reputation(task["reviews"][0]["reviewer"], aligned=True, alpha=0.15)
+                um.update_reputation(task["reviews"][1]["reviewer"], aligned=True, alpha=0.15)
         else:
             task["status"] = "escalated"
             task["reason"] = f"توافق منخفض: {sim:.2%}"

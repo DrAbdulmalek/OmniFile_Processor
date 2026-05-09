@@ -1,6 +1,11 @@
 """
-modules/core/spell_checker.py — Hybrid Spell Checker v6.0
+modules/core/spell_checker.py — Hybrid Spell Checker v7.0
 مدقق إملائي هجين يكتشف اللغة تلقائياً ويدعم العربية/الإنجليزية/الألمانية
+
+v7.0 changes:
+- إضافة enhance_digit_recognition() (من src/correction.py)
+- إضافة spell_correct_word() (تصحيح كلمة واحدة مع digit recognition)
+- الملف هو الآن Backend الموحّد — src/correction.py يُفوّض إليه بالكامل
 
 v6.0 changes:
 - دمج TECHNICAL_KEYWORDS + PYTHON_KEYWORDS من src/correction.py مباشرة
@@ -257,11 +262,46 @@ class HybridSpellChecker:
             })
         return {"lang": lang, "words": results, "total": len(results)}
 
+    # ── تصحيح الأرقام البصري ───────────────────────────────────────
+
+    _DIGIT_CORRECTIONS = {
+        "O": "0", "o": "0",
+        "I": "1", "l": "1", "|": "1",
+        "Z": "2", "z": "2",
+        "S": "5", "s": "5",
+        "G": "6",
+        "T": "7", "t": "7",
+        "B": "8",
+    }
+
+    def enhance_digit_recognition(self, text: str) -> str:
+        """
+        تصحيح حرفي للأرقام في النص (OCR artifact fix).
+        يحوّل الحروف المشابهة بصرياً للأرقام: O→0, I→1, S→5, ...
+        يعمل فقط على الكلمات الخالصة من الأرقام والحروف المشابهة.
+        """
+        if not text:
+            return text
+        words = text.split()
+        corrected = []
+        for word in words:
+            clean = word.strip(".,;:!?\"'()-")
+            if clean and all(c.isalnum() or c in "_-/" for c in clean):
+                if any(c.isdigit() for c in clean):
+                    fixed = clean
+                    for letter, digit in self._DIGIT_CORRECTIONS.items():
+                        fixed = fixed.replace(letter, digit)
+                    if fixed != clean and fixed.isdigit():
+                        corrected.append(word.replace(clean, fixed))
+                        continue
+            corrected.append(word)
+        return " ".join(corrected)
+
     # ── تصحيح نص كامل ───────────────────────────────────────────────
 
     def correct_text(self, text: str) -> str:
         """
-        تصحيح نص كامل كلمة بكلمة مع حفظ الكلمات المحمية.
+        تصحيح نص كامل كلمة بكلمة مع حفظ الكلمات المحمية + digit recognition.
         بديل متوافق مع src/correction.correct_text().
         """
         if not text or not text.strip():
@@ -278,7 +318,21 @@ class HybridSpellChecker:
                 corrected.append(w.replace(clean, c))
             else:
                 corrected.append(w)
-        return " ".join(corrected)
+        result = self.enhance_digit_recognition(" ".join(corrected))
+        return result
+
+    def spell_correct_word(self, word: str) -> str:
+        """
+        تصحيح سريع كلمة واحدة مع digit recognition.
+        بديل متوافق مع src/correction.spell_correct_word().
+        """
+        word = word.strip()
+        if not word:
+            return ""
+        if self._is_protected(word):
+            return word
+        corrected, _ = self.auto_correct(word)
+        return self.enhance_digit_recognition(corrected)
 
     def get_protected_count(self) -> dict:
         """إرجاع عدد الكلمات المحمية لكل فئة."""
