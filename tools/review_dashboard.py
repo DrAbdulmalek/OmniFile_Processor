@@ -1,16 +1,62 @@
-# review_dashboard.py - Gradio review dashboard
+# review_dashboard.py - Gradio review dashboard v2.0
+# ================================================
+# الإصلاحات:
+# - استيراد CorrectionVoter من المسار الصحيح (tools.voting_tracker)
+# - استبدال ArabicSpellCorrector غير الموجود بـ HybridSpellChecker + src.correction
+# - توافق كامل مع البنية الحالية للمشروع
+
+import sys
+from pathlib import Path
+
+# إضافة الجذر للـ imports
+_project_root = str(Path(__file__).resolve().parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
 
 import gradio as gr
 import difflib
-from core.voting_tracker import CorrectionVoter
-from models.inference_corrector import ArabicSpellCorrector
+from tools.voting_tracker import CorrectionVoter
 
-def build_review_dashboard(voter_path="voting_cache.json", model_path="qwen2.5-0.5b-ar-corrector"):
+# استيراد المدقق الإملائي الهجين (البديل الموحد)
+try:
+    from modules.core.spell_checker import HybridSpellChecker
+    _HAS_HYBRID = True
+except ImportError:
+    _HAS_HYBRID = False
+
+# استيراد correct_text كـ fallback
+try:
+    from src.correction import correct_text as _correct_text_fallback
+    _HAS_CORRECTION = True
+except ImportError:
+    _HAS_CORRECTION = False
+
+
+def build_review_dashboard(voter_path="voting_cache.json", model_path=None):
+    """
+    بناء لوحة مراجعة Gradio للمقارنة بين التصحيح الآلي والأصوات البشرية والإجماع.
+
+    Args:
+        voter_path: مسار تخزين أصوات التصويت
+        model_path: محجوز للاستخدام المستقبلي (غير مطلوب حالياً)
+    """
     voter = CorrectionVoter(storage_path=voter_path)
-    corrector = ArabicSpellCorrector(model_path)
+
+    # إنشاء المدقق الهجين
+    checker = HybridSpellChecker() if _HAS_HYBRID else None
+
+    def _correct_with_fallback(text: str) -> str:
+        """تصحيح النص باستخدام HybridSpellChecker أو src.correction."""
+        if checker:
+            return checker.correct_text(text)
+        elif _HAS_CORRECTION:
+            return _correct_text_fallback(text)
+        return text  # لا يوجد مدقق متاح
 
     def _highlight_diff(original: str, candidate: str) -> str:
         """تمييز الفروق بين نصين بلون أخضر/أحمر داخل HTML"""
+        if not original or not candidate:
+            return ""
         diff = difflib.ndiff(original.split(), candidate.split())
         html_parts = []
         for d in diff:
@@ -26,9 +72,17 @@ def build_review_dashboard(voter_path="voting_cache.json", model_path="qwen2.5-0
         if not text.strip():
             return "", "أدخل نصاً للمقارنة", "", "", ""
 
-        ai_corrected = corrector.correct(text, fallback_to_voting=True, voter=voter)
+        # تصحيح آلي باستخدام الهجين أو src.correction
+        ai_corrected = _correct_with_fallback(text)
+
+        # استخراج الإجماع من نظام التصويت
         consensus = voter.get_consensus(text)
-        consensus_text = f"✅ {consensus[0]} (توافق: {consensus[1]:.0%})" if consensus else "⚠️ لا يوجد إجماع حالياً"
+        consensus_text = ""
+        if consensus:
+            agreed_text, agreement_pct = consensus
+            consensus_text = f"✅ {agreed_text} (توافق: {agreement_pct:.0%})"
+        else:
+            consensus_text = "⚠️ لا يوجد إجماع حالياً"
 
         # جمع أصوات المستخدمين
         norm = voter._normalizer.normalize(text)
@@ -44,7 +98,9 @@ def build_review_dashboard(voter_path="voting_cache.json", model_path="qwen2.5-0
         return ai_corrected, votes_html, consensus_text, diff_html, text
 
     def approve_correction(ai_out, consensus_text):
-        # اعتماد التصحيح الآلي أو الإجماع حسب الاختيار الضمني
+        """اعتماد التصحيح الآلي أو الإجماع حسب الاختيار الضمني."""
+        if not ai_out or not ai_out.strip():
+            return "⚠️ لا يوجد تصحيح لاعتماده"
         chosen = ai_out if consensus_text.startswith("⚠️") else consensus_text.split(" ")[1]
         voter.add_vote(chosen, chosen, voter_id="gradio_curator", confidence=1.0)
         return f"✅ تم اعتماد: {chosen}\n📥 أُضيف كمرجع عالي الثقة في نظام التصويت"

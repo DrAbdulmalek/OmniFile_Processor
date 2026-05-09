@@ -1,8 +1,9 @@
 """
-HandwrittenOCR - تدريب LoRA على TrOCR v4.0
+HandwrittenOCR - تدريب LoRA على TrOCR v5.0
 ==============================================
 المحسنات:
-- global trocr_model (تصحيح #10)
+- إزالة global trocr_model (إصلاح معماري — thread-safe)
+- استخدام ocr_engine.trocr_model مباشرة
 - commit_message مع التاريخ
 - تحديث تلقائي للنموذج في OCREngine
 """
@@ -45,8 +46,7 @@ def finetune_trocr_lora(
     if lora_target_modules is None:
         lora_target_modules = ["query", "value"]
 
-    # تصريح global لتحديث النموذج (تصحيح #10)
-    global trocr_model
+    # استخدام النموذج من ocr_engine مباشرة (thread-safe — بدون global)
     trocr_model = ocr_engine.trocr_model
     trocr_processor = ocr_engine.trocr_processor
     device = ocr_engine.device
@@ -126,9 +126,10 @@ def finetune_trocr_lora(
     model.save_pretrained(save_path)
     trocr_processor.save_pretrained(save_path)
 
-    # تحديث النموذج في OCREngine تلقائياً
+    # تحديث النموذج في OCREngine تلقائياً (آمن مع threading)
     ocr_engine.trocr_model = model
     ocr_engine.lora_loaded = True
+    logger.info("تم تحديث ocr_engine.trocr_model بالنموذج الجديد")
 
     print(f"تم حفظ النموذج في: {save_path}")
     logger.info(f"تم تدريب LoRA وحفظه في: {save_path}")
