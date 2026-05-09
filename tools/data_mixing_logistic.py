@@ -82,5 +82,3 @@ class DataMixingManager:
             "archived_at": datetime.now().isoformat()
         })
         (self.archive / "index.json").write_text(json.dumps(self.index, ensure_ascii=False, indent=2))
-```
-

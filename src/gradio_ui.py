@@ -36,6 +36,27 @@ except ImportError:
         lg.error(f"ERROR [{ctx}] {type(err).__name__}: {err}", exc_info=True)
     def log_result(lg, name, result):
         lg.info(f"RESULT [{name}] {result}")
+# ====================================================================
+# OmniFile v5.0 — EngineRouter + HybridSpellChecker + WordCorrectionDB
+# ====================================================================
+try:
+    import sys as _sys, os as _os
+    _root = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+    if _root not in _sys.path:
+        _sys.path.insert(0, _root)
+    from modules.core.engine_router import EngineRouter as _EngineRouter
+    from modules.core.spell_checker import HybridSpellChecker as _SpellChecker
+    from modules.core.word_trainer import WordCorrectionDB as _WordDB
+    _ROUTER = _EngineRouter(profile="balanced")
+    _SC     = _HybridSpellChecker = _SpellChecker()
+    _WDB    = _WordDB()
+    V5_OK   = True
+except Exception as _v5_err:
+    _EngineRouter = _SpellChecker = _WordDB = None
+    _ROUTER = _SC = _WDB = None
+    V5_OK   = False
+    logger.warning("OmniFile v5.0 modules unavailable: %s", _v5_err)
+
 
 
 # ==================== حالة المراجعة ====================
