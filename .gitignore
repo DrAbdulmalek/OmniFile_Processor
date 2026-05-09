@@ -166,3 +166,9 @@ __pycache__/
 *.pyc
 suggestions/projects_formatted/
 docs/author.png
+
+# ── Private Logs (v5.0) ─────────────────────────────────────────────
+logs/app_*.log       # سجلات يومية محلية
+logs/.gist_id        # معرّف Gist الخاص (لا يُرفع)
+artifacts/corrections.db  # قاعدة البيانات المحلية
+logs/

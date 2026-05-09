@@ -68,6 +68,27 @@ logger = logging.getLogger("OmniFile_HF")
 OMNIFILE_VERSION = "5.0"
 
 # ====================================================================
+# Private App Logger — سجلات خاصة ترفع لـ GitHub Gist
+# ====================================================================
+try:
+    from modules.core.log_manager import get_app_logger as _get_logger
+    _APP_LOG = _get_logger(token=os.environ.get("GITHUB_TOKEN",""))
+    _APP_LOG.session_start()
+    LOG_OK = True
+except Exception as _log_err:
+    _APP_LOG = None
+    LOG_OK   = False
+    logger.warning("AppLogger unavailable: %s", _log_err)
+
+def _log(event: str, data: dict = None):
+    """تسجيل حدث بشكل آمن."""
+    if _APP_LOG:
+        try: _APP_LOG.log(event, data or {})
+        except Exception: pass
+
+_log("hf_app_loaded", {"version": "5.0"})
+
+# ====================================================================
 # Engine Router — Lazy import (اقتراح QWEN + Claude)
 # ====================================================================
 try:

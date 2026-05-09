@@ -29,11 +29,13 @@ from modules.core.structure import (
 from modules.core.engine_router import EngineRouter
 from modules.core.corrections_manager import CorrectionsDictManager
 from modules.core.word_trainer import WordCorrectionDB
+from modules.core.spell_checker import HybridSpellChecker
+from modules.core.log_manager import AppLogger, get_app_logger
 
 __all__ = [
     "BBox", "BlockType", "OCRToken", "DocumentBlock",
     "DocumentPage", "DocumentMetadata", "Document",
-    "EngineRouter",
-    "CorrectionsDictManager",
-    "WordCorrectionDB",
+    "EngineRouter", "CorrectionsDictManager",
+    "WordCorrectionDB", "HybridSpellChecker",
+    "AppLogger", "get_app_logger",
 ]
