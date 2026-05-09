@@ -301,7 +301,8 @@ OmniFile_Processor/
 │   │       ├── api/                #     FastAPI routes & auth
 │   │       ├── config/             #     Provider catalog & settings
 │   │       ├── core/               #     SSE & protocol helpers
-│   │       └── providers/          #     8 provider backends
+│   │       ├── providers/          #     8 provider backends
+│   │       └── pool/               #     Account pool & health management
 │   │
 │   ├── security/                   # Security & Privacy
 │   │   ├── file_scanner.py         #   Security scanning
@@ -472,6 +473,18 @@ A universal AI model proxy that intercepts Messages API requests and routes them
 | `providers/kimi/` | Kimi/Moonshot provider (OpenAI-compatible) |
 | `providers/wafer/` | Wafer provider (native Messages API) |
 | `server.py` | ASGI entry point for the gateway proxy |
+| `pool/` | **Advanced Pool Management** — Account pooling, rate limit fallback, conversation reuse, health scoring |
+
+##### 🔄 `modules/ai/gateway/pool/` — Advanced Pool Management
+
+Intelligent multi-account management system with automatic failover, rate limit distribution, and conversation context reuse.
+
+| File | Description |
+|------|-------------|
+| `account_pool.py` | **AccountPool** — Multi-account rotation with priority ordering, LRU selection, concurrency control, and automatic failover after consecutive failures |
+| `rate_limit_fallback.py` | **RateLimitFallbackManager** — Smart model fallback when rate-limited: auto-detects effort tiers (low/medium/high/xhigh/max), picks same-provider alternatives first, then cross-provider |
+| `conversation_pool.py` | **ConversationPool** — Multi-turn conversation reuse via stable fingerprinting: normalizes dynamic tokens (dates, UUIDs, CWDs), TTL-based LRU eviction (500 entries, 30 min default) |
+| `health_scorer.py` | **ProviderHealthScorer** — Weighted health scoring (0.0-1.0) based on success rate, latency percentiles (p50/p95), error type tracking, and consecutive failure streaks |
 
 ---
 
@@ -551,7 +564,7 @@ http://localhost:5001/api/v1
 
 | Metric | Value |
 |--------|-------|
-| Python Files | 150+ |
+| Python Files | 155+ |
 | Lines of Code | ~40,000+ |
 | Total Files | 230+ |
 | OCR Engines | 4 (TrOCR, EasyOCR, Tesseract, PaddleOCR) |
