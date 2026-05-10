@@ -1,0 +1,22 @@
+# =============================================================================
+# OmniFile AI Processor — NLP & Arabic (~800 MB additional)
+# =============================================================================
+# معالجة اللغة الطبيعية + أدوات عربية متخصصة
+# التثبيت: pip install -r requirements-base.txt -r requirements-nlp-arabic.txt
+# =============================================================================
+
+# === NLP Core ===
+transformers>=4.36.0
+torch>=2.1.0
+
+# === Arabic NLP ===
+arabic-reshaper>=3.0.0
+python-bidi>=0.4.2
+ar-corrector>=0.6.3
+langdetect>=1.0.9
+pyspellchecker>=0.7.2
+language-tool-python>=2.7.0
+
+# === Translation ===
+datasets>=2.15.0
+jiwer>=3.0.0

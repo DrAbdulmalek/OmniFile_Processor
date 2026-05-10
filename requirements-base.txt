@@ -1,0 +1,32 @@
+# =============================================================================
+# OmniFile AI Processor — Base Layer (~500 MB)
+# =============================================================================
+# الواجهات + الأدوات الأساسية (بدون OCR أو NLP)
+# التثبيت: pip install -r requirements-base.txt
+# =============================================================================
+
+# === Web Interfaces ===
+streamlit>=1.29.0
+gradio>=4.0.0
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
+
+# === Data Processing ===
+pandas>=2.1.0
+numpy>=1.24.0
+pydantic>=2.5.0
+
+# === Utilities ===
+python-dotenv>=1.0.0
+filelock>=3.13.0
+tqdm>=4.66.0
+requests>=2.31.0
+Pillow>=10.0.0
+
+# === Logging & Monitoring ===
+structlog>=23.2.0
+
+# === API Framework ===
+httpx>=0.25.0
+tenacity>=8.2.0
