@@ -1,0 +1,91 @@
+site_name: OmniFile Processor v2.0
+site_description: نظام متكامل للتعرف الضوئي مع التعلم التفاعلي
+site_author: Dr. Abdulmalek Al-husseini
+site_url: https://omnifile.readthedocs.io
+
+theme:
+  name: material
+  language: ar
+  direction: rtl
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - search.suggest
+    - search.highlight
+    - content.tabs.link
+    - content.code.annotation
+    - content.code.copy
+
+plugins:
+  - search:
+      lang: ar
+  - minify:
+      minify_html: true
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [modules, training, interactive_learning]
+          options:
+            docstring_style: google
+            show_source: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/DrAbdulmalek/OmniFile_Processor
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - admonition
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
+  - md_in_html
+  - def_list
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+nav:
+  - الرئيسية: index.md
+  - البدء السريع:
+    - التثبيت: getting-started/installation.md
+    - الإعداد: getting-started/configuration.md
+    - أول مستند: getting-started/first-document.md
+  - الدليل:
+    - التعرف الضوئي: guide/ocr.md
+    - التصحيح الإملائي: guide/spell-correction.md
+    - التدريب: guide/training.md
+    - التعلم التفاعلي: guide/interactive-learning.md
+    - تطبيق المراجعة: guide/mobile-review.md
+  - المرجع:
+    - Modules API: reference/modules.md
+    - Training API: reference/training.md
+    - CLI: reference/cli.md
+  - النشر:
+    - Docker: deployment/docker.md
+    - Kubernetes: deployment/kubernetes.md
+    - السحابة: deployment/cloud.md
+  - التطوير:
+    - المساهمة: development/contributing.md
+    - الاختبارات: development/testing.md
+    - الأمان: development/security.md
