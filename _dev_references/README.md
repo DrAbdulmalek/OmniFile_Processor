@@ -27,6 +27,7 @@
 | 5 | [financial-services](financial-services/) | ~17,800 | Apache 2.0 | 🟡 متوسط |
 | 6 | [Dive-into-LLMs](Dive-into-LLMs/) | ~10 | Apache 2.0 | 🟡 متوسط |
 | 7 | [UI-TARS-desktop](UI-TARS-desktop/) | ~23,000 | Apache 2.0 | 🔵 منخفض |
+| 8 | [OSINT-Recon-Agent](OSINT-Recon-Agent/) | ~مؤخراً (تريند) | MIT | 🟢 حرج |
 
 ---
 
@@ -58,7 +59,8 @@
 | Dive-into-LLMs | بديل لكورسات LLM المدفوعة | $200 (مرة واحدة) |
 | hello-agents | بديل لمعسكرات AI Agents المدفوعة | $500 (مرة واحدة) |
 | financial-services | بديل لواجهات FinTech المدفوعة | $200/شهر |
-| **الإجمالي** | | **~$1,400** |
+| OSINT-Recon-Agent | نظام مهارات OSINT مع 90+ وحدة استطلاع + كود جاهز | $300 (مرة واحدة) |
+| **الإجمالي** | | **~$1,700** |
 
 ---
 
