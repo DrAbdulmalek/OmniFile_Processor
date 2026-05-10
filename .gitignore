@@ -172,3 +172,6 @@ logs/app_*.log       # سجلات يومية محلية
 logs/.gist_id        # معرّف Gist الخاص (لا يُرفع)
 artifacts/corrections.db  # قاعدة البيانات المحلية
 logs/
+
+# Claude merge workspace
+_claude_merge/extracted_notebooks/
