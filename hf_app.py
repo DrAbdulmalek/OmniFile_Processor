@@ -1653,7 +1653,6 @@ def build_app() -> gr.Blocks:
                 ],
                 inputs=[eval_ref, eval_hyp],
                 outputs=[eval_output],
-                fn=calculate_metrics,
                 label="📝 Examples / أمثلة",
             )
 
@@ -1792,7 +1791,7 @@ def build_app() -> gr.Blocks:
                         label="📤 Upload Images / رفع صور",
                         file_types=[".png", ".jpg", ".jpeg", ".bmp", ".webp"],
                         interactive=True,
-                        multiple=True,
+                        file_count="multiple",
                     )
                     aug_count = gr.Slider(
                         label="🔢 Augmentations per Image / عدد النسخ لكل صورة",
@@ -1976,10 +1975,15 @@ if __name__ == "__main__":
     logger.info("=" * 60)
 
     demo = build_app()
+    # Auto-detect environment: share=True in Colab, False on HF Spaces
+    _in_colab = os.environ.get("COLAB_RELEASE_TAG") is not None or os.environ.get("JPY_PARENT_PID") is not None
+    _in_space = os.environ.get("SPACE_ID") is not None or os.environ.get("SPACE_AUTHOR_NAME") is not None
+    _share = _in_colab or not _in_space
+
     demo.launch(
         server_name="0.0.0.0",
         server_port=7860,
-        share=False,
+        share=_share,
         show_error=True,
         max_threads=4,
         theme=gr.themes.Soft(
