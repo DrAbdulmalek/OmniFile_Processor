@@ -1,0 +1,66 @@
+# =============================================================================
+# OmniFile Training Dockerfile
+# =============================================================================
+#
+# صورة مخصصة للتدريب على GPU
+
+FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04 as base
+
+LABEL maintainer="Dr. Abdulmalek Al-husseini"
+LABEL description="OmniFile HTR Training Environment"
+LABEL version="2.0.0"
+
+WORKDIR /workspace
+
+# منع التفاعل التفاعلي
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# تثبيت Python وdependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.10 \
+    python3-pip \
+    git \
+    wget \
+    curl \
+    vim \
+    tmux \
+    htop \
+    nvtop \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -s /usr/bin/python3.10 /usr/bin/python
+
+# ترقية pip
+RUN python -m pip install --upgrade pip setuptools wheel
+
+# تثبيت PyTorch مع CUDA
+RUN pip install --no-cache-dir \
+    torch==2.0.1+cu118 \
+    torchvision==0.15.2+cu118 \
+    torchaudio==2.0.2+cu118 \
+    --extra-index-url https://download.pytorch.org/whl/cu118
+
+# تثبيت مكتبات التدريب
+COPY training/requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
+
+# نسخ الكود
+COPY training/ ./training/
+COPY models/ ./models/
+COPY config/ ./config/
+
+# إنشاء مجلدات
+RUN mkdir -p data outputs logs checkpoints
+
+# متغيرات البيئة
+ENV PYTHONPATH=/workspace
+ENV CUDA_VISIBLE_DEVICES=0
+ENV WANDB_PROJECT=omnifile-htr
+
+# فحص GPU
+RUN python -c "import torch; print(f'CUDA: {torch.cuda.is_available()}, GPUs: {torch.cuda.device_count()}')"
+
+# نقطة الدخول
+ENTRYPOINT ["python", "-m", "training.scripts.train_trocr_lora"]
+CMD ["--config", "config/training/default.yaml"]

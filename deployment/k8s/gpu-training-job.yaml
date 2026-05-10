@@ -1,0 +1,154 @@
+# =============================================================================
+# OmniFile GPU Training Job
+# =============================================================================
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: omnifile-training
+  namespace: omnifile
+  labels:
+    app: omnifile-training
+    tier: training
+spec:
+  parallelism: 1
+  completions: 1
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        app: omnifile-training
+        tier: training
+    spec:
+      restartPolicy: OnFailure
+      nodeSelector:
+        cloud.google.com/gke-accelerator: nvidia-tesla-v100  # أو أي GPU
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: training
+          image: omnifile/training:latest
+          imagePullPolicy: Always
+          command:
+            - python
+            - -m
+            - training.scripts.train_trocr_lora
+          args:
+            - --config
+            - /config/training.yaml
+            - --output-dir
+            - /outputs
+          env:
+            - name: CUDA_VISIBLE_DEVICES
+              value: "0"
+            - name: WANDB_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: omnifile-secrets
+                  key: wandb-api-key
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: omnifile-secrets
+                  key: database-url
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+              cpu: "8"
+              memory: "32Gi"
+            requests:
+              nvidia.com/gpu: 1
+              cpu: "4"
+              memory: "16Gi"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: outputs
+              mountPath: /outputs
+            - name: config
+              mountPath: /config
+              readOnly: true
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: training-data-pvc
+        - name: outputs
+          persistentVolumeClaim:
+            claimName: training-outputs-pvc
+        - name: config
+          configMap:
+            name: training-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: training-config
+  namespace: omnifile
+data:
+  training.yaml: |
+    model:
+      base_model: microsoft/trocr-large-handwritten
+      generation:
+        max_length: 128
+        num_beams: 4
+
+    lora:
+      enabled: true
+      r: 16
+      alpha: 32
+      dropout: 0.05
+      target_modules:
+        - q_proj
+        - v_proj
+        - k_proj
+        - o_proj
+
+    training:
+      num_epochs: 50
+      per_device_batch_size: 8
+      gradient_accumulation_steps: 4
+      learning_rate: 1.0e-4
+      warmup_steps: 500
+      weight_decay: 0.01
+      max_grad_norm: 1.0
+      save_steps: 500
+      eval_steps: 250
+      logging_steps: 50
+      output_dir: /outputs
+
+    data:
+      train_path: /data/train
+      val_path: /data/val
+      format: lmdb
+
+    export:
+      merge_and_unload: true
+      push_to_hub: false
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: training-data-pvc
+  namespace: omnifile
+spec:
+  accessModes:
+    - ReadOnlyMany
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: standard
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: training-outputs-pvc
+  namespace: omnifile
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: standard

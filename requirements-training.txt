@@ -1,0 +1,46 @@
+# متطلبات التدريب لـ OmniFile Processor
+
+# Transformers & HuggingFace
+transformers>=4.40.0
+accelerate>=0.30.0
+datasets>=2.19.0
+tokenizers>=0.19.0
+huggingface-hub>=0.23.0
+
+# PEFT & LoRA
+peft>=0.11.0
+bitsandbytes>=0.43.0
+
+# التدريب المتقدم
+trl>=0.9.0
+
+# تتبع التجارب
+wandb>=0.17.0
+tensorboard>=2.16.0
+
+# معالجة البيانات
+albumentations>=1.4.0
+opencv-python>=4.9.0
+pillow>=10.3.0
+
+# تنسيقات البيانات
+lmdb>=1.4.1
+pyarrow>=16.0.0
+
+# تقييم
+jiwer>=3.0.0
+editdistance>=0.8.0
+
+# تصدير النماذج
+onnx>=1.16.0
+onnxruntime-gpu>=1.18.0
+optimum>=1.20.0
+
+# أدوات
+tqdm>=4.66.0
+pyyaml>=6.0.0
+python-dotenv>=1.0.0
+
+# معالجة النصوص العربية
+arabic-reshaper>=3.0.0
+python-bidi>=0.4.2

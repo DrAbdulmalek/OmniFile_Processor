@@ -1,0 +1,240 @@
+# ============================================================================
+# إعدادات تدريب TrOCR مع LoRA للعربي اليدوي
+# ============================================================================
+# النموذج: microsoft/trocr-large-handwritten
+# الهدف: التعرف على الخط اليدوي العربي
+# VRAM المطلوب: 6-10 GB (مع LoRA)
+# ============================================================================
+
+# -----------------------------------------------------------------------------
+# 1. إعدادات النموذج
+# -----------------------------------------------------------------------------
+model:
+  base_model: "microsoft/trocr-large-handwritten"
+  # أو "microsoft/trocr-base-handwritten" للأجهزة الضعيفة
+  
+  # إعدادات التوليد
+  generation:
+    max_length: 128
+    num_beams: 4
+    early_stopping: true
+  
+  # توسيع المفردات للعربي
+  extend_vocabulary: true
+  additional_chars: "ابتثجحخدذرزسشصضطظعغفقكلمنهوي ءآأؤإئةى َ ُ ِ ّ ً ٌ ٍ ْ"
+
+# -----------------------------------------------------------------------------
+# 2. إعدادات LoRA
+# -----------------------------------------------------------------------------
+lora:
+  enabled: true
+  
+  # الرتبة (rank) - كلما زادت زادت المرونة
+  r: 16
+  # r: 32  # للجودة العالية
+  # r: 8   # للسرعة
+  
+  # معامل التدرج
+  alpha: 32
+  # alpha = 2 * r (قاعدة عامة)
+  
+  # نسبة الإسقاط
+  dropout: 0.05
+  
+  # الطبقات المستهدفة
+  target_modules:
+    - "q_proj"
+    - "v_proj"
+    - "k_proj"
+    - "o_proj"
+    # - "fc1"      # إضافي للجودة
+    # - "fc2"      # إضافي للجودة
+  
+  # التحيز
+  bias: "none"
+  
+  # نوع المهمة
+  task_type: "VISION_2_SEQ"
+
+# -----------------------------------------------------------------------------
+# 3. إعدادات التدريب
+# -----------------------------------------------------------------------------
+training:
+  # عدد الدورات
+  num_epochs: 10
+  # num_epochs: 20  # للجودة العالية
+  
+  # حجم الدفعة
+  per_device_batch_size: 4
+  # per_device_batch_size: 2  # إذا نفدت VRAM
+  
+  # تراكم التدرجات
+  gradient_accumulation_steps: 4
+  # = 4 * 4 = 16 effective batch size
+  
+  # التعلم
+  learning_rate: 1.0e-4
+  # learning_rate: 5.0e-5  # أكثر استقراراً
+  
+  # جدول التعلم
+  lr_scheduler: "cosine_with_restarts"
+  # أو "linear", "polynomial", "constant_with_warmup"
+  
+  # خطوات الإحماء
+  warmup_steps: 500
+  # warmup_ratio: 0.1  # بديل
+  
+  # التحسين
+  optimizer: "adamw_torch_fused"
+  weight_decay: 0.01
+  
+  # التدرجات
+  max_grad_norm: 1.0
+  
+  # التحقق من النقاط
+  gradient_checkpointing: true
+  
+  # الدقة المختلطة
+  fp16: false
+  bf16: true  # أفضل لـ RTX 30xx+
+  
+  # التقييم
+  eval_strategy: "steps"
+  eval_steps: 500
+  
+  # الحفظ
+  save_strategy: "steps"
+  save_steps: 500
+  save_total_limit: 3
+  
+  # التحميل الأفضل
+  load_best_model_at_end: true
+  metric_for_best_model: "cer"
+  greater_is_better: false
+  
+  # التسجيل
+  logging_steps: 50
+  report_to: ["tensorboard", "wandb"]
+  
+  # إزالة الأعمدة غير المستخدمة
+  remove_unused_columns: false
+
+# -----------------------------------------------------------------------------
+# 4. إعدادات البيانات
+# -----------------------------------------------------------------------------
+data:
+  # تنسيق الإدخال
+  format: "lmdb"  # أو "tsv", "hf_dataset"
+  
+  # مسار البيانات
+  train_path: "./dataset_prepared/train.lmdb"
+  val_path: "./dataset_prepared/val.lmdb"
+  test_path: "./dataset_prepared/test.lmdb"
+  
+  # معالجة الصور
+  image_size:
+    width: 384
+    height: 384
+  
+  # تعزيزات البيانات
+  augmentation:
+    enabled: true
+    
+    # تدوير خفيف
+    rotation:
+      enabled: true
+      degrees: 3
+    
+    # تغيير الحجم
+    scale:
+      enabled: true
+      range: [0.9, 1.1]
+    
+    # تشويه
+    distortion:
+      enabled: true
+      probability: 0.3
+    
+    # ضوضاء
+    noise:
+      enabled: true
+      probability: 0.3
+      intensity: 0.02
+    
+    # تغيير التباين
+    contrast:
+      enabled: true
+      probability: 0.3
+      range: [0.8, 1.2]
+    
+    # انعكاس أفقي (للعربي احذر!)
+    hflip:
+      enabled: false  # ❌ لا تفعّل للعربي!
+    
+    # انعكاس عمودي
+    vflip:
+      enabled: false
+
+# -----------------------------------------------------------------------------
+# 5. إعدادات التقييم
+# -----------------------------------------------------------------------------
+evaluation:
+  # المقاييس
+  metrics:
+    - "cer"      # Character Error Rate
+    - "wer"      # Word Error Rate
+    - "accuracy" # الدقة
+  
+  # التطبيع العربي
+  arabic_normalization:
+    enabled: true
+    remove_diacritics: false  # احتفظ بالتشكيل
+    normalize_alef: true      # أ ← ا
+    normalize_yeh: true       # ي ← ى
+  
+  # عينة للتقييم
+  eval_samples: 1000
+
+# -----------------------------------------------------------------------------
+# 6. إعدادات التصدير
+# -----------------------------------------------------------------------------
+export:
+  # دمج LoRA مع النموذج الأساسي
+  merge_and_unload: true
+  
+  # تصدير ONNX
+  export_onnx: true
+  onnx_opset: 14
+  
+  # تحسين ONNX
+  optimize_onnx: true
+  
+  # كمية
+  quantize:
+    enabled: true
+    method: "dynamic"  # أو "static"
+    
+  # دفع لـ HuggingFace Hub
+  push_to_hub:
+    enabled: false
+    repo_id: "DrAbdulmalek/omnifile-trocr-arabic-handwritten"
+    private: false
+
+# -----------------------------------------------------------------------------
+# 7. إعدادات الأجهزة
+# -----------------------------------------------------------------------------
+hardware:
+  # GPU
+  device: "cuda"
+  
+  # عدد GPUs
+  n_gpu: 1
+  
+  # توزيع البيانات
+  dataloader_num_workers: 4
+  
+  # تثبيت الذاكرة
+  dataloader_pin_memory: true
+  
+  # التحميل المسبق
+  prefetch_factor: 2

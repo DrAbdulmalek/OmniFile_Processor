@@ -1,101 +1,116 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-Fixtures مشتركة للاختبارات
+tests/conftest.py
+=================
+
+إعدادات pytest المشتركة.
 """
 
-import os
-import sys
-import pytest
+import asyncio
 from pathlib import Path
+from typing import AsyncGenerator, Generator
 
-# إضافة المشروع للمسار
-PROJECT_ROOT = Path(__file__).parent.parent.resolve()
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+import pytest
+import pytest_asyncio
+from fastapi.testclient import TestClient
+from httpx import AsyncClient
 
-
-@pytest.fixture
-def project_root():
-    """مسار جذر المشروع."""
-    return PROJECT_ROOT
-
-
-@pytest.fixture
-def sample_text_en():
-    """نص إنجليزي للاختبار."""
-    return """
-    Machine learning is a subset of artificial intelligence that provides systems
-    the ability to automatically learn and improve from experience without being
-    explicitly programmed. Machine learning focuses on the development of computer
-    programs that can access data and use it to learn for themselves.
-    """
+from api_server_v2.main import app
+from api_server_v2.database import get_db, Base
+from api_server_v2.models import User
 
 
-@pytest.fixture
-def sample_text_ar():
-    """نص عربي للاختبار."""
-    return """
-    الذكاء الاصطناعي هو فرع من علوم الحاسوب يهتم بإنشاء أنظمة ذكية
-    قادرة على أداء مهام تتطلب عادةً ذكاءً بشرياً. يشمل ذلك التعلم الآلي
-    ومعالجة اللغة الطبيعية والرؤية الحاسوبية.
-    """
+# -----------------------------------------------------------------------------
+# Fixtures
+# -----------------------------------------------------------------------------
+
+@pytest.fixture(scope="session")
+def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
+    """إنشاء event loop للجلسة."""
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
 
 
-@pytest.fixture
-def sample_text_de():
-    """نص ألماني للاختبار."""
-    return """
-    Maschinelles Lernen ist ein Teilgebiet der künstlichen Intelligenz, das sich
-    mit der Entwicklung von Algorithmen befasst, die aus Daten lernen können.
-    """
+@pytest_asyncio.fixture(scope="session")
+async def test_db() -> AsyncGenerator:
+    """إنشاء قاعدة بيانات اختبار."""
+    from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+    from sqlalchemy.orm import sessionmaker
+
+    # قاعدة بيانات في الذاكرة
+    engine = create_async_engine(
+        "sqlite+aiosqlite:///:memory:",
+        echo=False,
+        future=True
+    )
+
+    async_session = sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False
+    )
+
+    # إنشاء الجداول
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    yield async_session
+
+    # تنظيف
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
 
 
-@pytest.fixture
-def sample_text_with_errors():
-    """نص إنجليزي بأخطاء إملائية."""
-    return "I havv a speling mistake in thiss sentnce."
-
-
-@pytest.fixture
-def sample_image(tmp_path):
-    """صورة اختبار بسيطة."""
-    try:
-        from PIL import Image, ImageDraw, ImageFont
-
-        img = Image.new("RGB", (200, 50), color="white")
-        draw = ImageDraw.Draw(img)
-        draw.text((10, 10), "Hello World", fill="black")
-
-        img_path = tmp_path / "test_image.png"
-        img.save(str(img_path))
-        return str(img_path)
-    except ImportError:
-        return None
+@pytest_asyncio.fixture
+async def db_session(test_db):
+    """جلسة قاعدة بيانات للاختبار."""
+    async with test_db() as session:
+        yield session
+        await session.rollback()
 
 
 @pytest.fixture
-def sample_pdf(tmp_path):
-    """ملف PDF اختبار فارغ."""
-    try:
-        from fpdf import FPDF
+def client() -> Generator[TestClient, None, None]:
+    """عميل اختبار متزامن."""
+    with TestClient(app) as c:
+        yield c
 
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("helvetica", size=12)
-        pdf.cell(200, 10, text="Test PDF Content", new_x="LMARGIN", new_y="NEXT")
-        pdf_path = tmp_path / "test.pdf"
-        pdf.output(str(pdf_path))
-        return str(pdf_path)
-    except ImportError:
-        return None
+
+@pytest_asyncio.fixture
+async def async_client() -> AsyncGenerator[AsyncClient, None]:
+    """عميل اختبار غير متزامن."""
+    async with AsyncClient(app=app, base_url="http://test") as ac:
+        yield ac
 
 
 @pytest.fixture
-def sensitive_text():
-    """نص يحتوي بيانات حساسة."""
-    return """
-    My credit card number is 4111-1111-1111-1111.
-    Contact me at test@example.com or call +1-234-567-8900.
-    My SSN is 123-45-6789.
-    Server IP: 192.168.1.1
-    API key: sk-1234567890abcdefghij
-    """
+def sample_image() -> Path:
+    """صورة نموذجية للاختبار."""
+    return Path("tests/fixtures/sample_arabic_text.jpg")
+
+
+@pytest.fixture
+def sample_handwriting() -> Path:
+    """صورة خط يد نموذجية."""
+    return Path("tests/fixtures/sample_handwriting.jpg")
+
+
+@pytest.fixture
+def auth_headers() -> dict:
+    """Headers مصادقة للاختبار."""
+    return {"Authorization": "Bearer test-token"}
+
+
+@pytest_asyncio.fixture
+async def test_user(db_session):
+    """مستخدم نموذجي للاختبار."""
+    user = User(
+        email="test@omnifile.app",
+        username="testuser",
+        hashed_password="hashed",
+        is_active=True,
+        role="user"
+    )
+    db_session.add(user)
+    await db_session.commit()
+    return user

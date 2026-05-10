@@ -1,0 +1,153 @@
+name: Training Pipeline
+
+on:
+  # يدوي
+  workflow_dispatch:
+    inputs:
+      model_type:
+        description: 'نوع النموذج'
+        required: true
+        default: 'trocr-lora'
+        type: choice
+        options:
+          - trocr-lora
+          - qwen-vl
+          - unsloth
+      dataset:
+        description: 'مسار البيانات'
+        required: true
+        default: './dataset_prepared'
+      epochs:
+        description: 'عدد الدورات'
+        required: true
+        default: '10'
+        type: string
+      push_to_hub:
+        description: 'دفع لـ HuggingFace Hub'
+        required: false
+        default: false
+        type: boolean
+
+  # تلقائي عند إضافة بيانات جديدة
+  push:
+    paths:
+      - 'data/**'
+      - 'training/configs/**'
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360  # 6 ساعات كحد أقصى
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[training]"
+
+      - name: Download dataset (if on Hub)
+        if: startsWith(github.event.inputs.dataset, 'hf://')
+        run: |
+          huggingface-cli download ${{ github.event.inputs.dataset#hf:// }} --local-dir ./dataset
+
+      - name: Train model
+        run: |
+          python training/scripts/train_${{ github.event.inputs.model_type }}.py \
+            --config training/configs/${{ github.event.inputs.model_type }}_arabic.yaml \
+            --dataset ${{ github.event.inputs.dataset }} \
+            --epochs ${{ github.event.inputs.epochs }} \
+            --output-dir ./checkpoints/run_${{ github.run_id }}
+
+      - name: Evaluate model
+        run: |
+          python training/scripts/evaluate_checkpoint.py \
+            --checkpoint ./checkpoints/run_${{ github.run_id }}/final \
+            --test-dataset ${{ github.event.inputs.dataset }}/test.lmdb \
+            --output ./evaluation_results
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: training-results-${{ github.run_id }}
+          path: |
+            ./checkpoints/run_${{ github.run_id }}
+            ./evaluation_results
+            ./logs
+
+      - name: Push to HuggingFace Hub
+        if: github.event.inputs.push_to_hub == 'true'
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          huggingface-cli login --token $HF_TOKEN
+          python -c "
+          from training.models.lora_htr_trainer import LoRAHTRTrainer
+          trainer = LoRAHTRTrainer.load('./checkpoints/run_${{ github.run_id }}/final')
+          trainer.push_to_hub('DrAbdulmalek/omnifile-arabic-htr-${{ github.run_id }}')
+          "
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const results = JSON.parse(fs.readFileSync('./evaluation_results/results.json', 'utf8'));
+
+            const body = `
+            ## 🤖 Training Results
+
+            | Metric | Value |
+            |--------|-------|
+            | CER | ${(results.cer * 100).toFixed(2)}% |
+            | WER | ${(results.wer * 100).toFixed(2)}% |
+            | Accuracy | ${(results.accuracy * 100).toFixed(2)}% |
+
+            [View Details](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+  benchmark:
+    runs-on: ubuntu-latest
+    needs: train
+    if: github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Download trained model
+        uses: actions/download-artifact@v4
+        with:
+          name: training-results-${{ github.run_id }}
+          path: ./results
+
+      - name: Benchmark against baselines
+        run: |
+          python tools/benchmark_ocr.py \
+            --model ./results/checkpoints/run_${{ github.run_id }}/final \
+            --baseline microsoft/trocr-large-handwritten \
+            --dataset ./benchmark_dataset \
+            --output ./benchmark_comparison
+
+      - name: Upload benchmark
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-${{ github.run_id }}
+          path: ./benchmark_comparison

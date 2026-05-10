@@ -1,0 +1,82 @@
+# =============================================================================
+# OmniFile API Server Dockerfile
+# =============================================================================
+# 
+# بناء متعدد المراحل (Multi-stage) لتحسين الحجم والأمان
+#
+# المرحلة 1: البناء (Build)
+# المرحلة 2: الإنتاج (Production)
+
+# -----------------------------------------------------------------------------
+# المرحلة 1: البناء
+# -----------------------------------------------------------------------------
+FROM python:3.10-slim as builder
+
+WORKDIR /build
+
+# تثبيت dependencies للبناء
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# تثبيت Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+# -----------------------------------------------------------------------------
+# المرحلة 2: الإنتاج
+# -----------------------------------------------------------------------------
+FROM python:3.10-slim as production
+
+LABEL maintainer="Dr. Abdulmalek Al-husseini"
+LABEL description="OmniFile HTR API Server"
+LABEL version="2.0.0"
+
+WORKDIR /app
+
+# إنشاء مستخدم غير root للأمان
+RUN groupadd -r omnifile && useradd -r -g omnifile omnifile
+
+# تثبيت runtime dependencies فقط
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# نسخ Python packages من المرحلة الأولى
+COPY --from=builder /root/.local /home/omnifile/.local
+ENV PATH=/home/omnifile/.local/bin:$PATH
+
+# نسخ الكود
+COPY --chown=omnifile:omnifile api_server_v2/ ./api_server_v2/
+COPY --chown=omnifile:omnifile models/ ./models/
+COPY --chown=omnifile:omnifile config/ ./config/
+
+# إنشاء مجلدات_needed
+RUN mkdir -p logs uploads temp && chown -R omnifile:omnifile .
+
+# الانتقال للمستخدم غير root
+USER omnifile
+
+# متغيرات البيئة
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
+ENV MODEL_PATH=/app/models
+ENV CONFIG_PATH=/app/config
+ENV LOG_LEVEL=INFO
+ENV PORT=8000
+ENV WORKERS=4
+
+# فحص الصحة
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+
+# المنفذ
+EXPOSE 8000
+
+# تشغيل
+CMD ["sh", "-c", "uvicorn api_server_v2.main:app --host 0.0.0.0 --port ${PORT} --workers ${WORKERS}"]

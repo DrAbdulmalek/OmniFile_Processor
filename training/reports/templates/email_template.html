@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #1976D2, #1565C0);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            padding: 30px;
+        }
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            margin: 10px 0;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1976D2;
+        }
+        .footer {
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #1976D2;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 اكتمل التدريب!</h1>
+            <p>{{ job_name }}</p>
+        </div>
+        <div class="content">
+            <h2>النتائج</h2>
+
+            <div class="metric">
+                <span>Character Error Rate</span>
+                <span class="metric-value" style="color: {{ cer_color }};">
+                    {{ cer }}%
+                </span>
+            </div>
+
+            <div class="metric">
+                <span>Word Error Rate</span>
+                <span class="metric-value" style="color: {{ wer_color }};">
+                    {{ wer }}%
+                </span>
+            </div>
+
+            <div class="metric">
+                <span>Accuracy</span>
+                <span class="metric-value" style="color: {{ acc_color }};">
+                    {{ accuracy }}%
+                </span>
+            </div>
+
+            <div style="text-align: center;">
+                <a href="{{ report_url }}" class="button">عرض التقرير الكامل</a>
+            </div>
+        </div>
+        <div class="footer">
+            <p>تم إرسال هذا البريد تلقائياً من OmniFile Processor</p>
+            <p>لا ترد على هذا البريد</p>
+        </div>
+    </div>
+</body>
+</html>
