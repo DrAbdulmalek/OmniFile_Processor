@@ -99,6 +99,13 @@ OmniFile AI Processor is a production-ready, multimodal AI system that integrate
 17. **Request Optimization** — Fast-path optimizations including quota mock, prefix detection, title/suggestion skip
 18. **Rate Limiting & Concurrency** — Configurable per-provider rate limits, concurrency control, and timeout management
 
+### 📝 HTR Training System (نظام تدريب التعرف على الخط)
+29. **Arabic HTR Pipeline** — End-to-end Arabic handwritten text recognition: LineSegmenter → TrOCR → DottedRecovery
+30. **LoRA Fine-Tuning** — Efficient TrOCR fine-tuning with PEFT/LoRA (4-8 GB VRAM) for Arabic handwriting
+31. **Active Learning** — Uncertainty/Diversity/Hybrid sampling to select informative samples for annotation
+32. **Synthetic Data Generation** — Arabic handwriting synthesis with font variation and degradation simulation
+33. **Mobile Review Integration** — Bidirectional sync between training pipeline and mobile review interface
+
 ### 📤 Multi-Format Export (وحدة التصدير)
 19. **6 Export Formats** — DOCX (RTL support), HTML, searchable PDF, Excel, JSON (with BBox), TXT (UTF-8 BOM)
 
@@ -277,7 +284,13 @@ OmniFile_Processor/
 │   │   ├── text_reconstructor.py   #   RTL/LTR sentence reconstruction
 │   │   ├── result_fusion.py        #   4 fusion strategies
 │   │   ├── layout_analyzer.py      #   Layout analysis (tables, headers)
-│   │   └── table_extractor.py      #   Table extraction (Hough + contours)
+│   │   ├── table_extractor.py      #   Table extraction (Hough + contours)
+│   │   └── htr/                    #   Arabic HTR Module
+│   │       ├── arabic_htr.py       #     Unified HTR pipeline
+│   │       ├── line_segmenter.py   #     Document→lines (projection/contour/U-Net)
+│   │       ├── word_segmenter.py   #     Lines→words (connected components)
+│   │       ├── dotted_recovery.py  #     Arabic dot correction
+│   │       └── trocr_finetuned.py  #     Fine-tuned TrOCR wrapper
 │   │
 │   ├── nlp/                        # Natural Language Processing
 │   │   ├── spell_corrector.py      #   3-language correction + learning
@@ -344,11 +357,30 @@ OmniFile_Processor/
 │
 ├── src/                            # HandwrittenOCR Engine
 ├── mobile/                         # Static PWA (offline review)
+├── training/                       # HTR Training System
+│   ├── README.md                  #   Training overview
+│   ├── configs/                   #   Training configurations
+│   │   └── trocr_lora_arabic.yaml #     TrOCR + LoRA settings
+│   ├── scripts/                   #   Training scripts
+│   │   ├── prepare_htr_dataset.py #     Dataset preparation
+│   │   ├── train_trocr_lora.py    #     LoRA training
+│   │   ├── evaluate_checkpoint.py #     Model evaluation
+│   │   ├── active_learning_pipeline.py  # Active learning
+│   │   └── generate_synthetic_data.py   # Synthetic data generation
+│   ├── models/                    #   Training models
+│   │   └── lora_htr_trainer.py    #     Custom LoRA trainer
+│   └── data/                      #   Data connectors
+│       └── mobile_review_connector.py  # Mobile review sync
+├── Dockerfile.training             # Training Docker image
+├── requirements-training.txt       # Training dependencies
+├── Makefile                        # Build & training commands
+├── justfile                        # Alternative build commands
+│
 ├── mobile_review/                  # Flask server (remote team review)
 │   ├── server.py                  #   REST API review server
 │   ├── templates/review.html      #   Touch-friendly review UI
 │   └── README.md                  #   mobile/ vs mobile_review/ guide
-├── tests/                          # pytest test suite (13 files)
+├── tests/                          # pytest test suite (13+ files)
 ├── .github/workflows/              # CI/CD
 │   ├── ci.yml                     #   Tests on push/PR
 │   └── release.yml                #   Auto-release on tags
