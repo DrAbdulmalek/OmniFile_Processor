@@ -10,9 +10,13 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 
-# المسار الصحيح — tools/ وليس core/
+# استيراد UserManager من modules.core
 try:
-    from tools.user_manager import UserManager
+    import sys as _sys, os as _os
+    _root = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+    if _root not in _sys.path:
+        _sys.path.insert(0, _root)
+    from modules.core.user_manager import UserManager
 except ImportError:
     UserManager = None  # fallback: سمعة المراجعين لن تُتتبع
 

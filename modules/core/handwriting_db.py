@@ -1,11 +1,8 @@
 """
-HandwrittenDB — إدارة قاعدة بيانات الخط اليدوي v3
+HandwrittenDB — إدارة قاعدة بيانات الخط اليدوي v4
 =====================================================
-مُرحَّل من src/database.py إلى modules/core/handwriting_db.py
-كجزء من خطة ترحيل src/ → modules/ (v4.2.0).
-
-مخطط v3: يدعم raw_text, run_id, created_at, updated_at
-+ جداول processing_runs, review_events + فهرسة.
+v4.0: مُرحَّل إلى BaseDB (WAL + retry + context manager موحَّد)
+مخطط v3 يبقى متوافقاً تماماً مع الكود القديم.
 """
 
 import sqlite3
@@ -14,17 +11,18 @@ from typing import Optional
 from pathlib import Path
 from datetime import datetime
 
+from modules.core.base_db import BaseDB
+
 logger = logging.getLogger("modules.core.handwriting_db")
 
 DB_SCHEMA_VERSION = 3
 
 
-class HandwritingDB:
+class HandwritingDB(BaseDB):
     """
-    مدير قاعدة بيانات SQLite — مخطط v3.
+    مدير قاعدة بيانات الخط اليدوي — يرث من BaseDB (v4.0).
     يدعم: run_id, raw_text, created_at/updated_at, processing_runs, review_events.
-
-    مُرحَّل من src.database.HandwritingDB — متوافق تماماً مع الكود القديم.
+    متوافق تماماً مع الكود القديم (v3 schema).
     """
 
     SCHEMA_V3 = '''
@@ -68,15 +66,13 @@ class HandwritingDB:
     '''
 
     def __init__(self, db_path: str):
-        self.db_path = db_path
-        Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-        with self._conn() as conn:
-            conn.executescript(self.SCHEMA_V3)
-            self._migrate(conn)
-        logger.info(f"DB جاهزة: {db_path}")
+        super().__init__(db_path)   # BaseDB: WAL + PRAGMA + mkdir
+        logger.info("HandwritingDB جاهزة: %s", db_path)
 
-    def _conn(self) -> sqlite3.Connection:
-        return sqlite3.connect(self.db_path, check_same_thread=False)
+    def _create_schema(self, conn) -> None:
+        """يُستدعى من BaseDB.__init__()"""
+        conn.executescript(self.SCHEMA_V3)
+        self._migrate(conn)
 
     def _migrate(self, conn) -> None:
         """ترقية مخطط v1/v2 → v3"""
@@ -131,7 +127,7 @@ class HandwritingDB:
     ) -> int:
         """إضافة كلمة جديدة (مخطط v3 مع raw_text, run_id, timestamps)"""
         ts = datetime.now().isoformat()
-        with self._conn() as conn:
+        with self.connection() as conn:
             cur = conn.execute(
                 '''INSERT INTO handwriting_data
                    (image_data, predicted_text, raw_text, status, confidence,
@@ -161,7 +157,7 @@ class HandwritingDB:
         sets.append("updated_at=?")
         vals.append(datetime.now().isoformat())
         vals.append(image_id)
-        with self._conn() as conn:
+        with self.connection() as conn:
             conn.execute(
                 f"UPDATE handwriting_data SET {','.join(sets)} WHERE image_id=?",
                 vals,
@@ -170,7 +166,7 @@ class HandwritingDB:
 
     # --- Delete ---
     def delete_word(self, image_id: int) -> bool:
-        with self._conn() as conn:
+        with self.connection() as conn:
             cur = conn.execute(
                 "DELETE FROM handwriting_data WHERE image_id=?", (image_id,)
             )
@@ -179,7 +175,7 @@ class HandwritingDB:
 
     def delete_pages(self, page_start: int, page_end: int) -> int:
         """حذف بيانات صفحات محددة لتجنب التكرار عند إعادة المعالجة"""
-        with self._conn() as conn:
+        with self.connection() as conn:
             cur = conn.execute(
                 "DELETE FROM handwriting_data WHERE page_num BETWEEN ? AND ?",
                 (page_start, page_end),
@@ -192,7 +188,7 @@ class HandwritingDB:
 
     # --- Queries ---
     def _rows(self, sql: str, params=()) -> list[dict]:
-        with self._conn() as conn:
+        with self.connection() as conn:
             conn.row_factory = sqlite3.Row
             return [dict(r) for r in conn.execute(sql, params).fetchall()]
 
@@ -226,31 +222,31 @@ class HandwritingDB:
         return {r["status"]: r["cnt"] for r in rows}
 
     def get_count(self) -> int:
-        with self._conn() as conn:
+        with self.connection() as conn:
             return conn.execute("SELECT COUNT(*) FROM handwriting_data").fetchone()[0]
 
     def get_verified_count(self) -> int:
-        with self._conn() as conn:
+        with self.connection() as conn:
             return conn.execute(
                 "SELECT COUNT(*) FROM handwriting_data "
                 "WHERE status IN ('verified','sentence_corrected')"
             ).fetchone()[0]
 
     def get_unverified_count(self) -> int:
-        with self._conn() as conn:
+        with self.connection() as conn:
             return conn.execute(
                 "SELECT COUNT(*) FROM handwriting_data WHERE status='unverified'"
             ).fetchone()[0]
 
     def clear_all(self) -> int:
-        with self._conn() as conn:
+        with self.connection() as conn:
             cur = conn.execute("DELETE FROM handwriting_data")
             conn.commit()
             return cur.rowcount
 
     # --- Run tracking ---
     def insert_run(self, run_id: str, input_path: str) -> None:
-        with self._conn() as conn:
+        with self.connection() as conn:
             conn.execute(
                 "INSERT OR REPLACE INTO processing_runs "
                 "(run_id, started_at, input_path, status) VALUES (?,?,?,?)",
@@ -261,7 +257,7 @@ class HandwritingDB:
     def finish_run(
         self, run_id: str, pages: int, words: int, avg_conf: float
     ) -> None:
-        with self._conn() as conn:
+        with self.connection() as conn:
             conn.execute(
                 "UPDATE processing_runs SET ended_at=?, pages_processed=?, "
                 "words_processed=?, avg_confidence=?, status=? WHERE run_id=?",
@@ -273,7 +269,7 @@ class HandwritingDB:
     def log_review(
         self, image_id: int, original: str, corrected: str, action: str
     ) -> None:
-        with self._conn() as conn:
+        with self.connection() as conn:
             conn.execute(
                 "INSERT INTO review_events "
                 "(timestamp, image_id, original_text, corrected_text, action) "
@@ -285,7 +281,7 @@ class HandwritingDB:
     def get_last_review_event(self) -> dict | None:
         """جلب آخر حدث مراجعة للتراجع."""
         try:
-            conn = self._conn()
+            conn = sqlite3.connect(self.db_path, check_same_thread=False)
             cur = conn.execute(
                 "SELECT * FROM review_events ORDER BY id DESC LIMIT 1"
             )
@@ -300,7 +296,7 @@ class HandwritingDB:
     def delete_review_event(self, event_id: int) -> None:
         """حذف حدث مراجعة."""
         try:
-            conn = self._conn()
+            conn = sqlite3.connect(self.db_path, check_same_thread=False)
             conn.execute("DELETE FROM review_events WHERE id = ?", (event_id,))
             conn.commit()
         except Exception:
