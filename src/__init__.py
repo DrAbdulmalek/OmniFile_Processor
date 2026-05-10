@@ -1,27 +1,50 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-src/ — Backward-Compatibility Layer
-====================================
-⚠️  هذه الطبقة مُرحَّلة تدريجياً إلى modules/.
-    سيتم حذف src/ بالكامل في v5.0.
+src/__init__.py
+===============
 
-خطة الترحيل (v4.2.0):
-- src/database.py::HandwritingDB      → modules.core.handwriting_db
-- src/reconstruction.py::reconstruct  → modules.nlp.reconstruction
-- src/correction.py::append_feedback  → modules.nlp.feedback
+طبقة توافق للترحيل من src/ إلى modules/.
 
-الاستيرادات التالية تبقى صالحة للتوافق العكسي.
-المكونات التي لم تُرحَّل بعد تستورد من src/ مباشرة.
+DEPRECATED: سيتم إزالة هذا الملف في الإصدار 6.0
+استخدم modules/ مباشرة بدلاً من src/
 """
+
+import warnings
+import sys
+from pathlib import Path
+
+# ============================================================================
+# تحذير الاستخدام
+# ============================================================================
+
+warnings.warn(
+    "src/ is deprecated and will be removed in v6.0. "
+    "Use modules/ instead. "
+    "See: https://github.com/DrAbdulmalek/OmniFile_Processor/blob/main/MIGRATION.md",
+    DeprecationWarning,
+    stacklevel=2
+)
+
+# ============================================================================
+# إعادة التوجيه إلى modules/
+# ============================================================================
+
+PROJECT_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 
 # === المكونات المُرحَّلة — تُعاد تصديرها من modules/ ===
 
-# HandwritingDB: src.database → modules.core.handwriting_db
+# HandwritingDB: src.database -> modules.core.handwriting_db
 try:
     from modules.core.handwriting_db import HandwritingDB
 except ImportError:
-    from src.database import HandwritingDB
+    try:
+        from src.database import HandwritingDB
+    except ImportError:
+        pass
 
-# reconstruct_sentences: src.reconstruction → modules.nlp.reconstruction
+# reconstruct_sentences: src.reconstruction -> modules.nlp.reconstruction
 try:
     from modules.nlp.reconstruction import (
         reconstruct_sentences,
@@ -30,14 +53,17 @@ try:
         derive_word_corrections,
     )
 except ImportError:
-    from src.reconstruction import (
-        reconstruct_sentences,
-        reconstruct_sentences_direct,
-        extract_bilingual_vocab,
-        derive_word_corrections,
-    )
+    try:
+        from src.reconstruction import (
+            reconstruct_sentences,
+            reconstruct_sentences_direct,
+            extract_bilingual_vocab,
+            derive_word_corrections,
+        )
+    except ImportError:
+        pass
 
-# append_feedback: src.correction → modules.nlp.feedback
+# append_feedback: src.correction -> modules.nlp.feedback
 try:
     from modules.nlp.feedback import (
         append_feedback,
@@ -48,12 +74,15 @@ try:
         CorrectionRule,
     )
 except ImportError:
-    from src.correction import (
-        append_feedback,
-        build_correction_dict,
-        apply_correction_dict,
-        CorrectionRule,
-    )
+    try:
+        from src.correction import (
+            append_feedback,
+            build_correction_dict,
+            apply_correction_dict,
+            CorrectionRule,
+        )
+    except ImportError:
+        pass
 
 # === المكونات التي لم تُرحَّل بعد — تستورد من src/ مباشرة ===
 try:
@@ -100,9 +129,18 @@ try:
 except ImportError:
     pass
 
+# === إعادة تصدير من modules/ (الجديد) ===
+try:
+    from modules.ui.gradio_app import OmniFileProcessor, create_gradio_interface
+    from modules.vision.ocr_engine import OCREngine as ModernOCREngine
+    from modules.vision.htr import ArabicHandwrittenHTR
+    from modules.core.structure import FileStructureAnalyzer
+except ImportError:
+    pass
+
 try:
     from config import Config
 except ImportError:
     pass
 
-__version__ = "4.2.0"
+__version__ = "5.0.0"
