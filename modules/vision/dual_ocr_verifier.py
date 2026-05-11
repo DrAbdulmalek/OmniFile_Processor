@@ -1,6 +1,8 @@
 # ══════════════════════════════════════════════════════════╗
-#  Dual-OCR Verification Engine - Medical Safety Layer v5.0
+#  Dual-OCR Verification Engine - Medical Safety Layer v5.1
 #  TrOCR + EasyOCR | Intelligent Comparison | Critical Mismatch Detection
+#  v5.1: Added preprocess_v3.1, segment_v3.1, extract_references_v3.1
+#        Handles: rotation, dense lines, strike-through, complex references
 # ══════════════════════════════════════════════════════════╝
 
 import re
@@ -23,6 +25,11 @@ class DualOCRVerifier:
     """
     محرك التحقق المزدوج - يجمع بين TrOCR (النموذج المدرب) و EasyOCR (المرجع الخارجي)
     لمقارنة النتائج وكشف التناقضات الحرجة في المحتوى الطبي.
+
+    v5.1 Updates:
+    - preprocess_for_ocr_v3: Handles header rotation, notebook lines, smart component filtering
+    - segment_lines_v3: Dense packing support, strike-through detection, Gaussian smoothing
+    - extract_references_v3: Handles #, *, arrows, Arabic numerals, parentheses
     """
 
     def __init__(self, model_path: Optional[str] = None, device: Optional[str] = None):
@@ -34,18 +41,18 @@ class DualOCRVerifier:
 
         # ─── 1. Load TrOCR Model (Trained or Fallback) ───
         if model_path and Path(model_path).exists():
-            print(f"📥 Loading trained model from: {model_path}")
+            print(f"Loading trained model from: {model_path}")
             self._load_trocr(model_path)
             self.model_version = Path(model_path).name
         else:
             fallback = "microsoft/trocr-base-handwritten"
-            print(f"⚠️ No trained model found. Using {fallback} as fallback")
+            print(f"No trained model found. Using {fallback} as fallback")
             self._load_trocr(fallback)
             self.model_version = fallback
 
         # ─── 2. EasyOCR as Independent Reference ───
         if _easyocr_reader is None:
-            print("📥 Loading EasyOCR for comparison...")
+            print("Loading EasyOCR for comparison...")
             _easyocr_reader = self._get_easyocr()
         self.easyocr_reader = _easyocr_reader
 
@@ -109,11 +116,11 @@ class DualOCRVerifier:
         return found
 
     # ────────────────────────────────────────────────────────
-    # Image Preprocessing
+    # Image Preprocessing (v1 - Original)
     # ────────────────────────────────────────────────────────
 
     def preprocess_for_ocr(self, img: np.ndarray) -> np.ndarray:
-        """تجهيز الصورة للمحركات - تحسين التباين عبر CLAHE"""
+        """تجهيز الصورة للمحركات - تحسين التباين عبر CLAHE (الإصدار الأصلي)"""
         if len(img.shape) == 2:
             gray = img
         else:
@@ -122,6 +129,75 @@ class DualOCRVerifier:
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
         enhanced = clahe.apply(gray)
         return enhanced
+
+    # ────────────────────────────────────────────────────────
+    # Image Preprocessing v3.1 (Handles Rotation, Density, Strike-through)
+    # ────────────────────────────────────────────────────────
+
+    def preprocess_for_ocr_v3(self, img: np.ndarray) -> Tuple[np.ndarray, Tuple[int, int]]:
+        """
+        معالجة محسّنة v3.1: تصحيح الميل/القلب، فلترة الرسوم، تحسين التباين.
+
+        يتعامل مع 4 تحديات بصرية:
+        1. نص مقلوب/رأسي في الهيدر
+        2. كثافة سطر عالية + تشابك
+        3. خطوط دفتر أفقية/عمودية باهتة
+        4. رموز وأسهم تُلتقط كحروف
+
+        Args:
+            img: الصورة الأصلية (BGR أو grayscale)
+
+        Returns:
+            Tuple of (enhanced_image, (margin_x, margin_y))
+        """
+        if len(img.shape) == 2:
+            gray = img.copy()
+        else:
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+        h, w = gray.shape
+
+        # 1. Detect and fix inverted header text (top 15% of page)
+        header_region = gray[0:int(h * 0.15), :]
+        _, bin_h = cv2.threshold(header_region, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+        coords = np.column_stack(np.where(bin_h > 0))
+        if len(coords) > 50:
+            angle = cv2.minAreaRect(coords)[-1]
+            if angle < -45:
+                angle = -(90 + angle)
+            # If angle is close to 180 (upside-down text)
+            if abs(angle) > 150:
+                gray[0:int(h * 0.15), :] = cv2.rotate(header_region, cv2.ROTATE_180)
+
+        # 2. Remove horizontal and vertical notebook lines
+        h_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (35, 1))
+        v_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 15))
+        h_lines = cv2.morphologyEx(gray, cv2.MORPH_OPEN, h_kernel, iterations=2)
+        v_lines = cv2.morphologyEx(gray, cv2.MORPH_OPEN, v_kernel, iterations=1)
+        cleaned = cv2.subtract(cv2.subtract(gray, h_lines), v_lines)
+
+        # 3. CLAHE enhancement (preserving diacritics and dots)
+        clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(10, 10))
+        enhanced = clahe.apply(cleaned)
+        _, thresh = cv2.threshold(enhanced, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+
+        # 4. Smart filtering: keep text-like components, remove arrows/graphics/noise
+        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(thresh, connectivity=8)
+        mask = np.zeros_like(thresh)
+        for i in range(1, num_labels):
+            area = stats[i, cv2.CC_STAT_AREA]
+            x = stats[i, cv2.CC_STAT_LEFT]
+            y = stats[i, cv2.CC_STAT_TOP]
+            cw = stats[i, cv2.CC_STAT_WIDTH]
+            ch = stats[i, cv2.CC_STAT_HEIGHT]
+            aspect = cw / max(1, ch)
+
+            # Keep text-like components (reasonable area, logical aspect ratio)
+            if 20 < area < 10000 and 0.1 < aspect < 8.0:
+                mask[labels == i] = 255
+
+        final = cv2.bitwise_and(enhanced, enhanced, mask=mask)
+        return final, (int(w * 0.03), int(h * 0.06))
 
     # ────────────────────────────────────────────────────────
     # OCR Prediction (individual engines)
@@ -168,7 +244,7 @@ class DualOCRVerifier:
     def highlight_differences(text1: str, text2: str) -> str:
         """
         تمييز الاختلافات بين النصين للعرض.
-        Example: "abc" vs "adc" → "ab【c→d】"
+        Example: "abc" vs "adc" -> "ab[c->d]"
         """
         diff = SequenceMatcher(None, text1, text2)
         output = []
@@ -176,33 +252,89 @@ class DualOCRVerifier:
             if tag == 'equal':
                 output.append(text1[i1:i2])
             elif tag == 'replace':
-                output.append(f"\u3010{text1[i1:i2]}\u2192{text2[j1:j2]}\u3011")
+                output.append(f"[{text1[i1:i2]}->{text2[j1:j2]}]")
             elif tag == 'delete':
-                output.append(f"\u3010-{text1[i1:i2]}-\u3011")
+                output.append(f"[-{text1[i1:i2]}-]")
             elif tag == 'insert':
-                output.append(f"\u3010+{text2[j1:j2]}+\u3011")
+                output.append(f"[+{text2[j1:j2]}+]")
         return "".join(output)
+
+    # ────────────────────────────────────────────────────────
+    # Reference Extraction v3.1
+    # ────────────────────────────────────────────────────────
+
+    @staticmethod
+    def extract_references_v3(text: str) -> Tuple[str, List[str]]:
+        """
+        عزل المراجع والرموز الطرفية بدقة أعلى.
+
+        يدعم: #, *, arrows, Arabic/Latin numerals, parentheses.
+        Patterns: '# 224', '* 2188', '-> 300', '(15)', end-of-line and start-of-line.
+
+        Args:
+            text: Raw OCR text line.
+
+        Returns:
+            Tuple of (cleaned_text, list_of_references).
+        """
+        patterns = [
+            # End of line: optional #,*,-> followed by Arabic/Latin digits
+            r'[\*\#\-\u2192\u25CF]?\s*([\u0660-\u0669\u06F0-\u06F9\d]{2,5})\s*[\.\)\-\:]?$',
+            # Start of line
+            r'^[\*\#\-\u2192\u25CF]?\s*([\u0660-\u0669\u06F0-\u06F9\d]{2,5})\s*[\.\)\-\:]?',
+            # Parenthesized: (123), (45)
+            r'\(\s*([\u0660-\u0669\u06F0-\u06F9\d]{1,4})\s*\)',
+        ]
+
+        refs = []
+        clean = text
+        for p in patterns:
+            matches = re.findall(p, clean)
+            if matches:
+                refs.extend(matches)
+                clean = re.sub(p, '', clean)
+
+        # Clean up extra whitespace
+        clean = re.sub(r'\s+', ' ', clean).strip()
+        return clean, refs
 
     # ────────────────────────────────────────────────────────
     # Main Verification Logic
     # ────────────────────────────────────────────────────────
 
-    def verify_line(self, img: np.ndarray, line_idx: int = 0) -> Dict:
+    def verify_line(self, img: np.ndarray, line_idx: int = 0,
+                    use_v3: bool = False) -> Dict:
         """
         التحقق المزدوج لسطر واحد.
         Returns dict with: trocr_text, easyocr_text, similarity,
         recommendation, confidence, final_text, critical_warnings, etc.
+
+        Args:
+            img: Line image (grayscale or BGR).
+            line_idx: Index of the line on the page.
+            use_v3: If True, uses v3.1 preprocessing (rotation, line removal, smart filter).
         """
-        enhanced = self.preprocess_for_ocr(img)
+        if use_v3:
+            enhanced, _ = self.preprocess_for_ocr_v3(img)
+        else:
+            enhanced = self.preprocess_for_ocr(img)
 
         # Run both engines independently
         trocr_text = self.trocr_predict(enhanced)
         easyocr_text = self.easyocr_predict(enhanced)
 
-        # Calculate similarity
-        similarity = self.calculate_similarity(trocr_text, easyocr_text)
+        # Extract references from both results
+        trocr_clean, trocr_refs = self.extract_references_v3(trocr_text)
+        easyocr_clean, easyocr_refs = self.extract_references_v3(easyocr_text)
 
-        # Detect critical content in both results
+        # Use cleaned text for comparison (without reference noise)
+        comparison_text_trocr = trocr_clean if trocr_refs else trocr_text
+        comparison_text_easyocr = easyocr_clean if easyocr_refs else easyocr_text
+
+        # Calculate similarity (on cleaned text)
+        similarity = self.calculate_similarity(comparison_text_trocr, comparison_text_easyocr)
+
+        # Detect critical content in both results (on raw text)
         critical_trocr = self.detect_critical_content(trocr_text)
         critical_easy = self.detect_critical_content(easyocr_text)
 
@@ -211,39 +343,41 @@ class DualOCRVerifier:
         critical_warnings: List[str] = []
 
         if critical_trocr or critical_easy:
-            # If one detected critical content and the other didn't
             if len(critical_trocr) != len(critical_easy):
                 has_critical_mismatch = True
-                critical_warnings.append("⚠️ Difference in critical content detection")
+                critical_warnings.append("Difference in critical content detection")
 
-            # Compare numeric values in dosages and lab values
             for cat in ['dosage', 'lab_value']:
                 trocr_vals = re.findall(self.critical_patterns[cat], trocr_text, re.IGNORECASE)
                 easy_vals = re.findall(self.critical_patterns[cat], easyocr_text, re.IGNORECASE)
                 if trocr_vals != easy_vals and (trocr_vals or easy_vals):
                     has_critical_mismatch = True
                     critical_warnings.append(
-                        f"⚠️ Contradiction in {cat}: TrOCR={trocr_vals} vs EasyOCR={easy_vals}"
+                        f"Contradiction in {cat}: TrOCR={trocr_vals} vs EasyOCR={easy_vals}"
                     )
 
         # ─── Recommendation Logic ───
         if similarity >= 0.85 and not has_critical_mismatch:
             recommendation = "AUTO_ACCEPT"
             confidence = "HIGH"
-            final_text = trocr_text  # Trust trained TrOCR
+            final_text = trocr_clean  # Use cleaned text (without references)
         elif similarity < 0.60 or has_critical_mismatch:
             recommendation = "MANUAL_REVIEW_REQUIRED"
             confidence = "LOW"
-            final_text = None  # Wait for human review
+            final_text = None
         else:
             recommendation = "QUICK_CHECK"
             confidence = "MEDIUM"
-            final_text = trocr_text
+            final_text = trocr_clean
 
         return {
             'line_idx': line_idx,
             'trocr_text': trocr_text,
             'easyocr_text': easyocr_text,
+            'trocr_clean': trocr_clean,
+            'easyocr_clean': easyocr_clean,
+            'trocr_refs': trocr_refs,
+            'easyocr_refs': easyocr_refs,
             'similarity': similarity,
             'critical_content': critical_trocr or critical_easy,
             'has_critical_mismatch': has_critical_mismatch,
@@ -255,7 +389,7 @@ class DualOCRVerifier:
         }
 
     # ────────────────────────────────────────────────────────
-    # Batch Processing Helpers
+    # Line Segmentation (v1 - Original)
     # ────────────────────────────────────────────────────────
 
     def extract_lines(self, img: np.ndarray,
@@ -286,12 +420,148 @@ class DualOCRVerifier:
 
         return lines
 
+    # ────────────────────────────────────────────────────────
+    # Line Segmentation v3.1 (Dense Packing + Strike-through)
+    # ────────────────────────────────────────────────────────
+
+    def segment_lines_v3(self, img: np.ndarray) -> List[Dict]:
+        """
+        تقسيم محسّن للنصوص الكثيفة مع كشف المشطوب.
+
+        يتعامل مع:
+        - أسطر متقاربة جداً وحروف متداخلة
+        - خطوط دفتر باهتة تسبب دمج خاطئ
+        - أسطر مشطوبة بخط أفقي
+
+        Args:
+            img: الصورة (grayscale أو BGR).
+
+        Returns:
+            List of dicts, each with:
+            - 'bbox': (y_start, y_end)
+            - 'image': cropped line image
+            - 'is_crossed': bool indicating strike-through detection
+        """
+        if len(img.shape) == 3:
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        else:
+            gray = img.copy()
+
+        _, th = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+
+        # Connect broken letters within same line (important for dense connected script)
+        v_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 3))
+        th_connected = cv2.morphologyEx(th, cv2.MORPH_CLOSE, v_kernel)
+
+        # Horizontal projection with Gaussian smoothing to avoid small jumps
+        proj = np.sum(th_connected, axis=1)
+        proj_smooth = cv2.GaussianBlur(proj.reshape(-1, 1), (1, 7), 0).flatten()
+
+        lines = []
+        in_line, start = False, 0
+
+        # Dynamic threshold based on page density
+        active_pixels = proj[proj > 0]
+        dyn_thr = np.percentile(active_pixels, 25) if len(active_pixels) > 0 else 50
+
+        for y in range(len(proj_smooth)):
+            if proj_smooth[y] > dyn_thr and not in_line:
+                in_line, start = True, y
+            elif proj_smooth[y] <= dyn_thr and in_line:
+                in_line = False
+                height = y - start
+                # Accept shorter lines for high density, with noise filtering
+                if 12 <= height <= 120:
+                    lines.append((start, y))
+
+        if in_line and len(proj) - start >= 12:
+            lines.append((start, len(proj)))
+
+        # Detect strike-through lines and mark them
+        processed_lines = []
+        for idx, (y1, y2) in enumerate(lines):
+            line_crop = gray[y1:y2, :]
+            line_th = th[y1:y2, :]
+
+            # Detect horizontal line crossing through middle of the line
+            mid_h = line_th.shape[0] // 2
+            mid_start = max(0, mid_h - 2)
+            mid_end = min(line_th.shape[0], mid_h + 3)
+            horizontal_proj_mid = np.sum(line_th[mid_start:mid_end, :], axis=0)
+
+            # If >60% of width has ink in the middle band -> likely strike-through
+            is_crossed = np.mean(horizontal_proj_mid > 0) > 0.6
+
+            processed_lines.append({
+                'idx': idx,
+                'bbox': (y1, y2),
+                'image': line_crop,
+                'is_crossed': is_crossed,
+            })
+
+        return processed_lines
+
+    # ────────────────────────────────────────────────────────
+    # Page Verification (v1 - Original)
+    # ────────────────────────────────────────────────────────
+
     def verify_page(self, img: np.ndarray) -> List[Dict]:
-        """التحقق المزدوج لصفحة كاملة - يُرجع نتائج كل الأسطر."""
+        """التحقق المزدوج لصفحة كاملة - يُرجع نتائج كل الأسطر (الإصدار الأصلي)."""
         lines = self.extract_lines(img)
         results = []
         for i, (y1, y2) in enumerate(lines):
-            line_img = img[y1:y2]
+            line_img = img[y1:y2] if len(img.shape) == 2 else img[y1:y2, :]
             result = self.verify_line(line_img, i)
             results.append(result)
         return results
+
+    # ────────────────────────────────────────────────────────
+    # Page Verification v3.1 (with strike-through + references)
+    # ────────────────────────────────────────────────────────
+
+    def verify_page_v3(self, img: np.ndarray) -> Tuple[List[Dict], List[Dict]]:
+        """
+        التحقق المزدوج لصفحة كاملة v3.1.
+
+        يستخدم:
+        - segment_lines_v3 للكشف عن الأسطر المشطوبة
+        - extract_references_v3 لعزل المراجع
+        - preprocess_for_ocr_v3 للمعالجة المحسّنة
+
+        Returns:
+            Tuple of (verification_results, rejected_lines).
+            rejected_lines contains lines that were skipped (crossed-out, etc.)
+        """
+        if len(img.shape) == 3:
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        else:
+            gray = img
+
+        # Apply v3.1 preprocessing
+        enhanced_page, margins = self.preprocess_for_ocr_v3(gray)
+
+        # Segment with v3.1 (includes strike-through detection)
+        lines_data = self.segment_lines_v3(gray)
+
+        results = []
+        rejected = []
+
+        for line_info in lines_data:
+            y1, y2 = line_info['bbox']
+            crop = line_info['image']
+
+            if line_info['is_crossed']:
+                # Reject crossed-out lines
+                rejected.append({
+                    'idx': line_info['idx'],
+                    'bbox': line_info['bbox'],
+                    'reason': 'crossed_out',
+                    'image': crop,
+                })
+                continue
+
+            # Verify non-crossed lines with v3 preprocessing
+            result = self.verify_line(crop, line_info['idx'], use_v3=True)
+            results.append(result)
+
+        return results, rejected
