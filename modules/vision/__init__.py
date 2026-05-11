@@ -24,6 +24,8 @@ from modules.vision.table_extractor import TableExtractor
 from modules.vision.video_ocr import VideoOCR, FrameResult, VideoTimeline
 from modules.vision.data_augmentation import DataAugmentor
 from modules.vision.dual_ocr_verifier import DualOCRVerifier
+from modules.vision.batch_ocr import BatchMedicalOCR
+from modules.vision.dataset_builder import DatasetBuilder
 
 __all__ = [
     "OCREngine",
@@ -39,4 +41,6 @@ __all__ = [
     "VideoTimeline",
     "DataAugmentor",
     "DualOCRVerifier",
+    "BatchMedicalOCR",
+    "DatasetBuilder",
 ]
