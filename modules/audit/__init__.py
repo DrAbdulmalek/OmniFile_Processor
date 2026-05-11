@@ -1,13 +1,13 @@
 # ══════════════════════════════════════════════════════════╗
-#  UI Module - Interactive Verification Interfaces
+#  Audit Module - Medical Decision Logging & Reporting
 # ══════════════════════════════════════════════════════════╝
 
-from modules.ui.dual_ocr_interface import (
-    build_dual_ocr_ui,
-    launch_ui,
-)
+from modules.audit.audit_logger import AuditLogger
+from modules.audit.report_generator import AuditReportGenerator
+from modules.audit.pipeline import DualOCRVerificationPipeline
 
 __all__ = [
-    "build_dual_ocr_ui",
-    "launch_ui",
+    "AuditLogger",
+    "AuditReportGenerator",
+    "DualOCRVerificationPipeline",
 ]

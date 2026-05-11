@@ -23,6 +23,7 @@ from modules.vision.layout_analyzer import LayoutAnalyzer
 from modules.vision.table_extractor import TableExtractor
 from modules.vision.video_ocr import VideoOCR, FrameResult, VideoTimeline
 from modules.vision.data_augmentation import DataAugmentor
+from modules.vision.dual_ocr_verifier import DualOCRVerifier
 
 __all__ = [
     "OCREngine",
@@ -37,4 +38,5 @@ __all__ = [
     "FrameResult",
     "VideoTimeline",
     "DataAugmentor",
+    "DualOCRVerifier",
 ]

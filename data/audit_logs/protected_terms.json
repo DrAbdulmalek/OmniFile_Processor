@@ -1,0 +1,31 @@
+{
+  "drug_names": [
+    "Amoxicillin", "Azithromycin", "Ciprofloxacin", "Metformin",
+    "Amlodipine", "Losartan", "Atorvastatin", "Omeprazole",
+    "Ibuprofen", "Paracetamol", "Aspirin", "Prednisone",
+    "Alprazolam", "Lorazepam", "Diazepam", "Cephalexin",
+    "Doxycycline", "Fluconazole", "Tramadol", "Gabapentin"
+  ],
+  "critical_terms": [
+    "CAFFEY", "AIDS", "HIV", "MRI", "CT", "X-ray",
+    "ESR", "CRP", "HbA1c", "BUN", "Creatinine",
+    "Hypertension", "Diabetes", "Cardiac", "Renal",
+    "Hepatic", "Pulmonary", "Allergy", "Anaphylaxis"
+  ],
+  "units": [
+    "mg", "ml", "kg", "mcg", "g", "units", "IU",
+    "mmol/L", "mg/dL", "g/dL", "%", "mEq/L"
+  ],
+  "routes": [
+    "IV", "IM", "PO", "SC", "SL", "PR", "PV",
+    "Intravenous", "Intramuscular", "Oral", "Subcutaneous"
+  ],
+  "frequencies": [
+    "BID", "TID", "QID", "QD", "QOD", "PRN", "STAT",
+    "Once daily", "Twice daily", "Three times daily"
+  ],
+  "lab_tests": [
+    "CBC", "BMP", "CMP", "LFT", "RFT", "TSH",
+    "Lipid panel", "Urinalysis", "Blood culture"
+  ]
+}
