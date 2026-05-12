@@ -26,6 +26,8 @@ from modules.vision.data_augmentation import DataAugmentor
 from modules.vision.dual_ocr_verifier import DualOCRVerifier
 from modules.vision.batch_ocr import BatchMedicalOCR
 from modules.vision.dataset_builder import DatasetBuilder
+from modules.vision.medical_ocr import MedicalOCRProcessor, process_medical_pdf
+from modules.vision.medical_ocr_gradio import create_medical_ocr_tab
 
 __all__ = [
     "OCREngine",
@@ -43,4 +45,7 @@ __all__ = [
     "DualOCRVerifier",
     "BatchMedicalOCR",
     "DatasetBuilder",
+    "MedicalOCRProcessor",
+    "process_medical_pdf",
+    "create_medical_ocr_tab",
 ]
