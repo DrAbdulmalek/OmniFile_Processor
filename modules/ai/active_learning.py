@@ -2,7 +2,7 @@
 
 from typing import Dict, List, Optional, Union
 from pathlib import Path
-import sqlite3
+from modules.core.base_db import BaseDB
 import json
 import logging
 from datetime import datetime
@@ -10,91 +10,87 @@ from .finetuning import TrOCRFineTuner
 
 logger = logging.getLogger(__name__)
 
-class ActiveLearningDB:
+class ActiveLearningDB(BaseDB):
     """قاعدة بيانات للتعلم من تصحيحات المستخدم."""
 
     def __init__(self, db_path: Union[str, Path] = "active_learning.db"):
-        self.db_path = Path(db_path)
-        self._init_db()
+        super().__init__(db_path)
 
-    def _init_db(self):
+    def _create_schema(self, conn):
         """تهيئة قاعدة البيانات."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+        cursor = conn.cursor()
 
-            # جدول التصحيحات
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS corrections (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    original_text TEXT NOT NULL,
-                    corrected_text TEXT NOT NULL,
-                    language TEXT NOT NULL,
-                    confidence REAL,
-                    source TEXT NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    correction_count INTEGER DEFAULT 1,
-                    is_used_in_training BOOLEAN DEFAULT FALSE
-                )
-            """)
+        # جدول التصحيحات
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS corrections (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                original_text TEXT NOT NULL,
+                corrected_text TEXT NOT NULL,
+                language TEXT NOT NULL,
+                confidence REAL,
+                source TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                correction_count INTEGER DEFAULT 1,
+                is_used_in_training BOOLEAN DEFAULT FALSE
+            )
+        """)
 
-            # جدول بيانات التدريب
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS training_data (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    image_path TEXT,
-                    original_text TEXT,
-                    corrected_text TEXT,
-                    language TEXT NOT NULL,
-                    confidence REAL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    is_used_in_training BOOLEAN DEFAULT FALSE
-                )
-            """)
+        # جدول بيانات التدريب
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS training_data (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                image_path TEXT,
+                original_text TEXT,
+                corrected_text TEXT,
+                language TEXT NOT NULL,
+                confidence REAL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                is_used_in_training BOOLEAN DEFAULT FALSE
+            )
+        """)
 
-            # جدول نماذج OCR المدربة
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS fine_tuned_models (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    model_name TEXT NOT NULL,
-                    model_path TEXT NOT NULL,
-                    language TEXT NOT NULL,
-                    base_model TEXT NOT NULL,
-                    accuracy REAL,
-                    version TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
+        # جدول نماذج OCR المدربة
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS fine_tuned_models (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                model_name TEXT NOT NULL,
+                model_path TEXT NOT NULL,
+                language TEXT NOT NULL,
+                base_model TEXT NOT NULL,
+                accuracy REAL,
+                version TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
 
-            # جدول إعدادات النظام
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS settings (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    key TEXT NOT NULL UNIQUE,
-                    value TEXT,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
+        # جدول إعدادات النظام
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS settings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                key TEXT NOT NULL UNIQUE,
+                value TEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
 
-            # إعدادات افتراضية
-            cursor.execute("""
-                INSERT OR IGNORE INTO settings (key, value)
-                VALUES ('correction_threshold', '2')
-            """)
-            cursor.execute("""
-                INSERT OR IGNORE INTO settings (key, value)
-                VALUES ('training_batch_size', '100')
-            """)
-            cursor.execute("""
-                INSERT OR IGNORE INTO settings (key, value)
-                VALUES ('min_confidence', '0.7')
-            """)
-
-            conn.commit()
+        # إعدادات افتراضية
+        cursor.execute("""
+            INSERT OR IGNORE INTO settings (key, value)
+            VALUES ('correction_threshold', '2')
+        """)
+        cursor.execute("""
+            INSERT OR IGNORE INTO settings (key, value)
+            VALUES ('training_batch_size', '100')
+        """)
+        cursor.execute("""
+            INSERT OR IGNORE INTO settings (key, value)
+            VALUES ('min_confidence', '0.7')
+        """)
 
     def get_setting(self, key: str, default: Optional[str] = None) -> Optional[str]:
         """الحصول على إعداد."""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT value FROM settings WHERE key = ?
@@ -104,13 +100,12 @@ class ActiveLearningDB:
 
     def set_setting(self, key: str, value: str) -> bool:
         """تحديد إعداد."""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT OR REPLACE INTO settings (key, value, updated_at)
                 VALUES (?, ?, CURRENT_TIMESTAMP)
             """, (key, value))
-            conn.commit()
             return cursor.rowcount > 0
 
     def save_correction(
@@ -134,7 +129,7 @@ class ActiveLearningDB:
         Returns:
             int: ID التصحيح.
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with self.connection() as conn:
             cursor = conn.cursor()
 
             # التحقق من وجود تصحيح مشابه
@@ -162,7 +157,6 @@ class ActiveLearningDB:
                 """, (original_text, corrected_text, language, confidence, source))
                 correction_id = cursor.lastrowid
 
-            conn.commit()
             return correction_id
 
     def get_corrections(
@@ -184,7 +178,7 @@ class ActiveLearningDB:
         Returns:
             List[Dict]: قائمة التصحيحات.
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT * FROM corrections
@@ -217,14 +211,13 @@ class ActiveLearningDB:
         Returns:
             int: ID بيانات التدريب.
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO training_data
                 (image_path, original_text, corrected_text, language, confidence)
                 VALUES (?, ?, ?, ?, ?)
             """, (image_path, original_text, corrected_text, language, confidence))
-            conn.commit()
             return cursor.lastrowid
 
     def get_training_data(
@@ -244,7 +237,7 @@ class ActiveLearningDB:
         Returns:
             List[Dict]: قائمة بيانات التدريب.
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT * FROM training_data
@@ -266,14 +259,13 @@ class ActiveLearningDB:
         Returns:
             bool: True إذا تم التحديث، False إذا لم يتم العثور على التصحيح.
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 UPDATE corrections
                 SET is_used_in_training = TRUE
                 WHERE id = ?
             """, (correction_id,))
-            conn.commit()
             return cursor.rowcount > 0
 
     def mark_training_data_as_used(self, data_id: int) -> bool:
@@ -286,14 +278,13 @@ class ActiveLearningDB:
         Returns:
             bool: True إذا تم التحديث، False إذا لم يتم العثور على البيانات.
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 UPDATE training_data
                 SET is_used_in_training = TRUE
                 WHERE id = ?
             """, (data_id,))
-            conn.commit()
             return cursor.rowcount > 0
 
     def save_fine_tuned_model(
@@ -319,14 +310,13 @@ class ActiveLearningDB:
         Returns:
             int: ID النموذج.
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO fine_tuned_models
                 (model_name, model_path, language, base_model, accuracy, version)
                 VALUES (?, ?, ?, ?, ?, ?)
             """, (model_name, model_path, language, base_model, accuracy, version))
-            conn.commit()
             return cursor.lastrowid
 
     def get_fine_tuned_models(
@@ -344,7 +334,7 @@ class ActiveLearningDB:
         Returns:
             List[Dict]: قائمة النماذج.
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT * FROM fine_tuned_models
@@ -544,7 +534,7 @@ class ActiveLearner:
         Returns:
             Dict: إحصائيات التدريب.
         """
-        with sqlite3.connect(self.db.db_path) as conn:
+        with self.db.connection() as conn:
             cursor = conn.cursor()
 
             # عدد التصحيحات

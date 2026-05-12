@@ -1,0 +1,14 @@
+# =============================================================================
+# OmniFile AI Processor — AI Gateway (~200 MB additional)
+# =============================================================================
+# بوابة الذكاء الاصطناعي (DeepSeek, OpenRouter, Ollama, etc.)
+# التثبيت: pip install -r requirements-base.txt -r requirements-ai-gateway.txt
+# =============================================================================
+
+# === AI Providers ===
+openai>=1.0.0
+google-generativeai>=0.3.0
+
+# === HTTP & Retry ===
+httpx>=0.25.0
+tenacity>=8.2.0

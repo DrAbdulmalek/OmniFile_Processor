@@ -26,7 +26,7 @@ import hashlib
 import json
 import logging
 import os
-import sqlite3
+from modules.core.base_db import BaseDB
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -37,7 +37,7 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
-class UserPatternDB:
+class UserPatternDB(BaseDB):
     """
     SQLite-based pattern database for learning user handwriting patterns.
 
@@ -88,16 +88,12 @@ class UserPatternDB:
         Args:
             db_path: Path to SQLite database file
         """
-        Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-        self.db_path = db_path
-        self.conn = sqlite3.connect(db_path, check_same_thread=False)
-        self.conn.row_factory = sqlite3.Row
-        self._init_schema()
+        super().__init__(db_path)
         self._compression_level = 6  # zlib level
 
-    def _init_schema(self):
+    def _create_schema(self, conn):
         """Initialize database tables and indexes."""
-        self.conn.executescript("""
+        conn.executescript("""
             CREATE TABLE IF NOT EXISTS patterns (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 image_hash TEXT UNIQUE NOT NULL,
@@ -136,7 +132,6 @@ class UserPatternDB:
             CREATE INDEX IF NOT EXISTS idx_usage_count
             ON patterns(usage_count DESC, last_used DESC);
         """)
-        self.conn.commit()
 
     def save_correction(
         self,
@@ -169,32 +164,32 @@ class UserPatternDB:
         now = datetime.utcnow().isoformat()
 
         try:
-            self.conn.execute("""
-                INSERT INTO patterns
-                (image_hash, image_blob, predicted_text, corrected_text,
-                 language, confidence, writer_id, context_hint,
-                 usage_count, last_used, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
-                ON CONFLICT(image_hash) DO UPDATE SET
-                    corrected_text = excluded.corrected_text,
-                    predicted_text = excluded.predicted_text,
-                    confidence = excluded.confidence,
-                    usage_count = usage_count + 1,
-                    last_used = excluded.last_used,
-                    updated_at = excluded.updated_at
-            """, (
-                img_hash, img_blob, predicted, corrected,
-                language, confidence, writer_id, context_hint,
-                now, now, now,
-            ))
+            with self.connection() as conn:
+                conn.execute("""
+                    INSERT INTO patterns
+                    (image_hash, image_blob, predicted_text, corrected_text,
+                     language, confidence, writer_id, context_hint,
+                     usage_count, last_used, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
+                    ON CONFLICT(image_hash) DO UPDATE SET
+                        corrected_text = excluded.corrected_text,
+                        predicted_text = excluded.predicted_text,
+                        confidence = excluded.confidence,
+                        usage_count = usage_count + 1,
+                        last_used = excluded.last_used,
+                        updated_at = excluded.updated_at
+                """, (
+                    img_hash, img_blob, predicted, corrected,
+                    language, confidence, writer_id, context_hint,
+                    now, now, now,
+                ))
 
             # Update learning stats
             self._update_stats(writer_id, language)
 
-            self.conn.commit()
             return True
 
-        except sqlite3.Error as e:
+        except Exception as e:
             logger.error(f"Failed to save pattern: {e}")
             return False
 
@@ -219,17 +214,19 @@ class UserPatternDB:
         """
         img_hash = self._robust_image_hash(image)
 
-        cursor = self.conn.execute("""
-            SELECT corrected_text, predicted_text, confidence,
-                   usage_count, context_hint
-            FROM patterns
-            WHERE image_hash = ? AND language = ? AND writer_id = ?
-              AND usage_count >= ?
-            ORDER BY usage_count DESC, confidence DESC
-            LIMIT 1
-        """, (img_hash, language, writer_id, min_usage))
+        with self.connection() as conn:
+            cursor = conn.execute("""
+                SELECT corrected_text, predicted_text, confidence,
+                       usage_count, context_hint
+                FROM patterns
+                WHERE image_hash = ? AND language = ? AND writer_id = ?
+                  AND usage_count >= ?
+                ORDER BY usage_count DESC, confidence DESC
+                LIMIT 1
+            """, (img_hash, language, writer_id, min_usage))
 
-        row = cursor.fetchone()
+            row = cursor.fetchone()
+
         if row:
             return {
                 "suggested_text": row["corrected_text"],
@@ -268,29 +265,30 @@ class UserPatternDB:
         img_hash = self._robust_image_hash(image)
         prefix_len = max(len(img_hash) // 2, 8)
 
-        cursor = self.conn.execute("""
-            SELECT image_hash, corrected_text, predicted_text,
-                   confidence, usage_count, writer_id
-            FROM patterns
-            WHERE image_hash LIKE ? AND language = ? AND writer_id = ?
-              AND usage_count >= 2
-            ORDER BY usage_count DESC
-            LIMIT ?
-        """, (f"{img_hash[:prefix_len]}%", language, writer_id, max_results))
+        with self.connection() as conn:
+            cursor = conn.execute("""
+                SELECT image_hash, corrected_text, predicted_text,
+                       confidence, usage_count, writer_id
+                FROM patterns
+                WHERE image_hash LIKE ? AND language = ? AND writer_id = ?
+                  AND usage_count >= 2
+                ORDER BY usage_count DESC
+                LIMIT ?
+            """, (f"{img_hash[:prefix_len]}%", language, writer_id, max_results))
 
-        results = []
-        for row in cursor.fetchall():
-            # Compute hash similarity
-            similarity = self._hash_similarity(img_hash, row["image_hash"])
-            if similarity >= threshold:
-                results.append({
-                    "corrected_text": row["corrected_text"],
-                    "predicted_text": row["predicted_text"],
-                    "confidence": row["confidence"],
-                    "usage_count": row["usage_count"],
-                    "similarity": similarity,
-                    "hash_match": row["image_hash"],
-                })
+            results = []
+            for row in cursor.fetchall():
+                # Compute hash similarity
+                similarity = self._hash_similarity(img_hash, row["image_hash"])
+                if similarity >= threshold:
+                    results.append({
+                        "corrected_text": row["corrected_text"],
+                        "predicted_text": row["predicted_text"],
+                        "confidence": row["confidence"],
+                        "usage_count": row["usage_count"],
+                        "similarity": similarity,
+                        "hash_match": row["image_hash"],
+                    })
 
         return sorted(results, key=lambda x: x["similarity"], reverse=True)
 
@@ -333,62 +331,65 @@ class UserPatternDB:
         query += " ORDER BY usage_count DESC, confidence DESC LIMIT ?"
 
         try:
-            cursor = self.conn.execute(query, params)
-        except sqlite3.Error as e:
+            with self.connection() as conn:
+                cursor = conn.execute(query, params)
+
+                samples = []
+                for row in cursor.fetchall():
+                    image = self._decompress_image(row["image_blob"])
+                    if image is not None:
+                        samples.append({
+                            "image": image,
+                            "label": row["corrected_text"],
+                            "language": row["language"],
+                            "context": row["context_hint"],
+                            "predicted": row["predicted_text"],
+                            "confidence": row["confidence"],
+                        })
+        except Exception as e:
             logger.error(f"Failed to get training samples: {e}")
             return []
-
-        samples = []
-        for row in cursor.fetchall():
-            image = self._decompress_image(row["image_blob"])
-            if image is not None:
-                samples.append({
-                    "image": image,
-                    "label": row["corrected_text"],
-                    "language": row["language"],
-                    "context": row["context_hint"],
-                    "predicted": row["predicted_text"],
-                    "confidence": row["confidence"],
-                })
 
         logger.info(f"Retrieved {len(samples)} training samples (writer={writer_id})")
         return samples
 
     def get_writer_stats(self, writer_id: str = "default") -> Dict:
         """Get learning statistics for a writer."""
-        cursor = self.conn.execute("""
-            SELECT language, total_corrections, patterns_learned,
-                   total_images, avg_confidence, improvement_rate, last_trained
-            FROM learning_stats
-            WHERE writer_id = ?
-        """, (writer_id,))
+        with self.connection() as conn:
+            cursor = conn.execute("""
+                SELECT language, total_corrections, patterns_learned,
+                       total_images, avg_confidence, improvement_rate, last_trained
+                FROM learning_stats
+                WHERE writer_id = ?
+            """, (writer_id,))
 
-        stats = {}
-        for row in cursor.fetchall():
-            stats[row["language"]] = {
-                "total_corrections": row["total_corrections"],
-                "patterns_learned": row["patterns_learned"],
-                "total_images": row["total_images"],
-                "avg_confidence": row["avg_confidence"],
-                "improvement_rate": row["improvement_rate"],
-                "last_trained": row["last_trained"],
-            }
+            stats = {}
+            for row in cursor.fetchall():
+                stats[row["language"]] = {
+                    "total_corrections": row["total_corrections"],
+                    "patterns_learned": row["patterns_learned"],
+                    "total_images": row["total_images"],
+                    "avg_confidence": row["avg_confidence"],
+                    "improvement_rate": row["improvement_rate"],
+                    "last_trained": row["last_trained"],
+                }
 
         return stats
 
     def get_all_stats(self) -> Dict:
         """Get global statistics."""
-        total = self.conn.execute(
-            "SELECT COUNT(*) as total_patterns FROM patterns"
-        ).fetchone()["total_patterns"]
+        with self.connection() as conn:
+            total = conn.execute(
+                "SELECT COUNT(*) as total_patterns FROM patterns"
+            ).fetchone()["total_patterns"]
 
-        writers = self.conn.execute(
-            "SELECT COUNT(DISTINCT writer_id) as total_writers FROM patterns"
-        ).fetchone()["total_writers"]
+            writers = conn.execute(
+                "SELECT COUNT(DISTINCT writer_id) as total_writers FROM patterns"
+            ).fetchone()["total_writers"]
 
-        languages = self.conn.execute(
-            "SELECT COUNT(DISTINCT language) as total_languages FROM patterns"
-        ).fetchone()["total_languages"]
+            languages = conn.execute(
+                "SELECT COUNT(DISTINCT language) as total_languages FROM patterns"
+            ).fetchone()["total_languages"]
 
         return {
             "total_patterns": total,
@@ -398,32 +399,33 @@ class UserPatternDB:
 
     def delete_writer(self, writer_id: str) -> int:
         """Delete all patterns for a writer. Returns count deleted."""
-        cursor = self.conn.execute(
-            "DELETE FROM patterns WHERE writer_id = ?", (writer_id,)
-        )
-        self.conn.commit()
-        return cursor.rowcount
+        with self.connection() as conn:
+            cursor = conn.execute(
+                "DELETE FROM patterns WHERE writer_id = ?", (writer_id,)
+            )
+            return cursor.rowcount
 
     def cleanup_old_patterns(self, days: int = 90) -> int:
         """Delete patterns older than N days. Returns count deleted."""
-        cursor = self.conn.execute("""
-            DELETE FROM patterns
-            WHERE last_used < datetime('now', '-' || str(days) || ' days').isoformat()
-        """)
-        self.conn.commit()
-        return cursor.rowcount
+        with self.connection() as conn:
+            cursor = conn.execute("""
+                DELETE FROM patterns
+                WHERE last_used < datetime('now', '-' || str(days) || ' days').isoformat()
+            """)
+            return cursor.rowcount
 
     def export_to_json(self, output_path: str) -> str:
         """Export all patterns as JSON for backup."""
-        cursor = self.conn.execute("""
-            SELECT image_hash, predicted_text, corrected_text, language,
-                   confidence, writer_id, context_hint, usage_count,
-                   last_used, created_at
-            FROM patterns
-            ORDER BY usage_count DESC
-        """)
+        with self.connection() as conn:
+            cursor = conn.execute("""
+                SELECT image_hash, predicted_text, corrected_text, language,
+                       confidence, writer_id, context_hint, usage_count,
+                       last_used, created_at
+                FROM patterns
+                ORDER BY usage_count DESC
+            """)
 
-        rows = [dict(row) for row in cursor.fetchall()]
+            rows = [dict(row) for row in cursor.fetchall()]
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(rows, f, ensure_ascii=False, indent=2)
 
@@ -487,49 +489,48 @@ class UserPatternDB:
         """Update learning statistics for a writer."""
         now = datetime.utcnow().isoformat()
 
-        # Get current stats or create new
-        cursor = self.conn.execute("""
-            SELECT total_corrections, patterns_learned, total_images,
-                   avg_confidence, last_trained
-            FROM learning_stats
-            WHERE writer_id = ? AND language = ?
-        """, (writer_id, language))
+        with self.connection() as conn:
+            # Get current stats or create new
+            cursor = conn.execute("""
+                SELECT total_corrections, patterns_learned, total_images,
+                       avg_confidence, last_trained
+                FROM learning_stats
+                WHERE writer_id = ? AND language = ?
+            """, (writer_id, language))
 
-        row = cursor.fetchone()
-        if row:
-            new_corrections = row["total_corrections"] + 1
-            new_patterns = row["patterns_learned"] + 1
-            total_images = row["total_images"] + 1
-            avg_conf = row["avg_confidence"]
-            last_trained = row["last_trained"]
-        else:
-            new_corrections = 1
-            new_patterns = 1
-            total_images = 1
-            avg_conf = 0.0
-            last_trained = None
+            row = cursor.fetchone()
+            if row:
+                new_corrections = row["total_corrections"] + 1
+                new_patterns = row["patterns_learned"] + 1
+                total_images = row["total_images"] + 1
+                avg_conf = row["avg_confidence"]
+                last_trained = row["last_trained"]
+            else:
+                new_corrections = 1
+                new_patterns = 1
+                total_images = 1
+                avg_conf = 0.0
+                last_trained = None
 
-        # Compute improvement rate
-        improvement = 0.0
-        if last_trained and avg_conf > 0:
-            improvement = (new_corrections / max(new_patterns, 1)) / max(total_images, 1)
+            # Compute improvement rate
+            improvement = 0.0
+            if last_trained and avg_conf > 0:
+                improvement = (new_corrections / max(new_patterns, 1)) / max(total_images, 1)
 
-        self.conn.execute("""
-            INSERT INTO learning_stats
-                (writer_id, language, total_corrections, patterns_learned,
-                 total_images, avg_confidence, improvement_rate, last_trained, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(writer_id, language) DO UPDATE SET
-                total_corrections = excluded.total_corrections,
-                patterns_learned = excluded.patterns_learned,
-                total_images = excluded.total_images,
-                avg_confidence = excluded.avg_confidence,
-                improvement_rate = excluded.improvement_rate,
-                last_trained = excluded.last_trained,
-                updated_at = ?
-        """, (
-            writer_id, language, new_corrections, new_patterns,
-            total_images, avg_conf, improvement, now, now,
-        ))
-
-        self.conn.commit()
+            conn.execute("""
+                INSERT INTO learning_stats
+                    (writer_id, language, total_corrections, patterns_learned,
+                     total_images, avg_confidence, improvement_rate, last_trained, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(writer_id, language) DO UPDATE SET
+                    total_corrections = excluded.total_corrections,
+                    patterns_learned = excluded.patterns_learned,
+                    total_images = excluded.total_images,
+                    avg_confidence = excluded.avg_confidence,
+                    improvement_rate = excluded.improvement_rate,
+                    last_trained = excluded.last_trained,
+                    updated_at = ?
+            """, (
+                writer_id, language, new_corrections, new_patterns,
+                total_images, avg_conf, improvement, now, now,
+            ))

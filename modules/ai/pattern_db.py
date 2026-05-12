@@ -16,7 +16,7 @@ and improve OCR accuracy over time through pattern matching.
 from __future__ import annotations
 
 import logging
-import sqlite3
+from modules.core.base_db import BaseDB
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -24,7 +24,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 
-class PatternDatabase:
+class PatternDatabase(BaseDB):
     """SQLite database for storing OCR correction patterns.
 
     Manages persistent storage of user corrections and word pattern
@@ -43,33 +43,13 @@ class PatternDatabase:
         Args:
             db_path: Path to the SQLite database file.
         """
-        self.db_path = Path(db_path)
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
-
-        self._connection: Optional[sqlite3.Connection] = None
-        self._initialize_database()
+        super().__init__(db_path)
 
     # ------------------------------------------------------------------
-    # Connection management
+    # Schema
     # ------------------------------------------------------------------
 
-    def _get_connection(self) -> sqlite3.Connection:
-        """Get or create a database connection.
-
-        Returns:
-            Active SQLite connection.
-        """
-        if self._connection is None:
-            self._connection = sqlite3.connect(
-                str(self.db_path),
-                check_same_thread=False,
-            )
-            self._connection.row_factory = sqlite3.Row
-            # Enable WAL mode for better concurrent access
-            self._connection.execute("PRAGMA journal_mode=WAL")
-        return self._connection
-
-    def _initialize_database(self) -> None:
+    def _create_schema(self, conn) -> None:
         """Create database tables if they don't exist.
 
         Creates:
@@ -78,10 +58,7 @@ class PatternDatabase:
         - statistics: Tracks usage statistics
         - training_status: Tracks model training progress
         """
-        conn = self._get_connection()
-        cursor = conn.cursor()
-
-        cursor.executescript("""
+        conn.executescript("""
             CREATE TABLE IF NOT EXISTS corrections (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 original_text TEXT NOT NULL,
@@ -132,7 +109,6 @@ class PatternDatabase:
             );
         """)
 
-        conn.commit()
         logger.debug(f"Database initialized: {self.db_path}")
 
     # ------------------------------------------------------------------
@@ -160,33 +136,29 @@ class PatternDatabase:
         Returns:
             Row ID of the correction record.
         """
-        conn = self._get_connection()
-        cursor = conn.cursor()
-
-        # Check if correction already exists
-        cursor.execute(
-            "SELECT id, use_count FROM corrections "
-            "WHERE original_text = ? AND corrected_text = ?",
-            (original_text, corrected_text),
-        )
-        existing = cursor.fetchone()
-
-        if existing:
-            cursor.execute(
-                "UPDATE corrections SET use_count = ?, "
-                "last_used_at = datetime('now') WHERE id = ?",
-                (existing["use_count"] + 1, existing["id"]),
+        with self.connection() as conn:
+            # Check if correction already exists
+            cursor = conn.execute(
+                "SELECT id, use_count FROM corrections "
+                "WHERE original_text = ? AND corrected_text = ?",
+                (original_text, corrected_text),
             )
-            conn.commit()
-            return existing["id"]
+            existing = cursor.fetchone()
 
-        cursor.execute(
-            """INSERT INTO corrections (original_text, corrected_text, engine, confidence)
-               VALUES (?, ?, ?, ?)""",
-            (original_text, corrected_text, engine, confidence),
-        )
-        conn.commit()
-        row_id = cursor.lastrowid
+            if existing:
+                conn.execute(
+                    "UPDATE corrections SET use_count = ?, "
+                    "last_used_at = datetime('now') WHERE id = ?",
+                    (existing["use_count"] + 1, existing["id"]),
+                )
+                return existing["id"]
+
+            cursor = conn.execute(
+                """INSERT INTO corrections (original_text, corrected_text, engine, confidence)
+                   VALUES (?, ?, ?, ?)""",
+                (original_text, corrected_text, engine, confidence),
+            )
+            row_id = cursor.lastrowid
 
         # Update statistics
         self._increment_stat("total_corrections")
@@ -210,31 +182,29 @@ class PatternDatabase:
         Returns:
             List of correction dictionaries.
         """
-        conn = self._get_connection()
-        cursor = conn.cursor()
+        with self.connection() as conn:
+            cursor = conn.execute(
+                """SELECT id, original_text, corrected_text, engine, confidence,
+                          use_count, created_at
+                   FROM corrections
+                   WHERE use_count >= ?
+                   ORDER BY use_count DESC, created_at DESC
+                   LIMIT ?""",
+                (min_use_count, limit),
+            )
 
-        cursor.execute(
-            """SELECT id, original_text, corrected_text, engine, confidence,
-                      use_count, created_at
-               FROM corrections
-               WHERE use_count >= ?
-               ORDER BY use_count DESC, created_at DESC
-               LIMIT ?""",
-            (min_use_count, limit),
-        )
-
-        return [
-            {
-                "id": row["id"],
-                "original_text": row["original_text"],
-                "corrected_text": row["corrected_text"],
-                "engine": row["engine"],
-                "confidence": row["confidence"],
-                "use_count": row["use_count"],
-                "created_at": row["created_at"],
-            }
-            for row in cursor.fetchall()
-        ]
+            return [
+                {
+                    "id": row["id"],
+                    "original_text": row["original_text"],
+                    "corrected_text": row["corrected_text"],
+                    "engine": row["engine"],
+                    "confidence": row["confidence"],
+                    "use_count": row["use_count"],
+                    "created_at": row["created_at"],
+                }
+                for row in cursor.fetchall()
+            ]
 
     def find_correction(self, original_text: str) -> Optional[dict]:
         """Look up a correction for specific original text.
@@ -245,31 +215,29 @@ class PatternDatabase:
         Returns:
             Correction dictionary if found, None otherwise.
         """
-        conn = self._get_connection()
-        cursor = conn.cursor()
+        with self.connection() as conn:
+            cursor = conn.execute(
+                """SELECT id, original_text, corrected_text, engine, confidence,
+                          use_count, created_at
+                   FROM corrections
+                   WHERE original_text = ?
+                   ORDER BY use_count DESC
+                   LIMIT 1""",
+                (original_text,),
+            )
 
-        cursor.execute(
-            """SELECT id, original_text, corrected_text, engine, confidence,
-                      use_count, created_at
-               FROM corrections
-               WHERE original_text = ?
-               ORDER BY use_count DESC
-               LIMIT 1""",
-            (original_text,),
-        )
-
-        row = cursor.fetchone()
-        if row:
-            return {
-                "id": row["id"],
-                "original_text": row["original_text"],
-                "corrected_text": row["corrected_text"],
-                "engine": row["engine"],
-                "confidence": row["confidence"],
-                "use_count": row["use_count"],
-                "created_at": row["created_at"],
-            }
-        return None
+            row = cursor.fetchone()
+            if row:
+                return {
+                    "id": row["id"],
+                    "original_text": row["original_text"],
+                    "corrected_text": row["corrected_text"],
+                    "engine": row["engine"],
+                    "confidence": row["confidence"],
+                    "use_count": row["use_count"],
+                    "created_at": row["created_at"],
+                }
+            return None
 
     def delete_correction(self, correction_id: int) -> bool:
         """Delete a correction record.
@@ -280,14 +248,11 @@ class PatternDatabase:
         Returns:
             True if deleted, False if not found.
         """
-        conn = self._get_connection()
-        cursor = conn.cursor()
-
-        cursor.execute(
-            "DELETE FROM corrections WHERE id = ?", (correction_id,)
-        )
-        conn.commit()
-        deleted = cursor.rowcount > 0
+        with self.connection() as conn:
+            cursor = conn.execute(
+                "DELETE FROM corrections WHERE id = ?", (correction_id,)
+            )
+            deleted = cursor.rowcount > 0
 
         if deleted:
             logger.debug(f"Deleted correction id={correction_id}")
@@ -325,18 +290,15 @@ class PatternDatabase:
         Returns:
             Row ID of the pattern record.
         """
-        conn = self._get_connection()
-        cursor = conn.cursor()
-
-        cursor.execute(
-            """INSERT INTO patterns (label, image_data, image_width, image_height,
-                                      ocr_text, confidence, source_engine)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (label, image_data, image_width, image_height,
-             ocr_text, confidence, source_engine),
-        )
-        conn.commit()
-        row_id = cursor.lastrowid
+        with self.connection() as conn:
+            cursor = conn.execute(
+                """INSERT INTO patterns (label, image_data, image_width, image_height,
+                                          ocr_text, confidence, source_engine)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (label, image_data, image_width, image_height,
+                 ocr_text, confidence, source_engine),
+            )
+            row_id = cursor.lastrowid
 
         self._increment_stat("total_patterns")
         logger.debug(
@@ -358,43 +320,41 @@ class PatternDatabase:
         Returns:
             List of pattern dictionaries with image data.
         """
-        conn = self._get_connection()
-        cursor = conn.cursor()
+        with self.connection() as conn:
+            if label:
+                cursor = conn.execute(
+                    """SELECT id, label, image_data, image_width, image_height,
+                              ocr_text, confidence, source_engine, use_count
+                       FROM patterns
+                       WHERE label = ?
+                       ORDER BY use_count DESC
+                       LIMIT ?""",
+                    (label, limit),
+                )
+            else:
+                cursor = conn.execute(
+                    """SELECT id, label, image_data, image_width, image_height,
+                              ocr_text, confidence, source_engine, use_count
+                       FROM patterns
+                       ORDER BY use_count DESC
+                       LIMIT ?""",
+                    (limit,),
+                )
 
-        if label:
-            cursor.execute(
-                """SELECT id, label, image_data, image_width, image_height,
-                          ocr_text, confidence, source_engine, use_count
-                   FROM patterns
-                   WHERE label = ?
-                   ORDER BY use_count DESC
-                   LIMIT ?""",
-                (label, limit),
-            )
-        else:
-            cursor.execute(
-                """SELECT id, label, image_data, image_width, image_height,
-                          ocr_text, confidence, source_engine, use_count
-                   FROM patterns
-                   ORDER BY use_count DESC
-                   LIMIT ?""",
-                (limit,),
-            )
-
-        return [
-            {
-                "id": row["id"],
-                "label": row["label"],
-                "image_data": row["image_data"],
-                "image_width": row["image_width"],
-                "image_height": row["image_height"],
-                "ocr_text": row["ocr_text"],
-                "confidence": row["confidence"],
-                "source_engine": row["source_engine"],
-                "use_count": row["use_count"],
-            }
-            for row in cursor.fetchall()
-        ]
+            return [
+                {
+                    "id": row["id"],
+                    "label": row["label"],
+                    "image_data": row["image_data"],
+                    "image_width": row["image_width"],
+                    "image_height": row["image_height"],
+                    "ocr_text": row["ocr_text"],
+                    "confidence": row["confidence"],
+                    "source_engine": row["source_engine"],
+                    "use_count": row["use_count"],
+                }
+                for row in cursor.fetchall()
+            ]
 
     def get_unique_labels(self) -> list[str]:
         """Get all unique pattern labels.
@@ -402,11 +362,9 @@ class PatternDatabase:
         Returns:
             Sorted list of unique label strings.
         """
-        conn = self._get_connection()
-        cursor = conn.cursor()
-
-        cursor.execute("SELECT DISTINCT label FROM patterns ORDER BY label")
-        return [row["label"] for row in cursor.fetchall()]
+        with self.connection() as conn:
+            cursor = conn.execute("SELECT DISTINCT label FROM patterns ORDER BY label")
+            return [row["label"] for row in cursor.fetchall()]
 
     def increment_pattern_use(self, pattern_id: int) -> None:
         """Increment the use count for a pattern.
@@ -414,15 +372,12 @@ class PatternDatabase:
         Args:
             pattern_id: ID of the pattern to update.
         """
-        conn = self._get_connection()
-        cursor = conn.cursor()
-
-        cursor.execute(
-            "UPDATE patterns SET use_count = use_count + 1, "
-            "last_used_at = datetime('now') WHERE id = ?",
-            (pattern_id,),
-        )
-        conn.commit()
+        with self.connection() as conn:
+            conn.execute(
+                "UPDATE patterns SET use_count = use_count + 1, "
+                "last_used_at = datetime('now') WHERE id = ?",
+                (pattern_id,),
+            )
 
     def delete_pattern(self, pattern_id: int) -> bool:
         """Delete a pattern record.
@@ -433,12 +388,9 @@ class PatternDatabase:
         Returns:
             True if deleted, False if not found.
         """
-        conn = self._get_connection()
-        cursor = conn.cursor()
-
-        cursor.execute("DELETE FROM patterns WHERE id = ?", (pattern_id,))
-        conn.commit()
-        deleted = cursor.rowcount > 0
+        with self.connection() as conn:
+            cursor = conn.execute("DELETE FROM patterns WHERE id = ?", (pattern_id,))
+            deleted = cursor.rowcount > 0
 
         if deleted:
             logger.debug(f"Deleted pattern id={pattern_id}")
@@ -456,18 +408,15 @@ class PatternDatabase:
             key: Statistics key name.
             increment: Amount to increment by.
         """
-        conn = self._get_connection()
-        cursor = conn.cursor()
-
-        cursor.execute(
-            """INSERT INTO statistics (stat_key, stat_value)
-               VALUES (?, ?)
-               ON CONFLICT(stat_key) DO UPDATE SET
-                   stat_value = CAST(stat_value AS INTEGER) + ?,
-                   updated_at = datetime('now')""",
-            (key, str(increment), increment),
-        )
-        conn.commit()
+        with self.connection() as conn:
+            conn.execute(
+                """INSERT INTO statistics (stat_key, stat_value)
+                   VALUES (?, ?)
+                   ON CONFLICT(stat_key) DO UPDATE SET
+                       stat_value = CAST(stat_value AS INTEGER) + ?,
+                       updated_at = datetime('now')""",
+                (key, str(increment), increment),
+            )
 
     def get_stat(self, key: str) -> int:
         """Get a statistics value.
@@ -478,13 +427,11 @@ class PatternDatabase:
         Returns:
             Integer value, or 0 if not found.
         """
-        conn = self._get_connection()
-        cursor = conn.cursor()
-
-        cursor.execute(
-            "SELECT stat_value FROM statistics WHERE stat_key = ?", (key,)
-        )
-        row = cursor.fetchone()
+        with self.connection() as conn:
+            cursor = conn.execute(
+                "SELECT stat_value FROM statistics WHERE stat_key = ?", (key,)
+            )
+            row = cursor.fetchone()
 
         if row:
             try:
@@ -499,14 +446,12 @@ class PatternDatabase:
         Returns:
             Dictionary of all statistic key-value pairs.
         """
-        conn = self._get_connection()
-        cursor = conn.cursor()
-
-        cursor.execute("SELECT stat_key, stat_value FROM statistics")
-        return {
-            row["stat_key"]: int(row["stat_value"])
-            for row in cursor.fetchall()
-        }
+        with self.connection() as conn:
+            cursor = conn.execute("SELECT stat_key, stat_value FROM statistics")
+            return {
+                row["stat_key"]: int(row["stat_value"])
+                for row in cursor.fetchall()
+            }
 
     # ------------------------------------------------------------------
     # Maintenance
@@ -521,24 +466,21 @@ class PatternDatabase:
         Returns:
             Number of records deleted.
         """
-        conn = self._get_connection()
-        cursor = conn.cursor()
+        with self.connection() as conn:
+            cutoff = f"datetime('now', '-{max_age_days} days')"
 
-        cutoff = f"datetime('now', '-{max_age_days} days')"
+            cursor = conn.execute(
+                f"DELETE FROM corrections WHERE last_used_at IS NULL "
+                f"AND created_at < {cutoff} AND use_count = 0"
+            )
+            deleted_corrections = cursor.rowcount
 
-        cursor.execute(
-            f"DELETE FROM corrections WHERE last_used_at IS NULL "
-            f"AND created_at < {cutoff} AND use_count = 0"
-        )
-        deleted_corrections = cursor.rowcount
+            cursor = conn.execute(
+                f"DELETE FROM patterns WHERE last_used_at IS NULL "
+                f"AND created_at < {cutoff} AND use_count = 0"
+            )
+            deleted_patterns = cursor.rowcount
 
-        cursor.execute(
-            f"DELETE FROM patterns WHERE last_used_at IS NULL "
-            f"AND created_at < {cutoff} AND use_count = 0"
-        )
-        deleted_patterns = cursor.rowcount
-
-        conn.commit()
         total = deleted_corrections + deleted_patterns
 
         if total > 0:
@@ -550,15 +492,12 @@ class PatternDatabase:
         return total
 
     # ------------------------------------------------------------------
-    # Lifecycle
+    # Lifecycle (stubs — BaseDB handles connection management)
     # ------------------------------------------------------------------
 
     def close(self) -> None:
-        """Close the database connection."""
-        if self._connection is not None:
-            self._connection.close()
-            self._connection = None
-            logger.debug("Database connection closed")
+        """No-op: BaseDB manages connections via context manager."""
+        pass
 
     def __enter__(self) -> "PatternDatabase":
         """Context manager entry."""

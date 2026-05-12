@@ -1,0 +1,23 @@
+# =============================================================================
+# OmniFile AI Processor — Deployment (~300 MB additional)
+# =============================================================================
+# النشر الإنتاجي + المراقبة + الأمان
+# التثبيت: pip install -r requirements-base.txt -r requirements-deployment.txt
+# =============================================================================
+
+# === Task Queue ===
+celery>=5.3.0
+redis>=5.0.0
+
+# === Monitoring ===
+prometheus-client>=0.19.0
+structlog>=23.2.0
+
+# === Server ===
+gunicorn>=21.2.0
+
+# === Security ===
+presidio-analyzer>=2.2.0
+presidio-anonymizer>=2.2.0
+cryptography>=41.0.0
+detect-secrets>=1.4.0

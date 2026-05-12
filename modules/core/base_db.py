@@ -27,6 +27,7 @@ OmniFile AI Processor v5.0 — Dr. Abdulmalek Tamer Al-husseini
 """
 
 import logging
+import re
 import sqlite3
 import time
 from contextlib import contextmanager
@@ -162,6 +163,8 @@ class BaseDB:
 
     def count(self, table: str, where: str = "", params: tuple = ()) -> int:
         """عدّ صفوف جدول مع شرط اختياري."""
+        if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', table):
+            raise ValueError(f"Invalid table name: {table}")
         sql = f"SELECT COUNT(*) AS n FROM {table}"
         if where:
             sql += f" WHERE {where}"

@@ -1,16 +1,27 @@
 # =============================================================================
-# OmniFile AI Processor — Development Requirements (متطلبات التطوير)
+# OmniFile AI Processor — Development Requirements
 # =============================================================================
-# حزم الاختبار والتدقيق فقط — لا حاجة لها للتشغيل الإنتاجي.
-# الاستخدام: pip install -r requirements-dev.txt
+# pip install -r requirements-dev.txt
 # =============================================================================
 
--r requirements-core.txt
+-r requirements.txt
 
 # === Testing ===
 pytest>=7.4.0
 pytest-cov>=4.1.0
 pytest-mock>=3.11.0
+pytest-asyncio>=0.23.0
 
 # === Linting & Formatting ===
 ruff>=0.1.0
+black>=24.0.0
+isort>=5.13.0
+
+# === Training (Optional) ===
+bitsandbytes>=0.43.0
+trl>=0.9.0
+wandb>=0.17.0
+tensorboard>=2.15.0
+albumentations>=1.4.0
+editdistance>=0.8.0
+optimum>=1.20.0

@@ -1,0 +1,55 @@
+# =============================================================
+# requirements-colab.txt — OmniFile AI Processor v5.0
+# حزم مُحسَّنة لبيئة Google Colab
+# =============================================================
+
+# === Core ===
+gradio>=4.0.0
+pandas>=2.0.0
+numpy>=1.24.0
+Pillow>=10.0.0
+requests>=2.31.0
+filelock>=3.12.0
+tqdm>=4.65.0
+python-dotenv>=1.0.0
+
+# === OCR ===
+easyocr>=1.7.0
+pytesseract>=0.3.10
+PyMuPDF>=1.23.0
+pdf2image>=1.16.0
+opencv-python-headless>=4.8.0
+
+# === Deep Learning (Colab يملك torch مسبقاً) ===
+transformers>=4.36.0
+peft>=0.7.0
+sentencepiece>=0.1.99
+huggingface_hub>=0.19.0
+
+# === NLP ===
+langdetect>=1.0.9
+pyspellchecker>=0.7.2
+arabic-reshaper>=3.0.0
+python-bidi>=0.4.2
+jiwer>=3.0.0
+rapidfuzz>=3.0.0
+
+# === Export ===
+python-docx>=0.8.11
+openpyxl>=3.1.0
+markdown>=3.5.0
+
+# === Security ===
+cryptography>=41.0.0
+
+# === Data Models ===
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# === Word Trainer (v5.0 — جديد) ===
+# pyspellchecker يدعم ar/en/de
+# langdetect لاكتشاف اللغة التلقائي
+
+# === Testing ===
+pytest>=7.4.0
+pytest-cov>=4.1.0

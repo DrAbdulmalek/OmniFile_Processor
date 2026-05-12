@@ -2,7 +2,7 @@
 Pattern DB — قاعدة بيانات لأنماط الخط اليدوي الشخصية
 تتعلم من تصحيحات المستخدم وتقترح تلقائياً
 """
-import sqlite3
+from modules.core.base_db import BaseDB
 import hashlib
 import cv2
 import numpy as np
@@ -10,49 +10,46 @@ from pathlib import Path
 from typing import Optional, List, Dict
 
 
-class PatternDB:
+class PatternDB(BaseDB):
     """قاعدة بيانات لأنماط الخط اليدوي الشخصية"""
 
     def __init__(self, db_path: str = "data/vocab_patterns.db"):
-        Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-        self.db_path = db_path
-        self._init_db()
+        super().__init__(db_path)
 
-    def _init_db(self):
+    def _create_schema(self, conn):
         """إنشاء الجداول إذا لم تكن موجودة"""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.executescript("""
-                CREATE TABLE IF NOT EXISTS patterns (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    image_hash TEXT UNIQUE NOT NULL,
-                    image_blob BLOB,
-                    predicted_text TEXT NOT NULL,
-                    corrected_text TEXT NOT NULL,
-                    language TEXT CHECK(language IN ('en', 'ar', 'mixed', 'symbol')),
-                    category TEXT DEFAULT 'vocab',
-                    writer_id TEXT DEFAULT 'default',
-                    confidence REAL,
-                    usage_count INTEGER DEFAULT 1,
-                    correction_count INTEGER DEFAULT 0,
-                    first_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    last_used TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    context_json TEXT
-                );
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS patterns (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                image_hash TEXT UNIQUE NOT NULL,
+                image_blob BLOB,
+                predicted_text TEXT NOT NULL,
+                corrected_text TEXT NOT NULL,
+                language TEXT CHECK(language IN ('en', 'ar', 'mixed', 'symbol')),
+                category TEXT DEFAULT 'vocab',
+                writer_id TEXT DEFAULT 'default',
+                confidence REAL,
+                usage_count INTEGER DEFAULT 1,
+                correction_count INTEGER DEFAULT 0,
+                first_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_used TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                context_json TEXT
+            );
 
-                CREATE TABLE IF NOT EXISTS correction_sessions (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    session_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    page_hash TEXT,
-                    total_words INTEGER,
-                    corrected_words INTEGER,
-                    avg_confidence REAL,
-                    notes TEXT
-                );
+            CREATE TABLE IF NOT EXISTS correction_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                page_hash TEXT,
+                total_words INTEGER,
+                corrected_words INTEGER,
+                avg_confidence REAL,
+                notes TEXT
+            );
 
-                CREATE INDEX IF NOT EXISTS idx_hash_lang ON patterns(image_hash, language);
-                CREATE INDEX IF NOT EXISTS idx_writer_cat ON patterns(writer_id, category);
-                CREATE INDEX IF NOT EXISTS idx_usage ON patterns(usage_count DESC);
-            """)
+            CREATE INDEX IF NOT EXISTS idx_hash_lang ON patterns(image_hash, language);
+            CREATE INDEX IF NOT EXISTS idx_writer_cat ON patterns(writer_id, category);
+            CREATE INDEX IF NOT EXISTS idx_usage ON patterns(usage_count DESC);
+        """)
 
     def save_pattern(self,
                     image: np.ndarray,
@@ -69,7 +66,7 @@ class PatternDB:
         image_blob = buffer.tobytes()
         context_json = str(context) if context else None
 
-        with sqlite3.connect(self.db_path) as conn:
+        with self.connection() as conn:
             cursor = conn.execute("""
                 INSERT INTO patterns
                 (image_hash, image_blob, predicted_text, corrected_text,
@@ -94,7 +91,7 @@ class PatternDB:
         """البحث عن نمط مشابه بصرياً"""
         image_hash = self._compute_robust_hash(image)
 
-        with sqlite3.connect(self.db_path) as conn:
+        with self.connection() as conn:
             cursor = conn.execute("""
                 SELECT id, corrected_text, confidence, usage_count, correction_count, category
                 FROM patterns
@@ -124,7 +121,7 @@ class PatternDB:
         """جلب عينات عالية الجودة لإعادة تدريب النموذج"""
         samples = []
 
-        with sqlite3.connect(self.db_path) as conn:
+        with self.connection() as conn:
             query = """
                 SELECT image_blob, corrected_text, language, category, confidence
                 FROM patterns
@@ -163,7 +160,7 @@ class PatternDB:
                    avg_confidence: float,
                    notes: str = None) -> int:
         """تسجيل إحصائيات جلسة معالجة"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.connection() as conn:
             cursor = conn.execute("""
                 INSERT INTO correction_sessions
                 (page_hash, total_words, corrected_words, avg_confidence, notes)
@@ -173,7 +170,7 @@ class PatternDB:
 
     def get_stats(self) -> Dict:
         """إحصائيات عامة لقاعدة الأنماط"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.connection() as conn:
             total = conn.execute("SELECT COUNT(*) FROM patterns").fetchone()[0]
             languages = conn.execute(
                 "SELECT language, COUNT(*) FROM patterns GROUP BY language"
@@ -206,7 +203,7 @@ class PatternDB:
 
     def _get_id_by_hash(self, image_hash: str) -> Optional[int]:
         """مساعدة: جلب معرف النمط من البصمة"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.connection() as conn:
             cursor = conn.execute(
                 "SELECT id FROM patterns WHERE image_hash = ?",
                 (image_hash,)

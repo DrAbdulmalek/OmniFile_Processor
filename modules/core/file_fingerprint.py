@@ -19,7 +19,7 @@
 
 import hashlib
 import os
-import sqlite3
+from modules.core.base_db import BaseDB
 import logging
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any, Tuple
@@ -27,7 +27,7 @@ from typing import Optional, List, Dict, Any, Tuple
 logger = logging.getLogger(__name__)
 
 
-class FileFingerprintManager:
+class FileFingerprintManager(BaseDB):
     """
     مدير بصمات الملفات — يمنع إعادة معالجة الملفات المتطابقة.
 
@@ -42,15 +42,12 @@ class FileFingerprintManager:
         Args:
             db_path: مسار ملف قاعدة البيانات SQLite
         """
-        self.db_path = db_path
-        self.conn = sqlite3.connect(db_path, check_same_thread=False)
-        self.conn.row_factory = sqlite3.Row
-        self._create_tables()
+        super().__init__(db_path)
         logger.info("تم تهيئة مدير بصمات الملفات: %s", db_path)
 
-    def _create_tables(self):
+    def _create_schema(self, conn):
         """إنشاء جداول قاعدة البيانات."""
-        self.conn.execute('''
+        conn.execute('''
             CREATE TABLE IF NOT EXISTS file_fingerprints (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 file_hash TEXT UNIQUE NOT NULL,
@@ -71,13 +68,13 @@ class FileFingerprintManager:
         ''')
 
         # فهرس للبحث السريع
-        self.conn.execute('CREATE INDEX IF NOT EXISTS idx_hash ON file_fingerprints(file_hash)')
-        self.conn.execute('CREATE INDEX IF NOT EXISTS idx_category ON file_fingerprints(category)')
-        self.conn.execute('CREATE INDEX IF NOT EXISTS idx_status ON file_fingerprints(status)')
-        self.conn.execute('CREATE INDEX IF NOT EXISTS idx_date ON file_fingerprints(processed_at)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_hash ON file_fingerprints(file_hash)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_category ON file_fingerprints(category)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_status ON file_fingerprints(status)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_date ON file_fingerprints(processed_at)')
 
         # جدول سجل العمليات
-        self.conn.execute('''
+        conn.execute('''
             CREATE TABLE IF NOT EXISTS processing_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 file_hash TEXT NOT NULL,
@@ -86,8 +83,6 @@ class FileFingerprintManager:
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-
-        self.conn.commit()
 
     @staticmethod
     def calculate_hash(file_path: str, algorithm: str = "sha256") -> str:
@@ -142,11 +137,12 @@ class FileFingerprintManager:
         """
         try:
             file_hash = self.calculate_hash(file_path)
-            cursor = self.conn.execute(
-                "SELECT 1 FROM file_fingerprints WHERE file_hash = ?",
-                (file_hash,)
-            )
-            result = cursor.fetchone()
+            with self.connection() as conn:
+                cursor = conn.execute(
+                    "SELECT 1 FROM file_fingerprints WHERE file_hash = ?",
+                    (file_hash,)
+                )
+                result = cursor.fetchone()
             return result is None
         except Exception as e:
             logger.error("خطأ في فحص الملف %s: %s", file_path, e)
@@ -164,11 +160,12 @@ class FileFingerprintManager:
         """
         try:
             file_hash = self.calculate_hash(file_path)
-            cursor = self.conn.execute(
-                "SELECT * FROM file_fingerprints WHERE file_hash = ?",
-                (file_hash,)
-            )
-            row = cursor.fetchone()
+            with self.connection() as conn:
+                cursor = conn.execute(
+                    "SELECT * FROM file_fingerprints WHERE file_hash = ?",
+                    (file_hash,)
+                )
+                row = cursor.fetchone()
             return dict(row) if row else None
         except Exception as e:
             logger.error("خطأ في استرجاع معلومات الملف: %s", e)
@@ -208,32 +205,31 @@ class FileFingerprintManager:
             file_size = os.path.getsize(file_path) if os.path.exists(file_path) else 0
             last_modified = os.path.getmtime(file_path) if os.path.exists(file_path) else 0
 
-            self.conn.execute('''
-                INSERT OR IGNORE INTO file_fingerprints
-                (file_hash, file_name, file_path, file_extension, file_size,
-                 category, subcategory, status, processing_time, ocr_engine,
-                 confidence_score, notes, last_modified)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                file_hash, file_name, file_path, file_ext, file_size,
-                category, subcategory, status, processing_time, ocr_engine,
-                confidence_score, notes, last_modified
-            ))
+            with self.connection() as conn:
+                conn.execute('''
+                    INSERT OR IGNORE INTO file_fingerprints
+                    (file_hash, file_name, file_path, file_extension, file_size,
+                     category, subcategory, status, processing_time, ocr_engine,
+                     confidence_score, notes, last_modified)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    file_hash, file_name, file_path, file_ext, file_size,
+                    category, subcategory, status, processing_time, ocr_engine,
+                    confidence_score, notes, last_modified
+                ))
 
-            # تسجيل العملية
-            self.conn.execute('''
-                INSERT INTO processing_log (file_hash, action, details)
-                VALUES (?, ?, ?)
-            ''', (file_hash, "processed", f"category={category}, engine={ocr_engine}"))
+                # تسجيل العملية
+                conn.execute('''
+                    INSERT INTO processing_log (file_hash, action, details)
+                    VALUES (?, ?, ?)
+                ''', (file_hash, "processed", f"category={category}, engine={ocr_engine}"))
 
-            self.conn.commit()
             logger.info("تم تسجيل بصمة: %s [%s]", file_name, category)
             return True
-        except sqlite3.IntegrityError:
-            logger.debug("الملف مسجل مسبقاً: %s", file_path)
-            return False
         except Exception as e:
             logger.error("خطأ في تسجيل البصمة: %s", e)
+            if "UNIQUE constraint" in str(e):
+                logger.debug("الملف مسجل مسبقاً: %s", file_path)
             return False
 
     def find_duplicates(self, directory: str) -> List[List[Dict[str, Any]]]:
@@ -275,54 +271,55 @@ class FileFingerprintManager:
         Returns:
             قاموس يحتوي على الإحصائيات
         """
-        stats = {}
+        with self.connection() as conn:
+            stats = {}
 
-        # إجمالي الملفات
-        cursor = self.conn.execute("SELECT COUNT(*) as total FROM file_fingerprints")
-        stats["total_files"] = cursor.fetchone()["total"]
+            # إجمالي الملفات
+            cursor = conn.execute("SELECT COUNT(*) as total FROM file_fingerprints")
+            stats["total_files"] = cursor.fetchone()["total"]
 
-        # عدد الملفات حسب التصنيف
-        cursor = self.conn.execute(
-            "SELECT category, COUNT(*) as count FROM file_fingerprints "
-            "GROUP BY category ORDER BY count DESC"
-        )
-        stats["by_category"] = [dict(row) for row in cursor.fetchall()]
+            # عدد الملفات حسب التصنيف
+            cursor = conn.execute(
+                "SELECT category, COUNT(*) as count FROM file_fingerprints "
+                "GROUP BY category ORDER BY count DESC"
+            )
+            stats["by_category"] = [dict(row) for row in cursor.fetchall()]
 
-        # عدد الملفات حسب الامتداد
-        cursor = self.conn.execute(
-            "SELECT file_extension, COUNT(*) as count FROM file_fingerprints "
-            "GROUP BY file_extension ORDER BY count DESC LIMIT 20"
-        )
-        stats["by_extension"] = [dict(row) for row in cursor.fetchall()]
+            # عدد الملفات حسب الامتداد
+            cursor = conn.execute(
+                "SELECT file_extension, COUNT(*) as count FROM file_fingerprints "
+                "GROUP BY file_extension ORDER BY count DESC LIMIT 20"
+            )
+            stats["by_extension"] = [dict(row) for row in cursor.fetchall()]
 
-        # عدد الملفات حسب الحالة
-        cursor = self.conn.execute(
-            "SELECT status, COUNT(*) as count FROM file_fingerprints "
-            "GROUP BY status"
-        )
-        stats["by_status"] = [dict(row) for row in cursor.fetchall()]
+            # عدد الملفات حسب الحالة
+            cursor = conn.execute(
+                "SELECT status, COUNT(*) as count FROM file_fingerprints "
+                "GROUP BY status"
+            )
+            stats["by_status"] = [dict(row) for row in cursor.fetchall()]
 
-        # متوسط نسبة الثقة
-        cursor = self.conn.execute(
-            "SELECT AVG(confidence_score) as avg_conf FROM file_fingerprints"
-        )
-        result = cursor.fetchone()["avg_conf"]
-        stats["average_confidence"] = round(result, 4) if result else 0.0
+            # متوسط نسبة الثقة
+            cursor = conn.execute(
+                "SELECT AVG(confidence_score) as avg_conf FROM file_fingerprints"
+            )
+            result = cursor.fetchone()["avg_conf"]
+            stats["average_confidence"] = round(result, 4) if result else 0.0
 
-        # إجمالي حجم الملفات
-        cursor = self.conn.execute(
-            "SELECT SUM(file_size) as total_size FROM file_fingerprints"
-        )
-        result = cursor.fetchone()["total_size"]
-        stats["total_size_bytes"] = result or 0
-        stats["total_size_mb"] = round((result or 0) / (1024 * 1024), 2)
+            # إجمالي حجم الملفات
+            cursor = conn.execute(
+                "SELECT SUM(file_size) as total_size FROM file_fingerprints"
+            )
+            result = cursor.fetchone()["total_size"]
+            stats["total_size_bytes"] = result or 0
+            stats["total_size_mb"] = round((result or 0) / (1024 * 1024), 2)
 
-        # متوسط زمن المعالجة
-        cursor = self.conn.execute(
-            "SELECT AVG(processing_time) as avg_time FROM file_fingerprints WHERE processing_time > 0"
-        )
-        result = cursor.fetchone()["avg_time"]
-        stats["average_processing_time"] = round(result, 2) if result else 0.0
+            # متوسط زمن المعالجة
+            cursor = conn.execute(
+                "SELECT AVG(processing_time) as avg_time FROM file_fingerprints WHERE processing_time > 0"
+            )
+            result = cursor.fetchone()["avg_time"]
+            stats["average_processing_time"] = round(result, 2) if result else 0.0
 
         # حجم قاعدة البيانات
         if os.path.exists(self.db_path):
@@ -368,12 +365,12 @@ class FileFingerprintManager:
             عدد السجلات المحذوفة
         """
         cutoff = datetime.now() - timedelta(days=days)
-        cursor = self.conn.execute(
-            "DELETE FROM file_fingerprints WHERE processed_at < ?",
-            (cutoff.isoformat(),)
-        )
-        deleted = cursor.rowcount
-        self.conn.commit()
+        with self.connection() as conn:
+            cursor = conn.execute(
+                "DELETE FROM file_fingerprints WHERE processed_at < ?",
+                (cutoff.isoformat(),)
+            )
+            deleted = cursor.rowcount
         logger.info("تم حذف %d سجل قديم (أقدم من %d يوم)", deleted, days)
         return deleted
 
@@ -389,10 +386,11 @@ class FileFingerprintManager:
         """
         try:
             import json
-            cursor = self.conn.execute(
-                "SELECT * FROM file_fingerprints ORDER BY processed_at DESC"
-            )
-            records = [dict(row) for row in cursor.fetchall()]
+            with self.connection() as conn:
+                cursor = conn.execute(
+                    "SELECT * FROM file_fingerprints ORDER BY processed_at DESC"
+                )
+                records = [dict(row) for row in cursor.fetchall()]
 
             with open(output_path, "w", encoding="utf-8") as f:
                 json.dump(records, f, ensure_ascii=False, indent=2, default=str)
@@ -404,8 +402,8 @@ class FileFingerprintManager:
             return False
 
     def close(self):
-        """إغلاق اتصال قاعدة البيانات."""
-        self.conn.close()
+        """إغلاق اتصال قاعدة البيانات (no-op: BaseDB manages connections)."""
+        pass
 
     def __enter__(self):
         return self

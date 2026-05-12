@@ -22,14 +22,20 @@
 import logging
 import os
 import re
-import sqlite3
+from modules.core.base_db import BaseDB
 from datetime import datetime
 from typing import Optional, List, Dict, Any, Tuple
 
 logger = logging.getLogger(__name__)
 
+_SAFE_COLUMNS = frozenset([
+    "file_name", "file_path", "category", "subcategory", "tags",
+    "confidence_score", "ocr_engine", "language", "page_count",
+    "process_date", "processing_time", "extracted_text",
+])
 
-class SearchEngine:
+
+class SearchEngine(BaseDB):
     """
     محرك بحث شامل في الأرشيف الرقمي.
 
@@ -40,6 +46,13 @@ class SearchEngine:
     - الملاحظات والتعليقات
     """
 
+    @staticmethod
+    def _validate_column(col: str) -> str:
+        """Validate column name to prevent SQL injection."""
+        if col not in _SAFE_COLUMNS:
+            raise ValueError(f"Invalid column: {col}")
+        return col
+
     def __init__(self, db_path: str = "omni_processor.db"):
         """
         تهيئة محرك البحث.
@@ -47,24 +60,13 @@ class SearchEngine:
         Args:
             db_path: مسار قاعدة بيانات OmniDatabase
         """
-        self.db_path = db_path
-        self.conn = None
-        self._connect()
-
-    def _connect(self):
-        """الاتصال بقاعدة البيانات."""
-        try:
-            self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
-            self.conn.row_factory = sqlite3.Row
-            logger.info("تم الاتصال بقاعدة البيانات: %s", self.db_path)
-        except Exception as e:
-            logger.error("فشل الاتصال بقاعدة البيانات: %s", e)
-            self.conn = None
+        super().__init__(db_path)
+        logger.info("تم الاتصال بقاعدة البيانات: %s", db_path)
 
     @property
     def is_connected(self) -> bool:
-        """هل قاعدة البيانات متصلة؟"""
-        return self.conn is not None
+        """هل قاعدة البيانات متصلة؟ (دائماً True مع BaseDB)"""
+        return True
 
     def search(
         self,
@@ -95,9 +97,6 @@ class SearchEngine:
         Returns:
             قاموس يحتوي على results, total_count, query, filters
         """
-        if not self.conn:
-            return {"results": [], "total_count": 0, "query": query, "error": "not connected"}
-
         if not query or not query.strip():
             return {"results": [], "total_count": 0, "query": query}
 
@@ -162,35 +161,36 @@ class SearchEngine:
         where_clause = " AND ".join(conditions)
 
         # عدد النتائج الإجمالي
-        count_sql = f"SELECT COUNT(*) as cnt FROM processed_files WHERE {where_clause}"
-        cursor = self.conn.execute(count_sql, params)
-        total = cursor.fetchone()["cnt"]
+        with self.connection() as conn:
+            count_sql = f"SELECT COUNT(*) as cnt FROM processed_files WHERE {where_clause}"
+            cursor = conn.execute(count_sql, params)
+            total = cursor.fetchone()["cnt"]
 
-        # استعلام النتائج
-        sql = f"""
-            SELECT
-                id, file_name, file_path, category, subcategory, tags,
-                confidence_score, ocr_engine, language, page_count,
-                process_date, processing_time,
-                SUBSTR(extracted_text, 1, 500) as preview
-            FROM processed_files
-            WHERE {where_clause}
-            ORDER BY confidence_score DESC, process_date DESC
-            LIMIT ? OFFSET ?
-        """
-        params.extend([limit, offset])
-        cursor = self.conn.execute(sql, params)
+            # استعلام النتائج
+            sql = f"""
+                SELECT
+                    id, file_name, file_path, category, subcategory, tags,
+                    confidence_score, ocr_engine, language, page_count,
+                    process_date, processing_time,
+                    SUBSTR(extracted_text, 1, 500) as preview
+                FROM processed_files
+                WHERE {where_clause}
+                ORDER BY confidence_score DESC, process_date DESC
+                LIMIT ? OFFSET ?
+            """
+            params.extend([limit, offset])
+            cursor = conn.execute(sql, params)
 
-        results = []
-        for row in cursor.fetchall():
-            result = dict(row)
-            # استخراج سياق البحث
-            snippet = self._extract_context(
-                result.get("preview", ""), query, context_length=100
-            )
-            result["snippet"] = snippet
-            result.pop("preview", None)
-            results.append(result)
+            results = []
+            for row in cursor.fetchall():
+                result = dict(row)
+                # استخراج سياق البحث
+                snippet = self._extract_context(
+                    result.get("preview", ""), query, context_length=100
+                )
+                result["snippet"] = snippet
+                result.pop("preview", None)
+                results.append(result)
 
         return {
             "results": results,
@@ -232,30 +232,31 @@ class SearchEngine:
 
             where_clause = " AND ".join(conditions)
 
-            # عدد النتائج
-            count_sql = f"""
-                SELECT COUNT(*) as cnt
-                FROM processed_files p JOIN files_fts f ON p.id = f.file_id
-                WHERE {where_clause}
-            """
-            cursor = self.conn.execute(count_sql, params)
-            total = cursor.fetchone()["cnt"]
+            with self.connection() as conn:
+                # عدد النتائج
+                count_sql = f"""
+                    SELECT COUNT(*) as cnt
+                    FROM processed_files p JOIN files_fts f ON p.id = f.file_id
+                    WHERE {where_clause}
+                """
+                cursor = conn.execute(count_sql, params)
+                total = cursor.fetchone()["cnt"]
 
-            # النتائج مع سياق
-            sql = f"""
-                SELECT
-                    p.id, p.file_name, p.file_path, p.category, p.subcategory,
-                    p.confidence_score, p.ocr_engine, p.language, p.process_date,
-                    snippet(files_fts, 0, '>>>', '<<<', '...', 64) as snippet
-                FROM processed_files p
-                JOIN files_fts f ON p.id = f.file_id
-                WHERE {where_clause}
-                ORDER BY rank
-                LIMIT ? OFFSET ?
-            """
-            params.extend([limit, offset])
-            cursor = self.conn.execute(sql, params)
-            results = [dict(row) for row in cursor.fetchall()]
+                # النتائج مع سياق
+                sql = f"""
+                    SELECT
+                        p.id, p.file_name, p.file_path, p.category, p.subcategory,
+                        p.confidence_score, p.ocr_engine, p.language, p.process_date,
+                        snippet(files_fts, 0, '>>>', '<<<', '...', 64) as snippet
+                    FROM processed_files p
+                    JOIN files_fts f ON p.id = f.file_id
+                    WHERE {where_clause}
+                    ORDER BY rank
+                    LIMIT ? OFFSET ?
+                """
+                params.extend([limit, offset])
+                cursor = conn.execute(sql, params)
+                results = [dict(row) for row in cursor.fetchall()]
 
             return {
                 "results": results,
@@ -263,7 +264,7 @@ class SearchEngine:
                 "query": query,
                 "search_mode": "fts5",
             }
-        except sqlite3.OperationalError as e:
+        except Exception as e:
             logger.warning("FTS5 غير متاح، السقوط إلى البحث القياسي: %s", e)
             return self._search_standard(
                 query, limit, offset, category, language,
@@ -363,16 +364,17 @@ class SearchEngine:
         all_params.extend([limit, offset])
 
         try:
-            cursor = self.conn.execute(sql, all_params)
-            results = []
-            for row in cursor.fetchall():
-                result = dict(row)
-                snippet = self._extract_context(
-                    result.get("preview", ""), query, context_length=100
-                )
-                result["snippet"] = snippet
-                result.pop("preview", None)
-                results.append(result)
+            with self.connection() as conn:
+                cursor = conn.execute(sql, all_params)
+                results = []
+                for row in cursor.fetchall():
+                    result = dict(row)
+                    snippet = self._extract_context(
+                        result.get("preview", ""), query, context_length=100
+                    )
+                    result["snippet"] = snippet
+                    result.pop("preview", None)
+                    results.append(result)
 
             return {
                 "results": results,
@@ -530,21 +532,19 @@ class SearchEngine:
 
     def get_categories(self) -> List[str]:
         """الحصول على قائمة التصنيفات المتاحة في الأرشيف."""
-        if not self.conn:
-            return []
-        cursor = self.conn.execute(
-            "SELECT DISTINCT category FROM processed_files ORDER BY category"
-        )
-        return [row["category"] for row in cursor.fetchall()]
+        with self.connection() as conn:
+            cursor = conn.execute(
+                "SELECT DISTINCT category FROM processed_files ORDER BY category"
+            )
+            return [row["category"] for row in cursor.fetchall()]
 
     def get_languages(self) -> List[str]:
         """الحصول على قائمة اللغات المتاحة في الأرشيف."""
-        if not self.conn:
-            return []
-        cursor = self.conn.execute(
-            "SELECT DISTINCT language FROM processed_files ORDER BY language"
-        )
-        return [row["language"] for row in cursor.fetchall()]
+        with self.connection() as conn:
+            cursor = conn.execute(
+                "SELECT DISTINCT language FROM processed_files ORDER BY language"
+            )
+            return [row["language"] for row in cursor.fetchall()]
 
     def export_results(
         self,
@@ -595,10 +595,8 @@ class SearchEngine:
             return False
 
     def close(self):
-        """إغلاق الاتصال بقاعدة البيانات."""
-        if self.conn:
-            self.conn.close()
-            self.conn = None
+        """إغلاق الاتصال بقاعدة البيانات (no-op: BaseDB manages connections)."""
+        pass
 
     def __enter__(self):
         return self

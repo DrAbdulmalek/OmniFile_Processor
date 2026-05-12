@@ -14,14 +14,14 @@ database_manager.py — نظام قاعدة البيانات المحسّن لـ
     results = db.search_text("كسر عنق الفخذ")
 """
 
-import sqlite3
+from modules.core.base_db import BaseDB
 import hashlib
 import os
 from datetime import datetime
 from typing import Optional, Tuple, List, Dict, Any, Callable
 
 
-class OmniDatabase:
+class OmniDatabase(BaseDB):
     """
     نظام إدارة قاعدة البيانات لمعالجة الملفات والأرشفة الرقمية.
     
@@ -38,16 +38,13 @@ class OmniDatabase:
         Args:
             db_name: مسار ملف قاعدة البيانات SQLite
         """
-        self.conn = sqlite3.connect(db_name, check_same_thread=False)
-        self.conn.row_factory = sqlite3.Row
-        self.cursor = self.conn.cursor()
-        self._create_tables()
+        super().__init__(db_name)
 
-    def _create_tables(self):
+    def _create_schema(self, conn):
         """إنشاء الجداول اللازمة إذا لم تكن موجودة."""
 
         # 1. الجدول الأساسي لتخزين البيانات الوصفية
-        self.cursor.execute('''
+        conn.execute('''
             CREATE TABLE IF NOT EXISTS processed_files (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 file_hash TEXT UNIQUE NOT NULL,
@@ -69,25 +66,25 @@ class OmniDatabase:
         ''')
 
         # 2. فهرس لتحسين البحث حسب التصنيف
-        self.cursor.execute('''
+        conn.execute('''
             CREATE INDEX IF NOT EXISTS idx_category 
             ON processed_files(category)
         ''')
 
         # 3. فهرس لتحسين البحث حسب التاريخ
-        self.cursor.execute('''
+        conn.execute('''
             CREATE INDEX IF NOT EXISTS idx_date 
             ON processed_files(process_date)
         ''')
 
         # 4. فهرس للبحث حسب نسبة الثقة
-        self.cursor.execute('''
+        conn.execute('''
             CREATE INDEX IF NOT EXISTS idx_confidence 
             ON processed_files(confidence_score)
         ''')
 
         # 5. جدول البحث النصي الكامل (FTS5) — محرك البحث السريع
-        self.cursor.execute('''
+        conn.execute('''
             CREATE VIRTUAL TABLE IF NOT EXISTS files_fts 
             USING fts5(
                 content,
@@ -99,7 +96,7 @@ class OmniDatabase:
         ''')
 
         # 6. جدول لتخزين تاريخ التصحيحات اليدوية
-        self.cursor.execute('''
+        conn.execute('''
             CREATE TABLE IF NOT EXISTS corrections_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 file_id INTEGER NOT NULL,
@@ -109,8 +106,6 @@ class OmniDatabase:
                 FOREIGN KEY (file_id) REFERENCES processed_files(id)
             )
         ''')
-
-        self.conn.commit()
 
     @staticmethod
     def calculate_file_hash(file_path: str) -> str:
@@ -139,12 +134,13 @@ class OmniDatabase:
         Returns:
             tuple (category, extracted_text, confidence_score) أو None
         """
-        self.cursor.execute(
-            "SELECT category, extracted_text, confidence_score, ocr_engine "
-            "FROM processed_files WHERE file_hash = ?",
-            (file_hash,)
-        )
-        return self.cursor.fetchone()
+        with self.connection() as conn:
+            cursor = conn.execute(
+                "SELECT category, extracted_text, confidence_score, ocr_engine "
+                "FROM processed_files WHERE file_hash = ?",
+                (file_hash,)
+            )
+            return cursor.fetchone()
 
     def save_record(
         self,
@@ -185,28 +181,28 @@ class OmniDatabase:
             file_ext = os.path.splitext(file_name)[1].lower()
             file_size = os.path.getsize(file_path) if os.path.exists(file_path) else 0
 
-            self.cursor.execute('''
-                INSERT INTO processed_files 
-                (file_hash, file_name, file_path, file_extension, file_size,
-                 category, subcategory, tags, extracted_text, process_date,
-                 confidence_score, ocr_engine, language, page_count, processing_time)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                file_hash, file_name, file_path, file_ext, file_size,
-                category, subcategory, tags, text, datetime.now(),
-                confidence, ocr_engine, language, page_count, processing_time
-            ))
+            with self.connection() as conn:
+                cursor = conn.execute('''
+                    INSERT INTO processed_files 
+                    (file_hash, file_name, file_path, file_extension, file_size,
+                     category, subcategory, tags, extracted_text, process_date,
+                     confidence_score, ocr_engine, language, page_count, processing_time)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    file_hash, file_name, file_path, file_ext, file_size,
+                    category, subcategory, tags, text, datetime.now(),
+                    confidence, ocr_engine, language, page_count, processing_time
+                ))
 
-            # إضافة النص إلى محرك البحث السريع
-            last_id = self.cursor.lastrowid
-            self.cursor.execute(
-                "INSERT INTO files_fts(content, file_name, category, tags, file_id) VALUES (?, ?, ?, ?, ?)",
-                (text, file_name, category, tags, last_id)
-            )
+                # إضافة النص إلى محرك البحث السريع
+                last_id = cursor.lastrowid
+                conn.execute(
+                    "INSERT INTO files_fts(content, file_name, category, tags, file_id) VALUES (?, ?, ?, ?, ?)",
+                    (text, file_name, category, tags, last_id)
+                )
 
-            self.conn.commit()
             return True
-        except sqlite3.IntegrityError:
+        except Exception:
             return False
 
     def search_text(self, query: str, limit: int = 50) -> List[Dict[str, Any]]:
@@ -238,10 +234,11 @@ class OmniDatabase:
         """
 
         try:
-            self.cursor.execute(search_query, (query, limit))
-            rows = self.cursor.fetchall()
+            with self.connection() as conn:
+                cursor = conn.execute(search_query, (query, limit))
+                rows = cursor.fetchall()
             return [dict(row) for row in rows]
-        except sqlite3.OperationalError:
+        except Exception:
             return []
 
     def search_by_category(self, category: str, limit: int = 100) -> List[Dict[str, Any]]:
@@ -252,11 +249,12 @@ class OmniDatabase:
             category: اسم التصنيف
             limit: الحد الأقصى للنتائج
         """
-        self.cursor.execute(
-            "SELECT * FROM processed_files WHERE category = ? ORDER BY process_date DESC LIMIT ?",
-            (category, limit)
-        )
-        return [dict(row) for row in self.cursor.fetchall()]
+        with self.connection() as conn:
+            cursor = conn.execute(
+                "SELECT * FROM processed_files WHERE category = ? ORDER BY process_date DESC LIMIT ?",
+                (category, limit)
+            )
+            return [dict(row) for row in cursor.fetchall()]
 
     def get_low_confidence_files(self, threshold: float = 0.7, limit: int = 50) -> List[Dict[str, Any]]:
         """
@@ -266,13 +264,14 @@ class OmniDatabase:
             threshold: حد الثقة الأدنى
             limit: الحد الأقصى للنتائج
         """
-        self.cursor.execute(
-            "SELECT file_name, file_path, category, confidence_score, extracted_text "
-            "FROM processed_files WHERE confidence_score < ? "
-            "ORDER BY confidence_score ASC LIMIT ?",
-            (threshold, limit)
-        )
-        return [dict(row) for row in self.cursor.fetchall()]
+        with self.connection() as conn:
+            cursor = conn.execute(
+                "SELECT file_name, file_path, category, confidence_score, extracted_text "
+                "FROM processed_files WHERE confidence_score < ? "
+                "ORDER BY confidence_score ASC LIMIT ?",
+                (threshold, limit)
+            )
+            return [dict(row) for row in cursor.fetchall()]
 
     def log_correction(self, file_id: int, original_text: str, corrected_text: str):
         """
@@ -283,11 +282,11 @@ class OmniDatabase:
             original_text: النص الأصلي (قبل التصحيح)
             corrected_text: النص المصحح
         """
-        self.cursor.execute('''
-            INSERT INTO corrections_log (file_id, original_text, corrected_text, correction_date)
-            VALUES (?, ?, ?, ?)
-        ''', (file_id, original_text, corrected_text, datetime.now()))
-        self.conn.commit()
+        with self.connection() as conn:
+            conn.execute('''
+                INSERT INTO corrections_log (file_id, original_text, corrected_text, correction_date)
+                VALUES (?, ?, ?, ?)
+            ''', (file_id, original_text, corrected_text, datetime.now()))
 
     def get_statistics(self) -> Dict[str, Any]:
         """
@@ -296,45 +295,39 @@ class OmniDatabase:
         Returns:
             قاموس يحتوي على الإحصائيات
         """
-        stats = {}
+        with self.connection() as conn:
+            stats = {}
 
-        # إجمالي الملفات المعالجة
-        self.cursor.execute("SELECT COUNT(*) as total FROM processed_files")
-        stats["total_files"] = self.cursor.fetchone()["total"]
+            # إجمالي الملفات المعالجة
+            stats["total_files"] = conn.execute("SELECT COUNT(*) as total FROM processed_files").fetchone()["total"]
 
-        # إجمالي الملفات المخزنة مؤقتاً (cache hits)
-        self.cursor.execute("SELECT COUNT(*) as cached FROM processed_files WHERE processing_time = 0")
-        stats["cached_files"] = self.cursor.fetchone()["cached"]
+            # إجمالي الملفات المخزنة مؤقتاً (cache hits)
+            stats["cached_files"] = conn.execute("SELECT COUNT(*) as cached FROM processed_files WHERE processing_time = 0").fetchone()["cached"]
 
-        # متوسط نسبة الثقة
-        self.cursor.execute("SELECT AVG(confidence_score) as avg_conf FROM processed_files")
-        result = self.cursor.fetchone()["avg_conf"]
-        stats["average_confidence"] = round(result, 4) if result else 0.0
+            # متوسط نسبة الثقة
+            result = conn.execute("SELECT AVG(confidence_score) as avg_conf FROM processed_files").fetchone()["avg_conf"]
+            stats["average_confidence"] = round(result, 4) if result else 0.0
 
-        # عدد الملفات حسب التصنيف
-        self.cursor.execute(
-            "SELECT category, COUNT(*) as count FROM processed_files "
-            "GROUP BY category ORDER BY count DESC"
-        )
-        stats["categories"] = [dict(row) for row in self.cursor.fetchall()]
+            # عدد الملفات حسب التصنيف
+            stats["categories"] = [dict(row) for row in conn.execute(
+                "SELECT category, COUNT(*) as count FROM processed_files "
+                "GROUP BY category ORDER BY count DESC"
+            ).fetchall()]
 
-        # عدد الملفات حسب اللغة
-        self.cursor.execute(
-            "SELECT language, COUNT(*) as count FROM processed_files "
-            "GROUP BY language ORDER BY count DESC"
-        )
-        stats["languages"] = [dict(row) for row in self.cursor.fetchall()]
+            # عدد الملفات حسب اللغة
+            stats["languages"] = [dict(row) for row in conn.execute(
+                "SELECT language, COUNT(*) as count FROM processed_files "
+                "GROUP BY language ORDER BY count DESC"
+            ).fetchall()]
 
-        # عدد الملفات حسب المحرك
-        self.cursor.execute(
-            "SELECT ocr_engine, COUNT(*) as count FROM processed_files "
-            "GROUP BY ocr_engine ORDER BY count DESC"
-        )
-        stats["engines"] = [dict(row) for row in self.cursor.fetchall()]
+            # عدد الملفات حسب المحرك
+            stats["engines"] = [dict(row) for row in conn.execute(
+                "SELECT ocr_engine, COUNT(*) as count FROM processed_files "
+                "GROUP BY ocr_engine ORDER BY count DESC"
+            ).fetchall()]
 
-        # إجمالي التصحيحات اليدوية
-        self.cursor.execute("SELECT COUNT(*) as total FROM corrections_log")
-        stats["total_corrections"] = self.cursor.fetchone()["total"]
+            # إجمالي التصحيحات اليدوية
+            stats["total_corrections"] = conn.execute("SELECT COUNT(*) as total FROM corrections_log").fetchone()["total"]
 
         return stats
 
@@ -400,8 +393,8 @@ class OmniDatabase:
         return category, text, confidence
 
     def close(self):
-        """إغلاق اتصال قاعدة البيانات."""
-        self.conn.close()
+        """إغلاق اتصال قاعدة البيانات (no-op: BaseDB manages connections)."""
+        pass
 
     def __enter__(self):
         return self

@@ -12,6 +12,7 @@ HandwrittenOCR - وحدة ترحيل البيانات v5.1
 
 import os
 import json
+import re
 import sqlite3
 import logging
 from pathlib import Path
@@ -28,6 +29,13 @@ except ImportError:
         lg.error(f"ERROR [{ctx}] {type(err).__name__}: {err}", exc_info=True)
 
 logger = logging.getLogger("HandwrittenOCR.Migration")
+
+
+def _safe_column_name(name: str) -> str:
+    """Validate SQL column name to prevent injection."""
+    if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', name):
+        raise ValueError(f"Invalid column name: {name}")
+    return name
 
 
 # أسماء المجلدات القديمة المحتملة
@@ -272,7 +280,7 @@ class DataMigrator:
             if has_updated:
                 select_cols.append("updated_at")
 
-            cols_str = ", ".join(select_cols)
+            cols_str = ", ".join(_safe_column_name(c) for c in select_cols)
             placeholders = ", ".join(["?"] * len(select_cols))
 
             # بناء شرط WHERE
@@ -366,7 +374,7 @@ class DataMigrator:
                             row_dict.get("updated_at", now) if has_updated else now
                         )
 
-                    insert_str = ", ".join(insert_cols)
+                    insert_str = ", ".join(_safe_column_name(c) for c in insert_cols)
                     insert_ph = ", ".join(["?"] * len(insert_vals))
 
                     tgt_cur.execute(
