@@ -605,5 +605,6 @@ class SearchEngine(BaseDB):
         self.close()
 
     def __repr__(self):
-        status = "متصل" if self.conn else "غير متصل"
+        connected = self.db_path.exists()
+        status = "متصل" if connected else "غير متصل"
         return f"SearchEngine(db='{self.db_path}', status={status})"

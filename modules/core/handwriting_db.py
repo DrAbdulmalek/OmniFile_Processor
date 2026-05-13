@@ -280,24 +280,12 @@ class HandwritingDB(BaseDB):
 
     def get_last_review_event(self) -> dict | None:
         """جلب آخر حدث مراجعة للتراجع."""
-        try:
-            conn = sqlite3.connect(self.db_path, check_same_thread=False)
-            cur = conn.execute(
-                "SELECT * FROM review_events ORDER BY id DESC LIMIT 1"
-            )
-            row = cur.fetchone()
-            if row:
-                cols = [d[0] for d in cur.description]
-                return dict(zip(cols, row))
-            return None
-        except Exception:
-            return None
+        return self.execute_one(
+            "SELECT * FROM review_events ORDER BY id DESC LIMIT 1"
+        )
 
     def delete_review_event(self, event_id: int) -> None:
         """حذف حدث مراجعة."""
-        try:
-            conn = sqlite3.connect(self.db_path, check_same_thread=False)
-            conn.execute("DELETE FROM review_events WHERE id = ?", (event_id,))
-            conn.commit()
-        except Exception:
-            pass
+        self.execute_write(
+            "DELETE FROM review_events WHERE id = ?", (event_id,)
+        )
