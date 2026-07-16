@@ -1,0 +1,47 @@
+# =============================================================================
+# OmniFile AI Processor — Full Installation (كل المكونات)
+# =============================================================================
+# التثبيت الكامل: ~6-8 GB | وقت التثبيت: ~15-30 دقيقة
+# =============================================================================
+# استخدم هذا فقط إذا كنت تحتاج كل الميزات.
+# للمستخدمين العاديين: pip install -r requirements-core.txt -r requirements-ocr.txt
+# =============================================================================
+
+# === Cloud & Deployment ===
+pyngrok>=7.0.0
+python-dotenv>=1.0.0
+gunicorn>=21.2.0
+
+# === Security ===
+presidio-analyzer>=2.2.0
+presidio-anonymizer>=2.2.0
+detect-secrets>=1.4.0
+cryptography>=41.0.0
+slowapi>=0.1.9
+pyotp>=2.9.0
+
+# === AI Enhancement ===
+openai>=1.0.0
+google-generativeai>=0.3.0
+
+# === Advanced Tools ===
+GitPython>=3.1.0
+beautifulsoup4>=4.12.0
+tensorboard>=2.15.0
+
+# === Async Processing ===
+celery>=5.3.0
+redis>=5.0.0
+
+# === Mobile Review Server ===
+flask>=3.0.0
+
+# === Surya OCR (محرك خامس) ===
+surya-ocr>=0.4.0
+
+# === Table Detection (TATR) ===
+timm>=0.9.0
+
+# === Mixed Language Processing ===
+langdetect>=1.0.9
+pyspellchecker>=0.7.0

@@ -1,0 +1,37 @@
+# ===================================================================
+# OmniFile AI Processor — HuggingFace Spaces Requirements
+# ===================================================================
+# CPU-only, optimized for HF free tier
+# ===================================================================
+
+# Core UI
+gradio>=6.0.0
+
+# OCR engines
+easyocr>=1.7.0
+pytesseract>=0.3.10
+
+# ML / Models
+transformers>=4.36.0
+torch>=2.1.0
+sentencepiece>=0.1.99
+
+# Document processing
+PyMuPDF>=1.23.0
+python-docx>=0.8.11
+Pillow>=10.0.0
+openpyxl>=3.1.0
+
+# Computer Vision
+opencv-python-headless>=4.8.0
+numpy>=1.24.0
+
+# Data & Language
+pandas>=2.0.0
+langdetect>=1.0.9
+arabic-reshaper>=3.0.0
+python-bidi>=0.4.2
+pyspellchecker>=0.7.2
+ar-corrector>=0.6.3
+jiwer>=3.0.0
+tqdm>=4.65.0

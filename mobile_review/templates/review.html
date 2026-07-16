@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=yes">
+  <meta name="theme-color" content="#1a1a2e">
+  <title>OmniFile — مراجعة OCR</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Tahoma, 'Arial', sans-serif; background: #0f0f23; color: #e0e0e0; }
+    header { background: #16213e; padding: 12px 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #0f3460; }
+    header h1 { font-size: 16px; color: #e94560; }
+    header span { font-size: 12px; color: #888; }
+    .container { padding: 12px; max-width: 800px; margin: 0 auto; }
+    .image-wrap { position: relative; background: #1a1a2e; border-radius: 10px; overflow: hidden; margin-bottom: 12px; border: 1px solid #0f3460; }
+    .image-wrap img { width: 100%; display: block; touch-action: pinch-zoom; }
+    .overlay { position: absolute; inset: 0; }
+    .block-box { position: absolute; border: 2px solid #0f3460; border-radius: 3px; cursor: pointer; transition: all 0.15s; }
+    .block-box:hover, .block-box.active { border-color: #e94560; background: rgba(233,69,96,0.15); }
+    .edit-panel { background: #16213e; border-radius: 10px; padding: 14px; border: 1px solid #0f3460; }
+    .block-label { font-size: 11px; color: #888; margin-bottom: 8px; display: flex; gap: 8px; align-items: center; }
+    .badge { background: #0f3460; color: #e94560; padding: 2px 8px; border-radius: 4px; font-size: 10px; }
+    textarea { width: 100%; background: #0f0f23; color: #e0e0e0; border: 1px solid #0f3460; border-radius: 6px; padding: 10px; font-size: 15px; resize: vertical; min-height: 80px; direction: rtl; }
+    textarea:focus { outline: none; border-color: #e94560; }
+    .nav { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    button { padding: 10px 18px; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; transition: opacity 0.2s; }
+    .btn-prev, .btn-next { background: #0f3460; color: #e0e0e0; flex: 1; }
+    .btn-save { background: #e94560; color: white; flex: 2; font-weight: bold; }
+    button:hover { opacity: 0.85; }
+    .status { text-align: center; font-size: 12px; color: #4caf50; margin-top: 8px; height: 18px; }
+    .empty { text-align: center; color: #555; padding: 40px; }
+    .progress { font-size: 12px; color: #888; }
+  </style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>🧠 OmniFile — مراجعة OCR</h1>
+    <span id="progressLabel" class="progress">لا توجد بيانات</span>
+  </div>
+</header>
+<div class="container">
+  <div class="image-wrap" id="imageWrap">
+    <img id="mainImg" src="" alt="المستند" onerror="this.style.display='none'">
+    <div class="overlay" id="overlay"></div>
+  </div>
+  <div class="edit-panel">
+    <div class="block-label">
+      <span id="blockType" class="badge">—</span>
+      <span id="blockPos"></span>
+    </div>
+    <div id="editorArea"><div class="empty">اضغط على كتلة نص في الصورة للتحرير</div></div>
+    <div class="nav">
+      <button class="btn-prev" onclick="navigate(-1)">◀ السابق</button>
+      <button class="btn-next" onclick="navigate(1)">التالي ▶</button>
+      <button class="btn-save" onclick="saveAll()">💾 حفظ الكل</button>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+</div>
+<script>
+  {% if data %}const ocrData = {{ data | tojson }};{% else %}const ocrData = {"image":"","blocks":[]};{% endif %}
+  let blocks = ocrData.blocks || [];
+  let current = -1;
+  const corrections = blocks.map(b => ({...b}));
+
+  document.getElementById('mainImg').src = ocrData.image ? `/images/${ocrData.image}` : '';
+  document.getElementById('progressLabel').textContent = `${blocks.length} كتلة نصية`;
+
+  function drawBoxes() {
+    const ov = document.getElementById('overlay');
+    ov.innerHTML = '';
+    const wrap = document.getElementById('imageWrap');
+    const W = wrap.offsetWidth, H = wrap.offsetHeight;
+    blocks.forEach((b, i) => {
+      if (!b.bbox) return;
+      const div = document.createElement('div');
+      div.className = 'block-box' + (i === current ? ' active' : '');
+      const [x1,y1,x2,y2] = b.bbox;
+      div.style.left   = (x1*100)+'%'; div.style.top   = (y1*100)+'%';
+      div.style.width  = ((x2-x1)*100)+'%'; div.style.height = ((y2-y1)*100)+'%';
+      div.onclick = () => selectBlock(i);
+      ov.appendChild(div);
+    });
+  }
+
+  function selectBlock(i) {
+    current = i;
+    const b = corrections[i];
+    document.getElementById('blockType').textContent = b.type || 'paragraph';
+    document.getElementById('blockPos').textContent = `${i+1} / ${blocks.length}`;
+    document.getElementById('progressLabel').textContent = `الكتلة ${i+1} من ${blocks.length}`;
+    const area = document.getElementById('editorArea');
+    if (b.type === 'table' && b.cells) {
+      area.innerHTML = buildTableEditor(b.cells, i);
+    } else {
+      const confidence = b.confidence || 1.0;
+      const confColor = confidence < 0.7 ? '#ff4444' : confidence < 0.85 ? '#ffaa00' : '#4ade80';
+      const confLabel = confidence < 0.7 ? '⚠️ ثقة منخفضة' : confidence < 0.85 ? '⚡ ثقة متوسطة' : '✅ ثقة عالية';
+      area.innerHTML = `
+  <div style="font-size:11px;color:${confColor};margin-bottom:6px;">
+    ${confLabel} — ${(confidence*100).toFixed(1)}%
+    <div style="height:3px;background:#222;border-radius:2px;margin-top:3px;">
+      <div style="height:100%;width:${(confidence*100).toFixed(0)}%;background:${confColor};border-radius:2px;transition:width .3s"></div>
+    </div>
+  </div>
+  <textarea id="txt${i}"
+    style="border-color:${confidence < 0.7 ? '#ff4444' : '#0f3460'}"
+    onchange="corrections[${i}].text=this.value">${b.text||''}</textarea>`;
+    }
+    drawBoxes();
+  }
+
+  function buildTableEditor(cells, bi) {
+    let html = '<table style="width:100%;border-collapse:collapse;margin:8px 0">';
+    cells.forEach((row, ri) => {
+      html += '<tr>';
+      row.forEach((cell, ci) => {
+        html += `<td style="border:1px solid #0f3460;padding:3px"><input style="background:#0f0f23;color:#e0e0e0;border:none;width:100%;font-size:13px;direction:rtl" value="${cell}" onchange="corrections[${bi}].cells[${ri}][${ci}]=this.value"></td>`;
+      });
+      html += '</tr>';
+    });
+    return html + '</table>';
+  }
+
+  function navigate(dir) {
+    const next = current + dir;
+    if (next >= 0 && next < blocks.length) selectBlock(next);
+  }
+
+  async function saveAll() {
+    try {
+      const r = await fetch('/save', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(corrections) });
+      const d = await r.json();
+      const s = document.getElementById('status');
+      s.textContent = d.status === 'success' ? '✅ حُفظت التصحيحات' : '❌ خطأ في الحفظ';
+      setTimeout(() => s.textContent = '', 3000);
+    } catch(e) { document.getElementById('status').textContent = '❌ ' + e.message; }
+  }
+
+  window.addEventListener('resize', drawBoxes);
+  drawBoxes();
+
+  // اختصارات لوحة المفاتيح
+  document.addEventListener('keydown', function(e) {
+    if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+    if (e.key === 'ArrowRight' || e.key === 'Tab') { e.preventDefault(); navigate(-1); }
+    if (e.key === 'ArrowLeft')  { e.preventDefault(); navigate(1);  }
+    if (e.key === 's' && e.ctrlKey) { e.preventDefault(); saveAll(); }
+  });
+</script>
+</body>
+</html>
