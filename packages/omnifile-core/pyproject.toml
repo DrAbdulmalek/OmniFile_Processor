@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omnifile-core"
+version = "0.1.0"
+description = "النواة القابلة لإعادة الاستخدام من OmniFile — قاموس التصحيح، تطبيع RTL، التدقيق الإملائي، مقاييس CER/WER، وتصدير Markdown/DOCX"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "Dr. Abdulmalek Tamer Al-husseini", email = "Abdulmalek.husseini@gmail.com"}]
+requires-python = ">=3.10"
+keywords = ["ocr", "arabic", "nlp", "rtl", "spell-correction", "cer", "wer"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Natural Language :: Arabic",
+]
+# NOTE: no hard dependencies on purpose. The re-export layer is lazy, so
+# third-party libraries are only imported when a name that needs them is
+# accessed. Declare what your pipeline actually touches via extras below.
+dependencies = []
+
+[project.optional-dependencies]
+corrections = ["pandas>=1.5"]           # modules/nlp/feedback.py (build_correction_dict*)
+export-docx = ["python-docx>=0.8.11"]   # modules/export/layout_preserving.py
+ai = ["openai>=1.0.0"]                  # modules/nlp/ai_corrector.py
+grammar = ["language-tool-python>=2.0"] # modules/nlp/language_corrector.py (advanced grammar)
+dev = ["pytest>=7.4.0"]
+
+[project.urls]
+Homepage = "https://github.com/DrAbdulmalek/OmniFile_Processor"
+Repository = "https://github.com/DrAbdulmalek/OmniFile_Processor"
+
+[tool.setuptools]
+packages = ["omnifile_core"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-q --tb=short"
